@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useGame } from '../store/GameContext';
-import { CHARACTERS, getCharacterMaxLevel, getSkillDescription } from '../data/characters';
+import { CHARACTERS, getCharacterMaxLevel, getSkillDetails } from '../data/characters';
 import type { Rank } from '../data/characters';
 import { ArrowLeft, ArrowUpCircle, ChevronLeft, ChevronRight, Check, Star, Zap } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -299,31 +299,56 @@ const TeamBuilder = () => {
 
             {/* 必殺技 (Skill) 詳細カード */}
             <div style={{ marginBottom: '10px' }}>
-              {selectedCharDef.skill ? (
-                <div style={{
-                  background: 'linear-gradient(135deg, rgba(255,200,0,0.18) 0%, rgba(255,100,0,0.12) 100%)',
-                  borderRadius: '12px',
-                  padding: '10px 12px',
-                  border: '1.5px solid rgba(255,170,0,0.4)',
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
-                }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <Zap size={16} color="#d97706" />
-                      <span style={{ fontWeight: 900, fontSize: '0.9rem', color: '#b45309' }}>
-                        {selectedCharDef.skill.name}
-                      </span>
+              {selectedCharDef.skill ? (() => {
+                const skillLv = selectedCharData.skillLevel || 1;
+                const details = getSkillDetails(selectedCharDef.skill, skillLv);
+                return (
+                  <div style={{
+                    background: 'linear-gradient(135deg, rgba(255,200,0,0.2) 0%, rgba(255,100,0,0.12) 100%)',
+                    borderRadius: '12px',
+                    padding: '10px 12px',
+                    border: '1.5px solid rgba(255,170,0,0.45)',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <Zap size={16} color="#d97706" />
+                        <span style={{ fontWeight: 900, fontSize: '0.92rem', color: '#b45309' }}>
+                          {selectedCharDef.skill.name}
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', color: '#78350f', background: 'rgba(255,255,255,0.7)', padding: '2px 6px', borderRadius: '10px' }}>
+                        <span style={{ fontWeight: 800 }}>技Lv.{skillLv}</span>
+                        <StarRating count={skillLv} />
+                      </div>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', color: '#78350f' }}>
-                      <span>技Lv.</span>
-                      <StarRating count={selectedCharData.skillLevel || 1} />
+
+                    <div style={{ fontSize: '0.8rem', color: '#451a03', lineHeight: '1.45', fontWeight: 600, marginBottom: '6px' }}>
+                      {details.description}
+                    </div>
+
+                    <div style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '4px',
+                      background: 'rgba(255,255,255,0.85)',
+                      borderRadius: '8px',
+                      padding: '6px 10px',
+                      fontSize: '0.75rem',
+                      border: '1px solid rgba(217,119,6,0.3)'
+                    }}>
+                      <div style={{ color: '#92400e', fontWeight: 800, display: 'flex', justifyContent: 'space-between' }}>
+                        <span>【現在の能力】</span>
+                        <span style={{ color: '#d97706', fontWeight: 900 }}>{details.countInfo}</span>
+                      </div>
+                      <div style={{ color: '#15803d', fontWeight: 700, fontSize: '0.72rem', display: 'flex', justifyContent: 'space-between' }}>
+                        <span>【成長予測】</span>
+                        <span style={{ color: skillLv >= 7 ? '#9333ea' : '#2563eb', fontWeight: 800 }}>{details.nextUpgrade}</span>
+                      </div>
                     </div>
                   </div>
-                  <div style={{ fontSize: '0.8rem', color: '#451a03', lineHeight: '1.45', fontWeight: 600 }}>
-                    {getSkillDescription(selectedCharDef.skill)}
-                  </div>
-                </div>
-              ) : (
+                );
+              })() : (
                 <div style={{
                   background: 'rgba(0,0,0,0.04)',
                   borderRadius: '10px',

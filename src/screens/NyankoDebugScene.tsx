@@ -11,11 +11,14 @@ import {
   Lock,
   Terminal,
   KeyRound,
-  ShieldAlert
+  ShieldAlert,
+  Copy,
+  Check
 } from 'lucide-react';
 import { useGame } from '../store/GameContext';
 import { CHARACTERS, getCharacterMaxLevel } from '../data/characters';
 import { CharacterAvatar } from '../components/CharacterAvatar';
+import { generateSerialCode } from '../utils/serialCode';
 
 export const DebugConsoleScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -68,6 +71,40 @@ export const DebugConsoleScreen: React.FC = () => {
   // カスタム加算フォーム用
   const [customMoney, setCustomMoney] = useState<number>(100000);
   const [selectedCharId, setSelectedCharId] = useState<string>(CHARACTERS[0].id);
+
+  // シリアルコード生成フォーム用
+  const [genTitle, setGenTitle] = useState<string>('特別プレゼント');
+  const [genYPoints, setGenYPoints] = useState<number>(5000);
+  const [genMoney, setGenMoney] = useState<number>(10000);
+  const [genExpSmall, setGenExpSmall] = useState<number>(3);
+  const [genExpLarge, setGenExpLarge] = useState<number>(1);
+  const [genSkillBook, setGenSkillBook] = useState<number>(1);
+  const [generatedCode, setGeneratedCode] = useState<string | null>(null);
+  const [copied, setCopied] = useState<boolean>(false);
+
+  const handleCreateCode = () => {
+    const code = generateSerialCode({
+      title: genTitle,
+      yPoints: genYPoints,
+      money: genMoney,
+      items: {
+        expSmall: genExpSmall,
+        expLarge: genExpLarge,
+        skillBook: genSkillBook,
+      },
+    });
+    setGeneratedCode(code);
+    setCopied(false);
+    showToast('暗号化シリアルコードを生成しました！');
+  };
+
+  const handleCopyCode = () => {
+    if (!generatedCode) return;
+    navigator.clipboard.writeText(generatedCode);
+    setCopied(true);
+    showToast('シリアルコードをクリップボードにコピーしました！');
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   // ロック中（未認証）画面
   if (!isUnlocked) {
@@ -459,6 +496,158 @@ export const DebugConsoleScreen: React.FC = () => {
             >
               🧪 育成アイテム 各99個
             </button>
+          </div>
+        </div>
+
+        {/* 5. シリアルコード生成ツール */}
+        <div style={{
+          background: '#1f1f38',
+          border: '1px solid #fbbf24',
+          borderRadius: '12px',
+          padding: '14px'
+        }}>
+          <div style={{ fontSize: '0.95rem', fontWeight: 900, color: '#fbbf24', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <KeyRound size={18} /> 暗号化シリアルコード生成ツール
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <label style={{ fontSize: '0.75rem', color: '#aaa' }}>コードタイトル（任意）:</label>
+              <input
+                type="text"
+                value={genTitle}
+                onChange={e => setGenTitle(e.target.value)}
+                style={{ background: '#111', border: '1px solid #555', color: '#fff', borderRadius: '6px', padding: '6px 8px', fontSize: '0.8rem' }}
+                placeholder="例: 豪華ログイン特典"
+              />
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <label style={{ fontSize: '0.75rem', color: '#ffaa00' }}>🌟 Yポイント:</label>
+                <input
+                  type="number"
+                  value={genYPoints}
+                  onChange={e => setGenYPoints(Number(e.target.value))}
+                  style={{ background: '#111', border: '1px solid #555', color: '#fff', borderRadius: '6px', padding: '6px 8px', fontSize: '0.8rem' }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <label style={{ fontSize: '0.75rem', color: '#00cc66' }}>💵 yマネー:</label>
+                <input
+                  type="number"
+                  value={genMoney}
+                  onChange={e => setGenMoney(Number(e.target.value))}
+                  style={{ background: '#111', border: '1px solid #555', color: '#fff', borderRadius: '6px', padding: '6px 8px', fontSize: '0.8rem' }}
+                />
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <label style={{ fontSize: '0.7rem', color: '#aaa' }}>小けいけんち:</label>
+                <input
+                  type="number"
+                  value={genExpSmall}
+                  onChange={e => setGenExpSmall(Number(e.target.value))}
+                  style={{ background: '#111', border: '1px solid #555', color: '#fff', borderRadius: '6px', padding: '6px 8px', fontSize: '0.8rem' }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <label style={{ fontSize: '0.7rem', color: '#aaa' }}>大けいけんち:</label>
+                <input
+                  type="number"
+                  value={genExpLarge}
+                  onChange={e => setGenExpLarge(Number(e.target.value))}
+                  style={{ background: '#111', border: '1px solid #555', color: '#fff', borderRadius: '6px', padding: '6px 8px', fontSize: '0.8rem' }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <label style={{ fontSize: '0.7rem', color: '#ff5588' }}>秘伝書:</label>
+                <input
+                  type="number"
+                  value={genSkillBook}
+                  onChange={e => setGenSkillBook(Number(e.target.value))}
+                  style={{ background: '#111', border: '1px solid #555', color: '#fff', borderRadius: '6px', padding: '6px 8px', fontSize: '0.8rem' }}
+                />
+              </div>
+            </div>
+
+            <button
+              onClick={handleCreateCode}
+              style={{
+                width: '100%',
+                padding: '10px',
+                borderRadius: '8px',
+                background: 'linear-gradient(135deg, #f59e0b, #d97706)',
+                color: '#fff',
+                border: 'none',
+                fontWeight: 800,
+                fontSize: '0.85rem',
+                cursor: 'pointer',
+                marginTop: '4px',
+                boxShadow: '0 4px 10px rgba(245, 158, 11, 0.3)'
+              }}
+            >
+              🔑 暗号化シリアルコードを生成
+            </button>
+
+            {generatedCode && (
+              <div style={{
+                background: '#111827',
+                border: '1px solid #374151',
+                borderRadius: '8px',
+                padding: '10px',
+                marginTop: '6px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '6px'
+              }}>
+                <span style={{ fontSize: '0.7rem', color: '#9ca3af' }}>生成されたコード（クリックしてコピー）:</span>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  background: '#030712',
+                  padding: '8px',
+                  borderRadius: '6px',
+                  border: '1px solid #1f2937'
+                }}>
+                  <code style={{
+                    flex: 1,
+                    fontSize: '0.85rem',
+                    color: '#fbbf24',
+                    wordBreak: 'break-all',
+                    fontFamily: 'monospace'
+                  }}>
+                    {generatedCode}
+                  </code>
+                  <button
+                    onClick={handleCopyCode}
+                    style={{
+                      background: copied ? '#22c55e' : '#3b82f6',
+                      color: '#fff',
+                      border: 'none',
+                      borderRadius: '6px',
+                      padding: '6px 10px',
+                      fontSize: '0.75rem',
+                      fontWeight: 700,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      cursor: 'pointer',
+                      flexShrink: 0
+                    }}
+                  >
+                    {copied ? <Check size={14} /> : <Copy size={14} />}
+                    {copied ? '完了' : 'コピー'}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 

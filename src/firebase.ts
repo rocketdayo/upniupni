@@ -24,6 +24,7 @@ export interface PlayerData {
   pityCount?: number;
   stepUpCount?: number;
   gachaHistory?: { timestamp: number; charId: string }[];
+  usedSerialCodes?: string[];
 }
 
 const DEFAULT_DATA: PlayerData = {
@@ -45,6 +46,7 @@ const DEFAULT_DATA: PlayerData = {
   pityCount: 100,
   stepUpCount: 0,
   gachaHistory: [],
+  usedSerialCodes: [],
 };
 
 export const loginAndGetData = async (onDataLoaded: (data: PlayerData, uid: string) => void) => {
@@ -57,21 +59,53 @@ export const fetchPlayerData = async (_uid: string): Promise<PlayerData> => {
   try {
     const stored = localStorage.getItem('punipuni_save');
     if (stored) {
-      return JSON.parse(stored) as PlayerData;
+      const parsed = JSON.parse(stored) as PlayerData;
+      if (parsed && typeof parsed === 'object' && parsed.characters) {
+        return parsed;
+      }
     }
   } catch (error) {
-    console.error("Error fetching player data, using default", error);
+    console.error("Error fetching player data from primary save, trying backup...", error);
   }
+
+  // Try loading backup
+  try {
+    const backup = localStorage.getItem('punipuni_save_backup');
+    if (backup) {
+      const parsed = JSON.parse(backup) as PlayerData;
+      if (parsed && typeof parsed === 'object' && parsed.characters) {
+        console.log("Successfully restored player data from backup!");
+        return parsed;
+      }
+    }
+  } catch (error) {
+    console.error("Error fetching player data from backup", error);
+  }
+
   return DEFAULT_DATA;
 };
 
-export const savePlayerData = async (uid: string, data: Partial<PlayerData>) => {
+export const savePlayerData = async (uid: string, data: Partial<PlayerData> | PlayerData) => {
   try {
-    const current = await fetchPlayerData(uid);
-    const updated = { ...current, ...data };
-    localStorage.setItem('punipuni_save', JSON.stringify(updated));
+    let updated: PlayerData;
+    const stored = localStorage.getItem('punipuni_save');
+    if (stored) {
+      try {
+        const current = JSON.parse(stored) as PlayerData;
+        updated = { ...current, ...data };
+      } catch {
+        updated = { ...DEFAULT_DATA, ...data };
+      }
+    } else {
+      updated = { ...DEFAULT_DATA, ...data };
+    }
+
+    const json = JSON.stringify(updated);
+    localStorage.setItem('punipuni_save', json);
+    localStorage.setItem('punipuni_save_backup', json);
   } catch (error) {
     console.error("Error saving player data", error);
   }
 };
+
 

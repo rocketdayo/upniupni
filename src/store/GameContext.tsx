@@ -3,6 +3,7 @@ import { loginAndGetData, savePlayerData } from '../firebase';
 import { CHARACTERS, getCharacterMaxLevel } from '../data/characters';
 import { CURRENT_EVENTS } from '../data/events';
 import { STAGES } from '../data/stages';
+import { decodeSerialCode } from '../utils/serialCode';
 import type { PlayerData } from '../firebase';
 
 interface GameState extends PlayerData {
@@ -22,6 +23,7 @@ interface GameState extends PlayerData {
   trackMission: (type: string, amount?: number) => void;
   claimMission: (missionId: string) => void;
   recordGachaResult: (charIds: string[], newPityCount: number, newStepUpCount: number) => void;
+  redeemSerialCode: (code: string) => { success: boolean; message: string; rewardsSummary?: string };
 }
 
 const GameContext = createContext<GameState | undefined>(undefined);
@@ -100,33 +102,47 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setData(prev => {
       const newData = typeof updater === 'function' ? updater(prev) : updater;
       const updated = { ...prev, ...newData };
-      if (uid) savePlayerData(uid, newData);
+      // Save entire state directly into localStorage to prevent any stale state loss
+      if (uid) {
+        savePlayerData(uid, updated);
+      }
       return updated;
     });
   };
 
+  // Synchronize save to localStorage on window close / page hide
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (uid && data) {
+        try {
+          const json = JSON.stringify(data);
+          localStorage.setItem('punipuni_save', json);
+          localStorage.setItem('punipuni_save_backup', json);
+        } catch (e) {
+          console.error("Failed to save on beforeunload", e);
+        }
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener('pagehide', handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('pagehide', handleBeforeUnload);
+    };
+  }, [uid, data]);
+
   // Debug tools
   useEffect(() => {
     (window as any).addYPoints = (amount: number) => {
-      setData(prev => {
-        const newData = { yPoints: prev.yPoints + amount };
-        if (uid) savePlayerData(uid, newData);
-        return { ...prev, ...newData };
-      });
+      mutateAndSave(prev => ({ yPoints: prev.yPoints + amount }));
     };
     (window as any).addMoney = (amount: number) => {
-      setData(prev => {
-        const newData = { money: prev.money + amount };
-        if (uid) savePlayerData(uid, newData);
-        return { ...prev, ...newData };
-      });
+      mutateAndSave(prev => ({ money: prev.money + amount }));
     };
     (window as any).addItems = (type: string, amount: number) => {
-      setData(prev => {
-        const newItems = { ...prev.items, [type]: (prev.items as any)[type] + amount };
-        if (uid) savePlayerData(uid, { items: newItems });
-        return { ...prev, items: newItems };
-      });
+      mutateAndSave(prev => ({ items: { ...prev.items, [type]: ((prev.items as any)[type] || 0) + amount } }));
     };
   }, [uid]);
 
@@ -337,6 +353,53 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
   };
 
+  const redeemSerialCode = (code: string): { success: boolean; message: string; rewardsSummary?: string } => {
+    const cleanCode = code.trim();
+    const used = data.usedSerialCodes || [];
+
+    if (used.includes(cleanCode)) {
+      return { success: false, message: 'このシリアルコードは既に使用されています。' };
+    }
+
+    const decoded = decodeSerialCode(cleanCode);
+    if (!decoded.success || !decoded.payload) {
+      return { success: false, message: decoded.error || '無効なシリアルコードです。' };
+    }
+
+    const { yPoints = 0, money = 0, items, title } = decoded.payload;
+
+    const summaryParts: string[] = [];
+    if (yPoints > 0) summaryParts.push(`Yポイント +${yPoints.toLocaleString()}pt`);
+    if (money > 0) summaryParts.push(`yマネー +${money.toLocaleString()}`);
+    if (items) {
+      if (items.expSmall) summaryParts.push(`小けいけんちだま x${items.expSmall}`);
+      if (items.expLarge) summaryParts.push(`大けいけんちだま x${items.expLarge}`);
+      if (items.skillBook) summaryParts.push(`ひっさつの秘伝書 x${items.skillBook}`);
+    }
+
+    const summaryText = summaryParts.length > 0 ? summaryParts.join(' / ') : '報酬なし';
+
+    mutateAndSave(prev => {
+      const newItems = { ...prev.items };
+      if (items?.expSmall) newItems.expSmall = (newItems.expSmall || 0) + items.expSmall;
+      if (items?.expLarge) newItems.expLarge = (newItems.expLarge || 0) + items.expLarge;
+      if (items?.skillBook) newItems.skillBook = (newItems.skillBook || 0) + items.skillBook;
+
+      return {
+        yPoints: prev.yPoints + yPoints,
+        money: prev.money + money,
+        items: newItems,
+        usedSerialCodes: [...(prev.usedSerialCodes || []), cleanCode],
+      };
+    });
+
+    return {
+      success: true,
+      message: title ? `【${title}】の特典を獲得しました！` : 'シリアルコード特典を獲得しました！',
+      rewardsSummary: summaryText,
+    };
+  };
+
   return (
     <GameContext.Provider value={{
       ...data,
@@ -356,6 +419,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       trackMission,
       claimMission,
       recordGachaResult,
+      redeemSerialCode,
     }}>
       {children}
     </GameContext.Provider>

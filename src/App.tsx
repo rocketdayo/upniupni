@@ -12,10 +12,13 @@ import Collection from './screens/Collection';
 import EventHome from './screens/EventHome';
 import MissionList from './screens/MissionList';
 import { DebugConsoleScreen } from './screens/NyankoDebugScene';
+import { SerialCodeModal } from './components/SerialCodeModal';
+import { Plus } from 'lucide-react';
 
 const App = () => {
   const { loading, money, yPoints } = useGame();
   const navigate = useNavigate();
+  const [isSerialModalOpen, setIsSerialModalOpen] = React.useState(false);
 
   React.useEffect(() => {
     console.log(
@@ -65,12 +68,34 @@ const App = () => {
                     <div className="currency-icon money-icon">y</div>
                     {money}
                   </div>
-                  <div className="currency-badge">
+                  <div className="currency-badge" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                     <div className="currency-icon y-point-icon">y</div>
-                    {yPoints}
+                    <span>{yPoints}</span>
+                    <button
+                      onClick={() => setIsSerialModalOpen(true)}
+                      style={{
+                        marginLeft: '3px',
+                        background: 'linear-gradient(135deg, #3b82f6, #1d4ed8)',
+                        color: '#ffffff',
+                        border: 'none',
+                        borderRadius: '50%',
+                        width: '20px',
+                        height: '20px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                        padding: 0
+                      }}
+                      title="シリアルコード入力"
+                    >
+                      <Plus size={14} strokeWidth={3} />
+                    </button>
                   </div>
                 </div>
               </div>
+            <SerialCodeModal isOpen={isSerialModalOpen} onClose={() => setIsSerialModalOpen(false)} />
             <Routes>
               <Route path="/home" element={<Home />} />
               <Route path="/gacha" element={<Gacha />} />

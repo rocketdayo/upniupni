@@ -202,23 +202,23 @@ const GameScene = () => {
   const executeSkillEffect = (cd: Character) => {
     if (!cd.skill) return;
     const charData = characters[cd.id];
-    const skillLv = (charData as any)?.skillLevel || 1;
-    const skillPowerScale = 1 + (skillLv - 1) * 0.2;
+    const skillLv = Math.max(1, (charData as any)?.skillLevel || 1);
     const baseAtk = cd.baseAtk + (charData?.level || 1) * 5;
 
     const engine = engineRef.current;
 
     if (cd.skill.type === 'heal') {
-      const heal = Math.floor(cd.skill.power * skillPowerScale);
-      setPlayerHp(prev => Math.min(maxPlayerHp, prev + heal));
+      const healAmount = Math.round(cd.skill.power * (1 + (skillLv - 1) * 0.35));
+      setPlayerHp(prev => Math.min(maxPlayerHp, prev + healAmount));
       const id = Date.now();
-      setDamageTexts(p => [...p, { id, val: heal, x: 150, y: 150, color: '#00ff88' }]);
+      setDamageTexts(p => [...p, { id, val: healAmount, x: 150, y: 150, color: '#00ff88' }]);
       setTimeout(() => setDamageTexts(p => p.filter(t => t.id !== id)), 1500);
       return;
     }
 
     if (cd.skill.type === 'damage' || !engine) {
-      const dmg = Math.floor(baseAtk * cd.skill.power * skillPowerScale * boostMultiplier);
+      const power = Math.round(cd.skill.power * (1 + (skillLv - 1) * 0.3));
+      const dmg = Math.floor(baseAtk * power * boostMultiplier);
       dealDamage(dmg);
       const id = Date.now();
       setDamageTexts(p => [...p, { id, val: dmg, x: 150, y: 120, color: cd.rank === 'SS' ? '#ff22ff' : '#ffff00' }]);
@@ -229,15 +229,17 @@ const GameScene = () => {
     const allPuniBodies = Matter.Composite.allBodies(engine.world).filter(b => !b.isStatic);
 
     if (cd.skill.type === 'center_pop') {
+      const radiusRatio = Math.min(0.75, 0.45 + skillLv * 0.04);
       const centerBodies = allPuniBodies.filter(b => {
         const dx = b.position.x - bowlCenterRef.current.x;
         const dy = b.position.y - bowlCenterRef.current.y;
-        return Math.sqrt(dx * dx + dy * dy) < bowlRadiusRef.current * 0.58;
+        return Math.sqrt(dx * dx + dy * dy) < bowlRadiusRef.current * radiusRatio;
       });
       const popCount = Math.max(5, centerBodies.length);
       centerBodies.forEach(b => Matter.Composite.remove(engine.world, b));
 
-      const dmg = Math.floor(baseAtk * cd.skill.power * (popCount * 0.22 + 1) * skillPowerScale * boostMultiplier);
+      const power = Math.round(cd.skill.power * (1 + (skillLv - 1) * 0.25));
+      const dmg = Math.floor(baseAtk * power * (popCount * 0.2 + 1) * boostMultiplier);
       dealDamage(dmg);
 
       const id = Date.now();
@@ -250,12 +252,13 @@ const GameScene = () => {
         setTimeout(() => spawnPuniRef.current(), i * 40);
       }
     } else if (cd.skill.type === 'random_pop') {
+      const targetCount = Math.min(allPuniBodies.length, 8 + skillLv * 2);
       const shuffled = [...allPuniBodies].sort(() => Math.random() - 0.5);
-      const targetCount = Math.min(shuffled.length, Math.floor(Math.random() * 5) + 9);
       const popped = shuffled.slice(0, targetCount);
       popped.forEach(b => Matter.Composite.remove(engine.world, b));
 
-      const dmg = Math.floor(baseAtk * cd.skill.power * (popped.length * 0.22 + 1) * skillPowerScale * boostMultiplier);
+      const power = Math.round(cd.skill.power * (1 + (skillLv - 1) * 0.25));
+      const dmg = Math.floor(baseAtk * power * (popped.length * 0.2 + 1) * boostMultiplier);
       dealDamage(dmg);
 
       const id = Date.now();
@@ -271,7 +274,8 @@ const GameScene = () => {
       const popCount = allPuniBodies.length;
       allPuniBodies.forEach(b => Matter.Composite.remove(engine.world, b));
 
-      const dmg = Math.floor(baseAtk * cd.skill.power * (popCount * 0.3 + 1.5) * skillPowerScale * boostMultiplier);
+      const power = Math.round(cd.skill.power * (1 + (skillLv - 1) * 0.3));
+      const dmg = Math.floor(baseAtk * power * (popCount * 0.28 + 1.5) * boostMultiplier);
       dealDamage(dmg);
 
       const id = Date.now();
@@ -284,18 +288,22 @@ const GameScene = () => {
         setTimeout(() => spawnPuniRef.current(), i * 30);
       }
     } else if (cd.skill.type === 'inflate_puni') {
+      const targetCount = Math.min(allPuniBodies.length, Math.min(5, 1 + Math.floor((skillLv + 1) / 2)));
+      const sizeBonus = 3 + Math.floor(skillLv * 0.8);
+      const scaleFactor = 1.4 + skillLv * 0.15;
+
       const shuffled = [...allPuniBodies].sort(() => Math.random() - 0.5);
-      const targets = shuffled.slice(0, Math.min(shuffled.length, 3));
+      const targets = shuffled.slice(0, targetCount);
       targets.forEach(b => {
         const pd = (b as any).puniData as PuniData;
         if (pd) {
-          pd.size += 5;
-          b.circleRadius = (b.circleRadius || PUNI_RADIUS) * 1.8;
-          Matter.Body.scale(b, 1.8, 1.8);
+          pd.size += sizeBonus;
+          b.circleRadius = (b.circleRadius || PUNI_RADIUS) * scaleFactor;
+          Matter.Body.scale(b, scaleFactor, scaleFactor);
         }
       });
 
-      const dmg = Math.floor(baseAtk * cd.skill.power * skillPowerScale * boostMultiplier);
+      const dmg = Math.floor(baseAtk * cd.skill.power * (targetCount * 0.3 + 1) * boostMultiplier);
       dealDamage(dmg);
 
       const id = Date.now();

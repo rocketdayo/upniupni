@@ -81,25 +81,100 @@ export interface Skill {
   description?: string;
 }
 
-export const getSkillDescription = (skill?: Skill): string => {
-  if (!skill) return '必殺技を持っていません';
-  if (skill.description) return skill.description;
-  switch (skill.type) {
-    case 'center_pop':
-      return 'パズル中央付近のぷにを一気にまとめて消去し、敵にダメージ＋フィーバーゲージを加速！';
-    case 'random_pop':
-      return '盤面のぷにをランダムに大量消去し、敵に大ダメージを与える！';
-    case 'all_pop':
-      return '画面上のすべてのぷにを一瞬で全消去し、敵に超絶ダイレクト大ダメージ！';
-    case 'inflate_puni':
-      return '盤面のぷにをランダムで複数選んで一気に「でかぷに」へ成長させる！';
-    case 'heal':
-      return `プレイヤーのHPを ${skill.power} ポイント即座に回復する！`;
-    case 'damage':
-      return '敵単体に強力なダイレクトダメージを与える！';
-    default:
-      return '必殺技を発動してバトルを有利に進める！';
+export const getSkillDetails = (skill?: Skill, skillLevel: number = 1) => {
+  if (!skill) {
+    return {
+      description: '必殺技を持っていません',
+      power: 0,
+      countInfo: '',
+      nextUpgrade: ''
+    };
   }
+
+  const lv = Math.max(1, skillLevel);
+  const isMax = lv >= 7;
+
+  switch (skill.type) {
+    case 'center_pop': {
+      const currentPower = Math.round(skill.power * (1 + (lv - 1) * 0.25));
+      const popCount = Math.min(18, 6 + lv * 2);
+      const nextPopCount = Math.min(18, 6 + (lv + 1) * 2);
+      const nextPower = Math.round(skill.power * (1 + lv * 0.25));
+      return {
+        description: `パズル中央付近のぷにをまとめて消去し、敵にダメージ＋フィーバーゲージを溜める！`,
+        power: currentPower,
+        countInfo: `消去目安: 約${popCount}個 / 技威力: ${currentPower}`,
+        nextUpgrade: isMax ? '技レベルMAX！' : `次Lv: 消去約${nextPopCount}個 / 威力 ${nextPower}`
+      };
+    }
+    case 'random_pop': {
+      const currentPower = Math.round(skill.power * (1 + (lv - 1) * 0.25));
+      const popCount = Math.min(22, 8 + lv * 2);
+      const nextPopCount = Math.min(22, 8 + (lv + 1) * 2);
+      const nextPower = Math.round(skill.power * (1 + lv * 0.25));
+      return {
+        description: `盤面のぷにをランダムに大量消去し、敵に大ダメージを与える！`,
+        power: currentPower,
+        countInfo: `消去数: ${popCount}個 / 技威力: ${currentPower}`,
+        nextUpgrade: isMax ? '技レベルMAX！' : `次Lv: 消去 ${nextPopCount}個 / 威力 ${nextPower}`
+      };
+    }
+    case 'all_pop': {
+      const currentPower = Math.round(skill.power * (1 + (lv - 1) * 0.3));
+      const nextPower = Math.round(skill.power * (1 + lv * 0.3));
+      return {
+        description: `画面上のすべてのぷにを一瞬で全消去し、敵に超絶大ダメージを与える！`,
+        power: currentPower,
+        countInfo: `盤面全消去 / 技威力: ${currentPower}`,
+        nextUpgrade: isMax ? '技レベルMAX！' : `次Lv: 技威力 ${nextPower}`
+      };
+    }
+    case 'inflate_puni': {
+      const targetCount = Math.min(5, 1 + Math.floor((lv + 1) / 2));
+      const sizeBonus = 3 + Math.floor(lv * 0.8);
+      const nextTargetCount = Math.min(5, 1 + Math.floor((lv + 2) / 2));
+      const nextSizeBonus = 3 + Math.floor((lv + 1) * 0.8);
+      return {
+        description: `盤面のぷにをランダムで選んで一気に「でかぷに」へ成長させる！`,
+        power: skill.power,
+        countInfo: `変化個数: ${targetCount}個 / サイズ+${sizeBonus}`,
+        nextUpgrade: isMax ? '技レベルMAX！' : `次Lv: 変化 ${nextTargetCount}個 / サイズ+${nextSizeBonus}`
+      };
+    }
+    case 'heal': {
+      const healAmount = Math.round(skill.power * (1 + (lv - 1) * 0.35));
+      const nextHeal = Math.round(skill.power * (1 + lv * 0.35));
+      return {
+        description: `プレイヤーのHPを即座に大幅回復する！`,
+        power: healAmount,
+        countInfo: `回復量: HP ${healAmount}`,
+        nextUpgrade: isMax ? '技レベルMAX！' : `次Lv: 回復量 HP ${nextHeal}`
+      };
+    }
+    case 'damage': {
+      const currentPower = Math.round(skill.power * (1 + (lv - 1) * 0.3));
+      const nextPower = Math.round(skill.power * (1 + lv * 0.3));
+      return {
+        description: `敵単体に強烈なダイレクトダメージを与える！`,
+        power: currentPower,
+        countInfo: `技威力: ${currentPower}`,
+        nextUpgrade: isMax ? '技レベルMAX！' : `次Lv: 技威力 ${nextPower}`
+      };
+    }
+    default:
+      return {
+        description: '必殺技を発動してバトルを有利に進める！',
+        power: skill.power,
+        countInfo: '',
+        nextUpgrade: ''
+      };
+  }
+};
+
+export const getSkillDescription = (skill?: Skill, skillLevel: number = 1): string => {
+  if (!skill) return '必殺技を持っていません';
+  const details = getSkillDetails(skill, skillLevel);
+  return `${details.description} (${details.countInfo})`;
 };
 
 export interface Character {
