@@ -1,56 +1,58 @@
 import fs from 'fs';
 import path from 'path';
 
-const urls = [
-  "https://game8.jp/punipuni/35821", // S?
-  "https://game8.jp/punipuni/35822", // A?
-  "https://game8.jp/punipuni/36046", // B?
-  "https://game8.jp/punipuni/38321", // C?
-  "https://game8.jp/punipuni/38521", // D?
-  "https://game8.jp/punipuni/38669"  // E?
+const rankMap = [
+  { rank: 'SS', url: "https://game8.jp/punipuni/323860" },
+  { rank: 'S',  url: "https://game8.jp/punipuni/35821" },
+  { rank: 'A',  url: "https://game8.jp/punipuni/35822" },
+  { rank: 'B',  url: "https://game8.jp/punipuni/36046" },
+  { rank: 'C',  url: "https://game8.jp/punipuni/38321" },
+  { rank: 'D',  url: "https://game8.jp/punipuni/38521" },
+  { rank: 'E',  url: "https://game8.jp/punipuni/38669" }
 ];
 
-const ranks = ['S', 'A', 'B', 'C', 'D', 'E'];
-
 async function run() {
-  const imagesByRank = {};
-  for (let i = 0; i < urls.length; i++) {
-    const url = urls[i];
-    const rank = ranks[i];
-    imagesByRank[rank] = [];
+  for (const { rank, url } of rankMap) {
     try {
-      const res = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' } });
+      console.log(`--- Fetching ${rank} ---`);
+      const res = await fetch(url, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        }
+      });
       const html = await res.text();
-      const titleMatch = html.match(/<title>(.*?)<\/title>/);
-      console.log(`[${rank}] Title:`, titleMatch ? titleMatch[1] : "Not found");
       
-      const imgRegex = /<img[^>]+src="([^">]+)"/g;
-      let match;
-      while ((match = imgRegex.exec(html)) !== null) {
-        const imgUrl = match[1];
-        if (imgUrl.includes('img.game8.jp') && !imgUrl.match(/\d{4}-\d{2}-\d{2}/)) {
-          if (!imagesByRank[rank].includes(imgUrl) && !imgUrl.includes('thumb')) {
-             imagesByRank[rank].push(imgUrl);
-             if (imagesByRank[rank].length >= 10) break;
+      const regex = /(https:\/\/img\.game8\.jp\/[0-9]+\/[a-zA-Z0-9_-]+\.(?:png|jpg|jpeg|webp)(?:\/[a-zA-Z0-9_-]+)?)/gi;
+      const matches = Array.from(new Set(html.match(regex) || []));
+      
+      let count = 0;
+      for (const imgUrl of matches) {
+        if (imgUrl.includes('thumb') || imgUrl.includes('logo')) continue;
+        try {
+          const imgRes = await fetch(imgUrl);
+          if (imgRes.ok) {
+            const buffer = await imgRes.arrayBuffer();
+            if (buffer.byteLength < 6000) continue; // skip small badges/icons
+            count++;
+            const fileName = `puni_${rank.toLowerCase()}_${count}.png`;
+            const savePath = path.join(process.cwd(), `public`, fileName);
+            fs.writeFileSync(savePath, Buffer.from(buffer));
+            console.log(`Saved ${fileName} (${buffer.byteLength} bytes) from ${imgUrl}`);
+            if (count >= 10) break;
           }
+        } catch (e) {
+          console.error(e.message);
         }
       }
-      
-      console.log(`[${rank}] Found ${imagesByRank[rank].length} images`);
-      // Download them
-      for (let j = 0; j < imagesByRank[rank].length; j++) {
-        try {
-           const imgRes = await fetch(imagesByRank[rank][j]);
-           const buffer = await imgRes.arrayBuffer();
-           const savePath = path.join(process.cwd(), `public`, `puni_${rank.toLowerCase()}_${j+1}.png`);
-           fs.writeFileSync(savePath, Buffer.from(buffer));
-        } catch(e) {}
-      }
-
     } catch (e) {
-      console.error(e);
+      console.error(e.message);
     }
   }
-  fs.writeFileSync('downloaded_images.json', JSON.stringify(imagesByRank, null, 2));
+  console.log("ALL RANK IMAGES DOWNLOADED PROPERLY!");
 }
+
 run();
+
+
+
+

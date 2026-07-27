@@ -64,13 +64,12 @@ export const CharacterAvatar: React.FC<CharacterAvatarProps> = ({
         alt={character.name}
         onError={handleError}
         style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
           width: '100%',
           height: '100%',
-          objectFit: 'cover',
-          borderRadius: '50%'
+          objectFit: 'contain',
+          borderRadius: '50%',
+          padding: '2px',
+          filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.4))'
         }}
       />
 

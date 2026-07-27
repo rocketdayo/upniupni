@@ -1,0 +1,366 @@
+{
+  "SS": [
+    {
+      "name": "パウロ",
+      "fileName": "puni_ss_1.png",
+      "src": "https://img.game8.jp/11607721/dee62a87d650bb97cfdf7afbd76d01de.webp/show"
+    },
+    {
+      "name": "ベニマル",
+      "fileName": "puni_ss_2.png",
+      "src": "https://img.game8.jp/10300788/b72df55f6121db7341e47fe3ecbcdfe4.png/show"
+    },
+    {
+      "name": "里羽リュウタ",
+      "fileName": "puni_ss_3.png",
+      "src": "https://img.game8.jp/6437162/302c5dbd818d1ddcedaaa6d4b48c8b87.png/show"
+    },
+    {
+      "name": "阿弥陀丸",
+      "fileName": "puni_ss_4.png",
+      "src": "https://img.game8.jp/6231358/24db58484aca404f67eca29fa82c2563.png/show"
+    },
+    {
+      "name": "覚醒早乙女乱馬",
+      "fileName": "puni_ss_5.png",
+      "src": "https://img.game8.jp/5776738/503cff4b9a2fe7ce5999c7017a735405.png/show"
+    },
+    {
+      "name": "フェルト",
+      "fileName": "puni_ss_6.png",
+      "src": "https://img.game8.jp/10808387/92dd259d751818c6743db2dd2a2ae07f.png/show"
+    },
+    {
+      "name": "めぐみん",
+      "fileName": "puni_ss_7.png",
+      "src": "https://img.game8.jp/9952205/226ce15b5f80bea27dccc4753f842817.png/show"
+    },
+    {
+      "name": "五月",
+      "fileName": "puni_ss_8.png",
+      "src": "https://img.game8.jp/8934080/3c1dc1c668c6f59bb2e8c6ec9c2ff915.png/show"
+    },
+    {
+      "name": "＜憤怒の罪＞メリオダス",
+      "fileName": "puni_ss_9.png",
+      "src": "https://img.game8.jp/5559166/c7511c777a6859391599fa24175ec608.png/show"
+    },
+    {
+      "name": "ブシ王",
+      "fileName": "puni_ss_10.png",
+      "src": "https://img.game8.jp/283673/c0173c44a38856757aa2daef4a52c7a0_2016-06-06.png/show"
+    }
+  ],
+  "S": [
+    {
+      "name": "花垣武道",
+      "fileName": "puni_s_1.png",
+      "src": "https://img.game8.jp/7976363/71287ea3f6b608bb10caf7a742c136ec.png/show"
+    },
+    {
+      "name": "ミカサ",
+      "fileName": "puni_s_2.png",
+      "src": "https://img.game8.jp/6270106/0a162ed3a0b0aede9c52f76708635d05.png/show"
+    },
+    {
+      "name": "ゴモラ",
+      "fileName": "puni_s_3.png",
+      "src": "https://img.game8.jp/6022192/ccbb64ed435f18ab460e8960794b2e07.png/show"
+    },
+    {
+      "name": "ウルトラマン",
+      "fileName": "puni_s_4.png",
+      "src": "https://img.game8.jp/6026980/e1939776196278f247608eb6684c120b.png/show"
+    },
+    {
+      "name": "獅白ぼたん",
+      "fileName": "puni_s_5.png",
+      "src": "https://img.game8.jp/7034071/56d5f4670e3d3fb874d69727b82ba37f.png/show"
+    },
+    {
+      "name": "赤ぷよ",
+      "fileName": "puni_s_6.png",
+      "src": "https://img.game8.jp/6645921/c5a9221d9ff00aaa8586515c6a11506a.png/show"
+    },
+    {
+      "name": "アーサー",
+      "fileName": "puni_s_7.png",
+      "src": "https://img.game8.jp/5559176/9e4140a68be909de045a7ca9e1019c5e.png/show"
+    },
+    {
+      "name": "クワガ大将",
+      "fileName": "puni_s_8.png",
+      "src": "https://img.game8.jp/258689/3805c774649939e96ce04bf7762cd03b_2016-05-06.png/show"
+    },
+    {
+      "name": "オオクワノ神",
+      "fileName": "puni_s_9.png",
+      "src": "https://img.game8.jp/258681/c46a3562eb042e2630d11a968436f472_2016-05-06.png/show"
+    },
+    {
+      "name": "なまはげ",
+      "fileName": "puni_s_10.png",
+      "src": "https://img.game8.jp/258763/f20aabf026bfc3250719b2928eef61d9_2016-05-06.png/show"
+    }
+  ],
+  "A": [
+    {
+      "name": "轟獅子",
+      "fileName": "puni_a_1.png",
+      "src": "https://img.game8.jp/258452/1f357e61b73b6943ac8b32280af5baea_2016-05-06.png/show"
+    },
+    {
+      "name": "くしゃ武者",
+      "fileName": "puni_a_2.png",
+      "src": "https://img.game8.jp/258428/2210cb96ae67f69553ff20e3fba98740_2016-05-06.png/show"
+    },
+    {
+      "name": "万尾獅子",
+      "fileName": "puni_a_3.png",
+      "src": "https://img.game8.jp/258455/3479067d7b5313b6790af2c57d76f8aa_2016-05-06.png/show"
+    },
+    {
+      "name": "モモタロニャン",
+      "fileName": "puni_a_4.png",
+      "src": "https://img.game8.jp/258446/1b03c7c8ee5fa0e188c880ba08f34545_2016-05-06.png/show"
+    },
+    {
+      "name": "マスクドニャーン",
+      "fileName": "puni_a_5.png",
+      "src": "https://img.game8.jp/258441/15e17a4e46342aff8dfbd86a83c4f35d_2016-05-06.png/show"
+    },
+    {
+      "name": "ニャン騎士",
+      "fileName": "puni_a_6.png",
+      "src": "https://img.game8.jp/313701/c3751f34d5a9a54647e561cf287c2e9a_2016-07-16.png/show"
+    },
+    {
+      "name": "総ナメ",
+      "fileName": "puni_a_7.png",
+      "src": "https://img.game8.jp/313516/24a98d5b4fbff69dc38d4af4f41ea45f_2016-07-15.png/show"
+    },
+    {
+      "name": "天下無僧",
+      "fileName": "puni_a_8.png",
+      "src": "https://img.game8.jp/359103/eb4cf5998a3bf8ca7f372c4f6cc830ec_2016-08-28.png/show"
+    },
+    {
+      "name": "まさむね",
+      "fileName": "puni_a_9.png",
+      "src": "https://img.game8.jp/510626/7672c358cdd7018288c567299ef49446_2016-10-17.png/show"
+    },
+    {
+      "name": "むらまさ",
+      "fileName": "puni_a_10.png",
+      "src": "https://img.game8.jp/677758/683d767d149414a5476e28e00c2504e3_2016-11-21.png/show"
+    }
+  ],
+  "B": [
+    {
+      "name": "さきがけの助",
+      "fileName": "puni_b_1.png",
+      "src": "https://img.game8.jp/258493/52d883c869fc8f73e420a943294cd70b_2016-05-06.png/show"
+    },
+    {
+      "name": "グラグライオン",
+      "fileName": "puni_b_2.png",
+      "src": "https://img.game8.jp/258491/105b3fe9d5ac88e7ae2f6bcb2e999051_2016-05-06.png/show"
+    },
+    {
+      "name": "クワノ武士",
+      "fileName": "puni_b_3.png",
+      "src": "https://img.game8.jp/258492/67cc0eb33f0e9895dd7a2c24160b8807_2016-05-06.png/show"
+    },
+    {
+      "name": "フユニャン",
+      "fileName": "puni_b_4.png",
+      "src": "https://img.game8.jp/258515/9f1a81a6e4da66c6cf37223c27116ab6_2016-05-06.png/show"
+    },
+    {
+      "name": "妖怪ガッツK",
+      "fileName": "puni_b_5.png",
+      "src": "https://img.game8.jp/258521/f3b60e71414b0a39ab183d006273fba4_2016-05-06.png/show"
+    },
+    {
+      "name": "フユニャン曹操",
+      "fileName": "puni_b_6.png",
+      "src": "https://img.game8.jp/258539/0bfd8e9e8f420a9fb07b19656c830379_2016-05-06.png/show"
+    },
+    {
+      "name": "さきがけの助金旋",
+      "fileName": "puni_b_7.png",
+      "src": "https://img.game8.jp/258545/6e112d02d03ac4e821a421b2fc47cec1_2016-05-06.png/show"
+    },
+    {
+      "name": "いばる〜ん",
+      "fileName": "puni_b_8.png",
+      "src": "https://img.game8.jp/318425/c36c61ccc1d46b634ffcc71958070396_2016-07-22.png/show"
+    },
+    {
+      "name": "早乙女乱馬",
+      "fileName": "puni_b_9.png",
+      "src": "https://img.game8.jp/584397/ce7949ba3fdb82a77d3e695b5274f4ba_2016-10-31.png/show"
+    },
+    {
+      "name": "犬夜叉",
+      "fileName": "puni_b_10.png",
+      "src": "https://img.game8.jp/584396/2da2ea1338837eda7f881c35da9e2fcd_2016-10-31.png/show"
+    }
+  ],
+  "C": [
+    {
+      "name": "がらあきん坊",
+      "fileName": "puni_c_1.png",
+      "src": "https://img.game8.jp/258570/e6dccd393360d1498f30a6e97be02d88_2016-05-06.png/show"
+    },
+    {
+      "name": "メラメライオン",
+      "fileName": "puni_c_2.png",
+      "src": "https://img.game8.jp/258589/caf856f2e0b062f81f5dd3f11a84bf45_2016-05-06.png/show"
+    },
+    {
+      "name": "ブリー隊長",
+      "fileName": "puni_c_3.png",
+      "src": "https://img.game8.jp/258581/bcb1e6f33547a359eafbbe6ed93190da_2016-05-06.png/show"
+    },
+    {
+      "name": "泥田坊",
+      "fileName": "puni_c_4.png",
+      "src": "https://img.game8.jp/258595/0c93c5372bf3424639bd873e6634053c_2016-05-06.png/show"
+    },
+    {
+      "name": "がらあきん坊金旋",
+      "fileName": "puni_c_5.png",
+      "src": "https://img.game8.jp/258598/0d415761a31efdf9ddcaf9970f543721_2016-05-06.png/show"
+    },
+    {
+      "name": "ニクヤ鬼",
+      "fileName": "puni_c_6.png",
+      "src": "https://img.game8.jp/313504/8b5bd90502576fb30018971ef3490c45_2016-07-15.png/show"
+    },
+    {
+      "name": "ベンケイ",
+      "fileName": "puni_c_7.png",
+      "src": "https://img.game8.jp/933990/27a6ba68209fbcfcdf346b50dfb704b9_2017-04-18.png/show"
+    },
+    {
+      "name": "寸胴丸",
+      "fileName": "puni_c_8.png",
+      "src": "https://img.game8.jp/1660169/1fc905f3032fe3070294e9159e9ff81b.png/show"
+    },
+    {
+      "name": "ホンマグロ大将",
+      "fileName": "puni_c_9.png",
+      "src": "https://img.game8.jp/1816566/3fa36214f85af6fdd0e029b73ca3bccb.png/show"
+    },
+    {
+      "name": "ザンバラ刀",
+      "fileName": "puni_c_10.png",
+      "src": "https://img.game8.jp/2829090/48012f4ebe87997a96e955afe638daa0.png/show"
+    }
+  ],
+  "D": [
+    {
+      "name": "ちからモチ",
+      "fileName": "puni_d_1.png",
+      "src": "https://img.game8.jp/258624/c9279422ec02f65b524194cc7eea993e_2016-05-06.png/show"
+    },
+    {
+      "name": "やきモチ",
+      "fileName": "puni_d_2.png",
+      "src": "https://img.game8.jp/258635/943f339cf3b73c38256e2f5baf3d4aab_2016-05-06.png/show"
+    },
+    {
+      "name": "おにぎり侍",
+      "fileName": "puni_d_3.png",
+      "src": "https://img.game8.jp/258609/530c9cb83a2a2b0d98aff77605b06047_2016-05-06.png/show"
+    },
+    {
+      "name": "あかなめ",
+      "fileName": "puni_d_4.png",
+      "src": "https://img.game8.jp/258606/0cf2ab703cd01d13a6e8725864936eda_2016-05-06.png/show"
+    },
+    {
+      "name": "一瞬ボーイ",
+      "fileName": "puni_d_5.png",
+      "src": "https://img.game8.jp/510829/2181159d579d1f18084c51e31a3a6d37_2016-10-17.png/show"
+    },
+    {
+      "name": "ガチン小僧",
+      "fileName": "puni_d_6.png",
+      "src": "https://img.game8.jp/934390/dd848d7f4822d3068ada56503ac89735_2017-04-18.png/show"
+    },
+    {
+      "name": "ひつま武士",
+      "fileName": "puni_d_7.png",
+      "src": "https://img.game8.jp/1080688/c1101cd4baddbc25ffdc10265201e039_2017-08-01.png/show"
+    },
+    {
+      "name": "寝ブタ",
+      "fileName": "puni_d_8.png",
+      "src": "https://img.game8.jp/1080601/feefd10024eca0cf06ac9c5aab4fe73e_2017-08-01.png/show"
+    },
+    {
+      "name": "カブトさん",
+      "fileName": "puni_d_9.png",
+      "src": "https://img.game8.jp/1550638/42688630c938f00f79de1744d85ba9ff.png/show"
+    },
+    {
+      "name": "バクロ婆",
+      "fileName": "puni_d_10.png",
+      "src": "https://img.game8.jp/258631/832a9eb2359fc29780920489ad595a89_2016-05-06.png/show"
+    }
+  ],
+  "E": [
+    {
+      "name": "ぶようじん坊",
+      "fileName": "puni_e_1.png",
+      "src": "https://img.game8.jp/258663/b2a21348b643830601769587c700e545_2016-05-06.png/show"
+    },
+    {
+      "name": "ダラケ刀",
+      "fileName": "puni_e_2.png",
+      "src": "https://img.game8.jp/1660167/19eca7fdff451b575e9c2e25f325a186.png/show"
+    },
+    {
+      "name": "獅子まる",
+      "fileName": "puni_e_3.png",
+      "src": "https://img.game8.jp/258668/0cd26910fe90c020975ed49a55fc6a49_2016-05-06.png/show"
+    },
+    {
+      "name": "おこ武者",
+      "fileName": "puni_e_4.png",
+      "src": "https://img.game8.jp/643145/4645bf678caa6eec7620d3a308c63cb2_2016-11-15.png/show"
+    },
+    {
+      "name": "枕返し",
+      "fileName": "puni_e_5.png",
+      "src": "https://img.game8.jp/1312187/c478d69f53ab0768f6d7ea71a52d249f.png/show"
+    },
+    {
+      "name": "わすれん帽",
+      "fileName": "puni_e_6.png",
+      "src": "https://img.game8.jp/258666/390fb1d4f73be28bda0f2969a13c5d12_2016-05-06.png/show"
+    },
+    {
+      "name": "ばか頭巾",
+      "fileName": "puni_e_7.png",
+      "src": "https://img.game8.jp/258661/c8b8fc1d542470c83f900df4ce438031_2016-05-06.png/show"
+    },
+    {
+      "name": "化け草履",
+      "fileName": "puni_e_8.png",
+      "src": "https://img.game8.jp/298070/7cfa9ffe47642d83b8041032bea4fe8c_2016-06-24.png/show"
+    },
+    {
+      "name": "パッカー",
+      "fileName": "puni_e_9.png",
+      "src": "https://img.game8.jp/359667/3d049cb3860a210f90583c643d361333_2016-08-29.png/show"
+    },
+    {
+      "name": "ナンデナン",
+      "fileName": "puni_e_10.png",
+      "src": "https://img.game8.jp/1425248/764c093604252e9210138a1af3c721f0.png/show"
+    }
+  ]
+}

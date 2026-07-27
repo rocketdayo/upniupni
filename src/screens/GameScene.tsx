@@ -6,6 +6,7 @@ import { STAGES } from '../data/stages';
 import { CHARACTERS, getPublicUrl, createPuniSvgDataUrl } from '../data/characters';
 import { CURRENT_EVENTS } from '../data/events';
 import { ArrowLeft, Zap } from 'lucide-react';
+import { CharacterAvatar } from '../components/CharacterAvatar';
 
 const PUNI_RADIUS      = 23;
 const BIG_PUNI_MULT    = 1.5;
@@ -538,25 +539,27 @@ const GameScene = () => {
                 className="char-icon"
                 onClick={() => full && isSkillChar ? triggerSkill(charId) : undefined}
                 style={{
-                  backgroundColor: cd.color,
-                  width: 50, height: 50, fontSize: '1.5rem',
+                  backgroundColor: 'transparent',
+                  width: 50, height: 50,
                   border:    isSkillChar && full ? `3px solid ${cd.rank === 'SS' ? '#ff22ff' : '#ffff00'}` : '2px solid #555',
+                  borderRadius: '50%',
                   boxShadow: isSkillChar && full ? `0 0 14px ${cd.rank === 'SS' ? '#ff22ff' : '#ff0'}` : 'none',
                   cursor:    isSkillChar && full ? 'pointer' : 'default',
                   opacity:   full ? 1 : 0.7,
                   position: 'relative', overflow: 'hidden',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center'
                 }}
               >
-                <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: `${g}%`, background: 'rgba(255,255,255,0.28)' }} />
-                <span style={{ position: 'relative', zIndex: 1 }}>{cd.emoji}</span>
+                <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: `${g}%`, background: 'rgba(255,255,255,0.35)', zIndex: 2 }} />
+                <CharacterAvatar character={cd} size={46} />
               </div>
               {isSkillChar && full && (
-                <div style={{ position: 'absolute', top: -10, right: -10, background: cd.rank === 'SS' ? '#ff22ff' : '#ffff00', color: '#000', borderRadius: '50%', padding: 2 }}>
+                <div style={{ position: 'absolute', top: -8, right: -8, background: cd.rank === 'SS' ? '#ff22ff' : '#ffff00', color: '#000', borderRadius: '50%', padding: 2, zIndex: 5 }}>
                   <Zap size={14} />
                 </div>
               )}
               {cd.eventBoost && (
-                <div style={{ position: 'absolute', top: -5, left: -5, background: '#ff2255', borderRadius: '50%', width: 14, height: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.45rem', color: 'white', fontWeight: 900, border: '1px solid white' }}>特</div>
+                <div style={{ position: 'absolute', top: -5, left: -5, background: '#ff2255', borderRadius: '50%', width: 14, height: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.45rem', color: 'white', fontWeight: 900, border: '1px solid white', zIndex: 5 }}>特</div>
               )}
             </div>
           );
