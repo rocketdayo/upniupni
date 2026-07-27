@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import { useGame } from '../store/GameContext';
 import { CHARACTERS } from '../data/characters';
 import type { Character, Rank } from '../data/characters';
-import { ArrowLeft, RefreshCw, Info, ChevronLeft, ChevronRight, History } from 'lucide-react';
+import { ArrowLeft, Info, ChevronLeft, ChevronRight, History } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { CharacterAvatar } from '../components/CharacterAvatar';
 
@@ -36,7 +36,6 @@ const Gacha = () => {
   const [currentGacha, setCurrentGacha] = useState<GachaType>('normal');
   const [showRates, setShowRates] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
-  const swipeContainerRef = useRef<HTMLDivElement>(null);
 
   const pullGacha = (times: number) => {
     let cost = GACHA_COST_1;
@@ -103,28 +102,21 @@ const Gacha = () => {
     }, 2000); // 2 second animation
   };
 
-  const handleScroll = () => {
-    if (swipeContainerRef.current) {
-      const scrollLeft = swipeContainerRef.current.scrollLeft;
-      const width = swipeContainerRef.current.clientWidth;
-      if (scrollLeft > width / 2) {
-        setCurrentGacha('event');
-      } else {
-        setCurrentGacha('normal');
-      }
-    }
+  const touchStartX = useRef<number | null>(null);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
   };
 
-  const scrollToEvent = () => {
-    if (swipeContainerRef.current) {
-      swipeContainerRef.current.scrollTo({ left: swipeContainerRef.current.clientWidth, behavior: 'smooth' });
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX.current === null) return;
+    const diff = touchStartX.current - e.changedTouches[0].clientX;
+    if (diff > 40) {
+      setCurrentGacha('event');
+    } else if (diff < -40) {
+      setCurrentGacha('normal');
     }
-  };
-
-  const scrollToNormal = () => {
-    if (swipeContainerRef.current) {
-      swipeContainerRef.current.scrollTo({ left: 0, behavior: 'smooth' });
-    }
+    touchStartX.current = null;
   };
 
   const GachaButton = ({ times, cost, color }: { times: number, cost: number, color?: string }) => (
@@ -259,7 +251,6 @@ const Gacha = () => {
             }}>
               {results.map((result, idx) => {
                 const iconSize = results.length > 50 ? 40 : results.length > 10 ? 60 : results.length > 1 ? 80 : 140;
-                const fontSize = results.length > 50 ? '1rem' : results.length > 10 ? '1.5rem' : results.length > 1 ? '2rem' : '4rem';
                 return (
                   <div key={idx} style={{ 
                     position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', background: 'rgba(255,255,255,0.9)', padding: results.length > 50 ? '3px' : '8px', borderRadius: '14px', border: `3px solid ${RANK_COLORS[result.rank]}`, width: `${iconSize + (results.length > 50 ? 6 : 16)}px`, boxShadow: result.rank === 'S' || result.rank === 'SS' ? `0 0 15px ${RANK_COLORS[result.rank]}` : 'none',
@@ -285,18 +276,33 @@ const Gacha = () => {
         ) : (
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
             {/* Swipable Banners */}
-            <div style={{ position: 'relative', marginTop: '60px', flex: 1 }}>
-              {currentGacha === 'event' && <div onClick={scrollToNormal} style={{position:'absolute', left: 10, top: '40%', zIndex: 5, animation: 'pulse 2s infinite', cursor: 'pointer'}}><ChevronLeft size={40} color="white" /></div>}
-              {currentGacha === 'normal' && <div onClick={scrollToEvent} style={{position:'absolute', right: 10, top: '40%', zIndex: 5, animation: 'pulse 2s infinite', cursor: 'pointer'}}><ChevronRight size={40} color="white" /></div>}
+            <div 
+              onTouchStart={handleTouchStart}
+              onTouchEnd={handleTouchEnd}
+              style={{ position: 'relative', marginTop: '30px', flex: 1, overflow: 'hidden' }}
+            >
+              {currentGacha === 'event' && (
+                <div onClick={() => setCurrentGacha('normal')} style={{ position: 'absolute', left: 10, top: '40%', zIndex: 10, animation: 'pulse 2s infinite', cursor: 'pointer' }}>
+                  <ChevronLeft size={40} color="white" />
+                </div>
+              )}
+              {currentGacha === 'normal' && (
+                <div onClick={() => setCurrentGacha('event')} style={{ position: 'absolute', right: 10, top: '40%', zIndex: 10, animation: 'pulse 2s infinite', cursor: 'pointer' }}>
+                  <ChevronRight size={40} color="white" />
+                </div>
+              )}
               
               <div 
-                ref={swipeContainerRef}
-                className="gacha-swipe-container"
-                onScroll={handleScroll}
-                style={{ height: '100%', scrollBehavior: 'smooth' }}
+                style={{ 
+                  display: 'flex', 
+                  width: '200%', 
+                  height: '100%', 
+                  transform: `translateX(${currentGacha === 'event' ? '-50%' : '0%'})`,
+                  transition: 'transform 0.35s cubic-bezier(0.25, 1, 0.5, 1)'
+                }}
               >
                 {/* Normal Gacha Page */}
-                <div className="gacha-swipe-item">
+                <div style={{ width: '50%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
                   <div style={{ 
                     width: '200px', height: '240px', background: 'linear-gradient(180deg, #336633 0%, #113311 100%)', borderRadius: '20px 20px 10px 10px', border: '6px solid #112211', boxShadow: '0 15px 0 rgba(0,0,0,0.3)', position: 'relative', marginTop: '20px'
                   }}>
@@ -311,7 +317,7 @@ const Gacha = () => {
                 </div>
 
                 {/* Event Gacha Page */}
-                <div className="gacha-swipe-item">
+                <div style={{ width: '50%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
                   <div className="animate-float" style={{ 
                     width: '200px', height: '240px', background: 'linear-gradient(180deg, #ff3366 0%, #990033 100%)', borderRadius: '20px 20px 10px 10px', border: '6px solid #550011', boxShadow: '0 15px 0 rgba(0,0,0,0.3), 0 0 30px rgba(255,50,100,0.5)', position: 'relative', marginTop: '20px'
                   }}>
@@ -329,8 +335,14 @@ const Gacha = () => {
 
             {/* Pagination dots */}
             <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginBottom: '10px' }}>
-              <div style={{ width: 12, height: 12, borderRadius: '50%', background: currentGacha === 'normal' ? 'white' : 'rgba(255,255,255,0.3)', border: '2px solid rgba(0,0,0,0.3)' }} />
-              <div style={{ width: 12, height: 12, borderRadius: '50%', background: currentGacha === 'event' ? 'white' : 'rgba(255,255,255,0.3)', border: '2px solid rgba(0,0,0,0.3)' }} />
+              <div 
+                onClick={() => setCurrentGacha('normal')} 
+                style={{ width: 12, height: 12, borderRadius: '50%', background: currentGacha === 'normal' ? 'white' : 'rgba(255,255,255,0.3)', border: '2px solid rgba(0,0,0,0.3)', cursor: 'pointer' }} 
+              />
+              <div 
+                onClick={() => setCurrentGacha('event')} 
+                style={{ width: 12, height: 12, borderRadius: '50%', background: currentGacha === 'event' ? 'white' : 'rgba(255,255,255,0.3)', border: '2px solid rgba(0,0,0,0.3)', cursor: 'pointer' }} 
+              />
             </div>
 
             {/* Pity / Step up info */}
