@@ -21,7 +21,6 @@ interface GameState extends PlayerData {
   trackMission: (type: string, amount?: number) => void;
   claimMission: (missionId: string) => void;
   recordGachaResult: (charIds: string[], newPityCount: number, newStepUpCount: number) => void;
-  setCustomCharacterImage: (charId: string, imageUrl: string) => void;
 }
 
 const GameContext = createContext<GameState | undefined>(undefined);
@@ -336,15 +335,6 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
   };
 
-  const setCustomCharacterImage = (charId: string, imageUrl: string) => {
-    mutateAndSave(prev => ({
-      customImages: {
-        ...(prev.customImages || {}),
-        [charId]: imageUrl
-      }
-    }));
-  };
-
   return (
     <GameContext.Provider value={{
       ...data,
@@ -364,7 +354,6 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       trackMission,
       claimMission,
       recordGachaResult,
-      setCustomCharacterImage,
     }}>
       {children}
     </GameContext.Provider>

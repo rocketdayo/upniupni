@@ -20,35 +20,53 @@ export const getPublicUrl = (path: string): string => {
   if (path.startsWith('data:') || path.startsWith('blob:') || path.startsWith('http://') || path.startsWith('https://')) {
     return path;
   }
-  let base = import.meta.env.BASE_URL || '/';
-  if (base === './' || !base) base = '/';
-  if (!base.endsWith('/')) base += '/';
-  
-  // Clean leading slashes or dot-slashes
   let cleanPath = path;
   while (cleanPath.startsWith('/') || cleanPath.startsWith('./')) {
     cleanPath = cleanPath.replace(/^(\.\/|\/)+/, '');
   }
-  
-  return base + cleanPath;
+  return '/' + cleanPath;
 };
 
-// Generates an inline SVG Data URL for guaranteed image rendering if photo/file fails
+// Generates an inline SVG Data URL for guaranteed high-quality Puni rendering
 export const createPuniSvgDataUrl = (emoji: string, bgColor: string = '#ff4488'): string => {
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
     <defs>
       <radialGradient id="grad" cx="35%" cy="30%" r="65%">
-        <stop offset="0%" stop-color="#ffffff" stop-opacity="0.8" />
-        <stop offset="30%" stop-color="${bgColor}" />
-        <stop offset="100%" stop-color="#111122" />
+        <stop offset="0%" stop-color="#ffffff" stop-opacity="0.9" />
+        <stop offset="35%" stop-color="${bgColor}" />
+        <stop offset="100%" stop-color="#110022" />
       </radialGradient>
-      <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
-        <feDropShadow dx="0" dy="4" stdDeviation="4" flood-color="#000" flood-opacity="0.4"/>
+      <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+        <feDropShadow dx="0" dy="6" stdDeviation="6" flood-color="#000" flood-opacity="0.5"/>
       </filter>
     </defs>
-    <circle cx="64" cy="64" r="56" fill="url(#grad)" filter="url(#shadow)" stroke="#ffffff" stroke-width="3" />
-    <ellipse cx="44" cy="38" rx="14" ry="7" fill="#ffffff" opacity="0.4" transform="rotate(-20 44 38)" />
-    <text x="64" y="78" font-size="52" text-anchor="middle" dominant-baseline="middle">${emoji}</text>
+    <circle cx="64" cy="64" r="54" fill="url(#grad)" filter="url(#shadow)" stroke="#ffffff" stroke-width="4" />
+    <ellipse cx="44" cy="36" rx="16" ry="8" fill="#ffffff" opacity="0.6" transform="rotate(-25 44 36)" />
+    <text x="64" y="80" font-size="56" text-anchor="middle" dominant-baseline="middle">${emoji}</text>
+  </svg>`;
+  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+};
+
+export const createRankBadgeSvgDataUrl = (rank: string): string => {
+  const colors: Record<string, string> = {
+    'E': '#66bb66',
+    'D': '#3388ff',
+    'C': '#9933ff',
+    'B': '#ffaa00',
+    'A': '#ff3333',
+    'S': '#ff00aa',
+    'SS': '#e500ff'
+  };
+  const col = colors[rank] || '#ff4488';
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+    <defs>
+      <linearGradient id="rg" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stop-color="#fff" />
+        <stop offset="100%" stop-color="${col}" />
+      </linearGradient>
+    </defs>
+    <polygon points="32,2 58,16 58,48 32,62 6,48 6,16" fill="url(#rg)" stroke="#fff" stroke-width="3"/>
+    <text x="32" y="38" font-size="24" font-weight="900" fill="#fff" text-anchor="middle" dominant-baseline="middle" font-family="sans-serif">${rank}</text>
   </svg>`;
   return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
 };
@@ -80,13 +98,13 @@ const generateCharacters = (): Character[] => {
   let idCounter = 1;
 
   const rankImageMap: Record<Rank, string> = {
-    'E': getPublicUrl('puni_e.png'),
-    'D': getPublicUrl('puni_d.png'),
-    'C': getPublicUrl('puni_c.png'),
-    'B': getPublicUrl('puni_b.png'),
-    'A': getPublicUrl('puni_a.png'),
-    'S': getPublicUrl('puni_s.png'),
-    'SS': getPublicUrl('puni_s.png'),
+    'E': createRankBadgeSvgDataUrl('E'),
+    'D': createRankBadgeSvgDataUrl('D'),
+    'C': createRankBadgeSvgDataUrl('C'),
+    'B': createRankBadgeSvgDataUrl('B'),
+    'A': createRankBadgeSvgDataUrl('A'),
+    'S': createRankBadgeSvgDataUrl('S'),
+    'SS': createRankBadgeSvgDataUrl('SS'),
   };
 
   interface CharacterDef {
@@ -107,7 +125,7 @@ const generateCharacters = (): Character[] => {
         color,
         emoji: a.emoji,
         rankImage: rankImageMap[rank],
-        imageUrl: getPublicUrl(`puni_${rank.toLowerCase()}_${(i % 10) + 1}.png`),
+        imageUrl: createPuniSvgDataUrl(a.emoji, color),
         baseHp: baseHp + i * 8,
         baseAtk: baseAtk + i * 3,
       };

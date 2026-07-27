@@ -24,7 +24,6 @@ export interface PlayerData {
   pityCount?: number;
   stepUpCount?: number;
   gachaHistory?: { timestamp: number; charId: string }[];
-  customImages?: Record<string, string>;
 }
 
 const DEFAULT_DATA: PlayerData = {

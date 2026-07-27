@@ -7,7 +7,7 @@ import { CHARACTERS, getPublicUrl, createPuniSvgDataUrl } from '../data/characte
 import { CURRENT_EVENTS } from '../data/events';
 import { ArrowLeft, Zap } from 'lucide-react';
 
-const PUNI_RADIUS      = 16;
+const PUNI_RADIUS      = 21;
 const BIG_PUNI_MULT    = 1.5;
 const FEVER_MAX        = 100;
 const FEVER_DURATION   = 7000;
@@ -47,15 +47,13 @@ interface PuniData { charId: string; size: number; level: number; }
 const GameScene = () => {
   const { stageId } = useParams();
   const navigate    = useNavigate();
-  const { team, characters, customImages, clearStage, trackMission: _trackMission } = useGame();
+  const { team, characters, clearStage, trackMission: _trackMission } = useGame();
 
-  // Reload custom character images if set
   useEffect(() => {
     CHARACTERS.forEach(c => {
-      const customSrc = customImages?.[c.id];
-      loadCharImage(c, customSrc);
+      loadCharImage(c);
     });
-  }, [customImages]);
+  }, []);
 
   // Check if any team member has event boost
   const eventBoostActive = team.some(id => {
@@ -470,10 +468,25 @@ const GameScene = () => {
     <div className="view-container" style={{
       padding: '0',
       display: 'flex',
-      flexDirection: 'column',
-      background: isFever ? 'radial-gradient(circle,#4a1a4a,#1a001a)' : 'var(--bg-color)',
-      transition: 'background 0.5s',
+      justifyContent: 'center',
+      alignItems: 'center',
+      background: '#0a0a0f',
+      minHeight: '100vh',
     }}>
+      <div style={{
+        width: '100%',
+        maxWidth: '440px',
+        height: '100%',
+        maxHeight: '740px',
+        display: 'flex',
+        flexDirection: 'column',
+        background: isFever ? 'radial-gradient(circle,#4a1a4a,#1a001a)' : 'var(--bg-color)',
+        position: 'relative',
+        overflow: 'hidden',
+        boxShadow: '0 0 30px rgba(0,0,0,0.9)',
+        borderRadius: '12px',
+        margin: 'auto',
+      }}>
 
       {/* ── Enemy + HP bars ── */}
       <div style={{ padding: '10px 20px', display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative', flexShrink: 0 }}>
@@ -542,8 +555,8 @@ const GameScene = () => {
         </div>
       </div>
 
-      {/* ── Physics canvas (flex: 1 → fills all remaining space) ── */}
-      <div ref={sceneRef} style={{ flex: 1, position: 'relative', overflow: 'hidden', minHeight: 0 }}>
+      {/* ── Physics canvas (fixed height for consistent positioning across devices) ── */}
+      <div ref={sceneRef} style={{ width: '100%', height: '370px', flexShrink: 0, position: 'relative', overflow: 'hidden' }}>
         {damageTexts.map(dt => (
           <div key={dt.id} className="damage-text" style={{ left: dt.x, top: dt.y, color: dt.color }}>
             {dt.val}
@@ -567,6 +580,7 @@ const GameScene = () => {
         )}
       </div>
     </div>
+  </div>
   );
 };
 

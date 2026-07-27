@@ -26,6 +26,7 @@ export const CharacterAvatar: React.FC<CharacterAvatarProps> = ({
     getPublicUrl(rawPath),
     `/${cleanPath}`,
     `./${cleanPath}`,
+    character.rankImage ? getPublicUrl(character.rankImage) : '',
     createPuniSvgDataUrl(character.emoji, character.color)
   ].filter(Boolean);
 
