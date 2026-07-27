@@ -468,23 +468,13 @@ const GameScene = () => {
     <div className="view-container" style={{
       padding: '0',
       display: 'flex',
-      justifyContent: 'center',
-      alignItems: 'center',
-      background: '#0a0a0f',
-      minHeight: '100vh',
+      flexDirection: 'column',
+      background: isFever ? 'radial-gradient(circle,#4a1a4a,#1a001a)' : 'var(--bg-color)',
+      width: '100vw',
+      height: '100dvh',
+      position: 'relative',
+      overflow: 'hidden',
     }}>
-      <div style={{
-        width: '100%',
-        maxWidth: '480px',
-        height: '100dvh',
-        display: 'flex',
-        flexDirection: 'column',
-        background: isFever ? 'radial-gradient(circle,#4a1a4a,#1a001a)' : 'var(--bg-color)',
-        position: 'relative',
-        overflow: 'hidden',
-        boxShadow: '0 0 30px rgba(0,0,0,0.9)',
-        margin: '0 auto',
-      }}>
 
       {/* ── Enemy + HP bars ── */}
       <div style={{ padding: '10px 20px', display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative', flexShrink: 0 }}>
@@ -578,7 +568,6 @@ const GameScene = () => {
         )}
       </div>
     </div>
-  </div>
   );
 };
 
