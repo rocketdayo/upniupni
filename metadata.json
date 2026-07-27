@@ -1,0 +1,6 @@
+{
+  "name": "Puni Puni 2",
+  "description": "An improved version of Puni Puni 2",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
