@@ -24,7 +24,8 @@ export const getPublicUrl = (path: string): string => {
   while (cleanPath.startsWith('/') || cleanPath.startsWith('./')) {
     cleanPath = cleanPath.replace(/^(\.\/|\/)+/, '');
   }
-  return '/' + cleanPath;
+  const base = import.meta.env.BASE_URL || './';
+  return base.endsWith('/') ? base + cleanPath : base + '/' + cleanPath;
 };
 
 // Generates an inline SVG Data URL for guaranteed high-quality Puni rendering
@@ -125,7 +126,7 @@ const generateCharacters = (): Character[] => {
         color,
         emoji: a.emoji,
         rankImage: rankImageMap[rank],
-        imageUrl: `/puni_${rank.toLowerCase()}_${i + 1}.png`,
+        imageUrl: `puni_${rank.toLowerCase()}_${i + 1}.png`,
         baseHp: baseHp + i * 8,
         baseAtk: baseAtk + i * 3,
       };
