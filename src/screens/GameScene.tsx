@@ -7,7 +7,7 @@ import { CHARACTERS, getPublicUrl, createPuniSvgDataUrl } from '../data/characte
 import { CURRENT_EVENTS } from '../data/events';
 import { ArrowLeft, Zap } from 'lucide-react';
 
-const PUNI_RADIUS      = 21;
+const PUNI_RADIUS      = 23;
 const BIG_PUNI_MULT    = 1.5;
 const FEVER_MAX        = 100;
 const FEVER_DURATION   = 7000;
@@ -475,17 +475,15 @@ const GameScene = () => {
     }}>
       <div style={{
         width: '100%',
-        maxWidth: '440px',
-        height: '100%',
-        maxHeight: '740px',
+        maxWidth: '480px',
+        height: '100dvh',
         display: 'flex',
         flexDirection: 'column',
         background: isFever ? 'radial-gradient(circle,#4a1a4a,#1a001a)' : 'var(--bg-color)',
         position: 'relative',
         overflow: 'hidden',
         boxShadow: '0 0 30px rgba(0,0,0,0.9)',
-        borderRadius: '12px',
-        margin: 'auto',
+        margin: '0 auto',
       }}>
 
       {/* ── Enemy + HP bars ── */}
@@ -555,8 +553,8 @@ const GameScene = () => {
         </div>
       </div>
 
-      {/* ── Physics canvas (fixed height for consistent positioning across devices) ── */}
-      <div ref={sceneRef} style={{ width: '100%', height: '370px', flexShrink: 0, position: 'relative', overflow: 'hidden' }}>
+      {/* ── Physics canvas ── */}
+      <div ref={sceneRef} style={{ width: '100%', flex: 1, minHeight: 0, position: 'relative', overflow: 'hidden' }}>
         {damageTexts.map(dt => (
           <div key={dt.id} className="damage-text" style={{ left: dt.x, top: dt.y, color: dt.color }}>
             {dt.val}
