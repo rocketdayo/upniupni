@@ -206,10 +206,11 @@ const GameScene = () => {
       cvs.style.height     = '100%';
       cvs.style.touchAction= 'none';
 
-      // Bowl geometry derived from W / H
-      const bowlRadius  = Math.min(W / 2, H * 0.9) - 4;
+      // Bowl geometry: position bowl at center-to-lower-middle of scene, not at bottom of screen
+      const bowlRadius  = Math.min((W / 2) - 16, 170);
       const bowlCX      = W / 2;
-      const bowlCY      = H - bowlRadius + bowlRadius * 0.12;
+      // bowlCY sets bowl center near upper-middle of scene, making bottom of bowl land comfortably at ~360px from top
+      const bowlCY      = bowlRadius + 20;
 
       // Build bowl from arc segments (more segments = fewer gaps)
       const walls: Matter.Body[] = [];
@@ -255,7 +256,7 @@ const GameScene = () => {
         if (!cd) return;
         const lv = characters[charId]?.level || 1;
         const x  = bowlCX + (Math.random() * bowlRadius - bowlRadius / 2) * 0.6;
-        const p  = Bodies.circle(x, -PUNI_RADIUS, PUNI_RADIUS, {
+        const p  = Bodies.circle(x, bowlCY - bowlRadius + 20, PUNI_RADIUS, {
           restitution: 0.75, friction: 0.05, density: 0.001,
           render: { fillStyle: cd.color, strokeStyle: '#ffffff', lineWidth: 2 },
         });
@@ -353,12 +354,42 @@ const GameScene = () => {
 
       Events.on(render, 'afterRender', () => {
         const ctx = render.context;
-        // Bowl border
+        
+        // Draw Puni Puni Circular Gear Board Background & Frame
+        ctx.save();
         ctx.beginPath();
-        ctx.arc(bowlCX, bowlCY, bowlRadius, 0, Math.PI);
-        ctx.lineWidth   = 8;
-        ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+        ctx.arc(bowlCX, bowlCY, bowlRadius, 0, Math.PI * 2);
+        ctx.fillStyle = '#0b132b';
+        ctx.fill();
+
+        const bgGrad = ctx.createRadialGradient(bowlCX, bowlCY, bowlRadius * 0.2, bowlCX, bowlCY, bowlRadius);
+        bgGrad.addColorStop(0, 'rgba(30, 55, 110, 0.25)');
+        bgGrad.addColorStop(1, 'rgba(5, 12, 30, 0.88)');
+        ctx.fillStyle = bgGrad;
+        ctx.fill();
+
+        // Main Gold Gear Ring
+        ctx.beginPath();
+        ctx.arc(bowlCX, bowlCY, bowlRadius, 0, Math.PI * 2);
+        ctx.lineWidth   = 10;
+        ctx.strokeStyle = '#f5b000';
         ctx.stroke();
+
+        // Outer Red Rim
+        ctx.beginPath();
+        ctx.arc(bowlCX, bowlCY, bowlRadius + 6, 0, Math.PI * 2);
+        ctx.lineWidth   = 3;
+        ctx.strokeStyle = '#e63946';
+        ctx.stroke();
+
+        // Inner Yellow Rim
+        ctx.beginPath();
+        ctx.arc(bowlCX, bowlCY, bowlRadius - 5, 0, Math.PI * 2);
+        ctx.lineWidth   = 2;
+        ctx.strokeStyle = '#ffea00';
+        ctx.stroke();
+        ctx.restore();
+
         // Draw puni sprites (circular image for all, fallback to emoji)
         ctx.textAlign    = 'center';
         ctx.textBaseline = 'middle';
