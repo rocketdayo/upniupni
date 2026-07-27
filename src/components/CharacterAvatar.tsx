@@ -31,10 +31,13 @@ export const CharacterAvatar: React.FC<CharacterAvatarProps> = ({
   ].filter(Boolean);
 
   const [srcIndex, setSrcIndex] = useState(0);
+  const [imageFailed, setImageFailed] = useState(false);
 
   const handleError = () => {
     if (srcIndex < sources.length - 1) {
       setSrcIndex(prev => prev + 1);
+    } else {
+      setImageFailed(true);
     }
   };
 
@@ -56,22 +59,38 @@ export const CharacterAvatar: React.FC<CharacterAvatarProps> = ({
         border: '2px solid rgba(255,255,255,0.8)',
         cursor: onClick ? 'pointer' : 'default',
         flexShrink: 0,
+        userSelect: 'none',
         ...style
       }}
     >
-      <img
-        src={sources[srcIndex]}
-        alt={character.name}
-        onError={handleError}
-        style={{
-          width: '100%',
-          height: '100%',
-          objectFit: 'contain',
-          borderRadius: '50%',
-          padding: '2px',
-          filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.4))'
-        }}
-      />
+      {!imageFailed ? (
+        <img
+          src={sources[srcIndex]}
+          alt={character.name}
+          onError={handleError}
+          style={{
+            width: '100%',
+            height: '100%',
+            objectFit: 'contain',
+            borderRadius: '50%',
+            padding: '2px',
+            filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.4))'
+          }}
+        />
+      ) : (
+        <span
+          style={{
+            fontSize: `${size * 0.55}px`,
+            lineHeight: 1,
+            filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}
+        >
+          {character.emoji || '👾'}
+        </span>
+      )}
 
       {/* Rank Badge */}
       {showRankBadge && (

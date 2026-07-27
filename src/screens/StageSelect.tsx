@@ -113,7 +113,7 @@ const StageSelect = () => {
                     strokeLinecap="round"
                   />
                   {/* Branch to hidden stage */}
-                  {((i + 1) % 10 === 0) && (
+                  {((i + 1) % 5 === 0) && (
                     <line 
                       x1={`${x1}px`} y1={`${y1}%`} 
                       x2={`${x1}px`} y2={`${y1 > 50 ? 20 : 80}%`} 
@@ -135,11 +135,36 @@ const StageSelect = () => {
             const unlocked = isUnlocked(stage.id, i);
             const cleared = clearedStages.includes(stage.id);
             
-            const hiddenStageId = `stage_hidden_${(i + 1) / 10}`;
-            const hiddenStage = ((i + 1) % 10 === 0) ? STAGES.find(s => s.id === hiddenStageId) : null;
+            const hiddenStageId = `stage_hidden_${(i + 1) / 5}`;
+            const hiddenStage = ((i + 1) % 5 === 0) ? STAGES.find(s => s.id === hiddenStageId) : null;
+
+            const isAreaStart = i % 10 === 0;
 
             return (
               <React.Fragment key={stage.id}>
+                {/* Area Header Badge */}
+                {isAreaStart && stage.areaName && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      left: `${x - 20}px`,
+                      top: '15px',
+                      zIndex: 3,
+                      background: 'linear-gradient(135deg, #ff9900, #ff3300)',
+                      color: 'white',
+                      fontWeight: 900,
+                      fontSize: '0.85rem',
+                      padding: '4px 14px',
+                      borderRadius: '20px',
+                      boxShadow: '0 4px 10px rgba(0,0,0,0.5)',
+                      border: '2px solid #ffea88',
+                      whiteSpace: 'nowrap'
+                    }}
+                  >
+                    📍 {stage.areaName}
+                  </div>
+                )}
+
                 {/* Normal Node */}
                 <div 
                   style={{
