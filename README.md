@@ -1,34 +1,15 @@
-https://rocketdayo.github.io/punipuni2/
+URL: https://rocketdayo.github.io/upniupni/
 
-# React + TypeScript + Vite
+# ぷにぷに風パズル＆にゃんこ大戦争風デバッグバトル 🎮
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+ぷにぷに風のパズルゲーム＆にゃんこ大戦争スタイルのデバッグバトルゲームです。
 
-Currently, two official plugins are available:
+## 🌟 主な機能
+- **ぷにぷにパズルステージ**: つないで消して必殺技を放つ爽快パズルバトル
+- **にゃんこ大戦争風デバッグモード (`/debug-nyanko`)**: ぷにキャラを出撃させて敵城を攻略するリアルタイムタワーディフェンス
+- **ガチャ・チーム編成**: E〜SSランクの多彩な妖怪・必殺技
+- **ミッション・イベントステージ**: 豪華報酬がもらえるイベント＆ミッション
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## 🚀 デプロイ (GitHub Pages)
+GitHub Actions により `main` ブランチ更新時に自動デプロイされます。
 
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
-```
-
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.

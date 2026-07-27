@@ -182,6 +182,9 @@ const Home = () => {
       </div>
 
       {/* ── Daily Login Modal ── */}
+      {/* Debug Menu accessed via Console openDebug("puni") */}
+
+      {/* ── Daily Login Modal ── */}
       {showDaily && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <div className="glass-panel" style={{ width: '80%', padding: '20px', textAlign: 'center', position: 'relative', animation: 'popIn 0.5s ease-out' }}>

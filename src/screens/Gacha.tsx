@@ -4,6 +4,7 @@ import { CHARACTERS } from '../data/characters';
 import type { Character, Rank } from '../data/characters';
 import { ArrowLeft, RefreshCw, Info, ChevronLeft, ChevronRight, History } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { CharacterAvatar } from '../components/CharacterAvatar';
 
 const GACHA_COST_1 = 50;
 const GACHA_COST_10 = 500;
@@ -263,9 +264,7 @@ const Gacha = () => {
                   <div key={idx} style={{ 
                     position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', background: 'rgba(255,255,255,0.9)', padding: results.length > 50 ? '3px' : '8px', borderRadius: '14px', border: `3px solid ${RANK_COLORS[result.rank]}`, width: `${iconSize + (results.length > 50 ? 6 : 16)}px`, boxShadow: result.rank === 'S' || result.rank === 'SS' ? `0 0 15px ${RANK_COLORS[result.rank]}` : 'none',
                   }}>
-                    <div className="char-icon" style={{ backgroundColor: result.color, width: `${iconSize}px`, height: `${iconSize}px`, fontSize }}>
-                      {result.imageUrl ? <img src={result.imageUrl} alt={result.name} style={{width:'100%', height:'100%', objectFit:'cover', borderRadius:'50%'}} /> : result.emoji}
-                    </div>
+                    <CharacterAvatar character={result} size={iconSize} />
                     <div style={{
                       position: 'absolute', top: '-4px', right: '-4px', background: RANK_COLORS[result.rank], color: 'white', fontWeight: 900, fontSize: results.length > 50 ? '0.5rem' : '0.7rem', padding: results.length > 50 ? '1px 3px' : '2px 5px', borderRadius: '8px', border: '2px solid white', boxShadow: '0 1px 3px rgba(0,0,0,0.4)', lineHeight: 1.2,
                     }}>

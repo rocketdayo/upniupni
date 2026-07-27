@@ -1,6 +1,5 @@
 import React from 'react';
-import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
-import { Coins, Star } from 'lucide-react';
+import { Routes, Route, useNavigate } from 'react-router-dom';
 import { useGame } from './store/GameContext';
 
 import TitleScreen from './screens/TitleScreen';
@@ -12,11 +11,32 @@ import GameScene from './screens/GameScene';
 import Collection from './screens/Collection';
 import EventHome from './screens/EventHome';
 import MissionList from './screens/MissionList';
+import { DebugConsoleScreen } from './screens/NyankoDebugScene';
 
 const App = () => {
   const { loading, money, yPoints } = useGame();
   const navigate = useNavigate();
-  const location = useLocation();
+
+  React.useEffect(() => {
+    console.log(
+      '%c[開発者ツール] デバッグ画面を開くにはコンソールで openDebug("puni") または debug("nyanko") を実行してください。',
+      'color: #00ccff; font-weight: bold; font-size: 13px;'
+    );
+
+    (window as any).openDebug = (code?: string) => {
+      const validCodes = ['puni', 'nyanko', 'debug', 'cheat', 'yokai'];
+      if (code && typeof code === 'string' && validCodes.includes(code.trim().toLowerCase())) {
+        sessionStorage.setItem('debug_unlocked', 'true');
+        console.log('%c[DEBUG] デバッグモード認証成功！デバッグ画面を開きます...', 'color: #00ff88; font-weight: bold; font-size: 14px;');
+        navigate('/debug');
+        return '✅ 認証成功！デバッグ画面を開きます。';
+      } else {
+        console.warn('[DEBUG] 認証失敗: 合言葉を指定してください (例: openDebug("puni") または openDebug("nyanko"))');
+        return '❌ 認証失敗: 正しい合言葉を入力してください (例: openDebug("puni"))';
+      }
+    };
+    (window as any).debug = (window as any).openDebug;
+  }, [navigate]);
 
   if (loading) {
     return <div className="app-container" style={{ justifyContent: 'center', alignItems: 'center' }}>Loading...</div>;
@@ -28,6 +48,8 @@ const App = () => {
       <Routes>
         <Route path="/" element={<TitleScreen />} />
         <Route path="/stage/:stageId" element={<GameScene />} />
+        <Route path="/debug" element={<DebugConsoleScreen />} />
+        <Route path="/debug-nyanko" element={<DebugConsoleScreen />} />
         <Route path="*" element={
           <>
               <div className="header">

@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import Matter from 'matter-js';
 import { useGame } from '../store/GameContext';
 import { STAGES } from '../data/stages';
-import { CHARACTERS } from '../data/characters';
+import { CHARACTERS, getPublicUrl, createPuniSvgDataUrl } from '../data/characters';
 import { CURRENT_EVENTS } from '../data/events';
 import { ArrowLeft, Zap } from 'lucide-react';
 
@@ -14,12 +14,32 @@ const FEVER_DURATION   = 7000;
 
 // Preload individual character images for ALL ranks
 const CHAR_IMAGES: Record<string, HTMLImageElement> = {};
-const rankCounts: Record<string, number> = { SS:0, S:0, A:0, B:0, C:0, D:0, E:0 };
-CHARACTERS.forEach(c => {
-  rankCounts[c.rank]++;
+
+const loadCharImage = (c: { id: string; rank: string; color: string; emoji: string; imageUrl?: string }, customSrc?: string) => {
   const img = new Image();
-  img.src = import.meta.env.BASE_URL + `puni_${c.rank.toLowerCase()}_${rankCounts[c.rank]}.png`;
+  const fallbackSrc = createPuniSvgDataUrl(c.emoji, c.color);
+
+  img.onerror = () => {
+    if (img.src !== fallbackSrc) {
+      img.src = fallbackSrc;
+    }
+  };
+
+  if (customSrc) {
+    img.src = customSrc;
+  } else if (c.imageUrl) {
+    img.src = getPublicUrl(c.imageUrl);
+  } else {
+    img.src = fallbackSrc;
+  }
+
   CHAR_IMAGES[c.id] = img;
+  return img;
+};
+
+// Initial preload
+CHARACTERS.forEach(c => {
+  loadCharImage(c);
 });
 
 interface PuniData { charId: string; size: number; level: number; }
@@ -27,7 +47,15 @@ interface PuniData { charId: string; size: number; level: number; }
 const GameScene = () => {
   const { stageId } = useParams();
   const navigate    = useNavigate();
-  const { team, characters, clearStage, trackMission } = useGame();
+  const { team, characters, customImages, clearStage, trackMission: _trackMission } = useGame();
+
+  // Reload custom character images if set
+  useEffect(() => {
+    CHARACTERS.forEach(c => {
+      const customSrc = customImages?.[c.id];
+      loadCharImage(c, customSrc);
+    });
+  }, [customImages]);
 
   // Check if any team member has event boost
   const eventBoostActive = team.some(id => {

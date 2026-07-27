@@ -1,13 +1,11 @@
 import React, { useState } from 'react';
 import { useGame } from '../store/GameContext';
-import { CHARACTERS } from '../data/characters';
+import { CHARACTERS, getCharacterMaxLevel } from '../data/characters';
 import type { Rank } from '../data/characters';
-import { ArrowLeft, ArrowUpCircle, ChevronLeft, ChevronRight, Check, Star, Zap, Shield, Package } from 'lucide-react';
+import { ArrowLeft, ArrowUpCircle, ChevronLeft, ChevronRight, Check, Star, Zap } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { CharacterAvatar } from '../components/CharacterAvatar';
 
-const rankMaxLevels: Record<Rank, number> = {
-  'SS': 60, 'S': 50, 'A': 40, 'B': 30, 'C': 25, 'D': 20, 'E': 10
-};
 const rankCostMultipliers: Record<Rank, number> = {
   'SS': 500, 'S': 300, 'A': 200, 'B': 150, 'C': 100, 'D': 80, 'E': 50
 };
@@ -25,19 +23,18 @@ const StarRating = ({ count, max = 5 }: { count: number; max?: number }) => (
 );
 
 const TeamBuilder = () => {
-  const { characters, team, money, items, setTeam, upgradeCharacter, useExpItem, useSkillBook } = useGame();
+  const { characters, team, money, items, setTeam, upgradeCharacter, consumeExpItem, consumeSkillBook } = useGame();
   const navigate = useNavigate();
 
   const [currentPage, setCurrentPage] = useState(0);
   const [selectedCharId, setSelectedCharId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'team' | 'items'>('team');
 
   const ownedChars = CHARACTERS.filter(c => characters[c.id]);
   const totalPages = Math.max(1, Math.ceil(ownedChars.length / CHARS_PER_PAGE));
   const currentChars = ownedChars.slice(currentPage * CHARS_PER_PAGE, (currentPage + 1) * CHARS_PER_PAGE);
 
   const getUpgradeCost = (rank: Rank, level: number) => level * rankCostMultipliers[rank];
-  const getMaxLevel = (rank: Rank, limitBreak: number) => rankMaxLevels[rank] + limitBreak * 10;
+  const getMaxLevel = (rank: Rank, limitBreak: number) => getCharacterMaxLevel(rank, limitBreak);
 
   const toggleTeamMember = (charId: string) => {
     if (team.includes(charId)) {
@@ -175,14 +172,18 @@ const TeamBuilder = () => {
                   draggable
                   onDragStart={(e) => handleDragStart(e, c.id, idx)}
                   style={{
-                    backgroundColor: c.color, width: '52px', height: '52px', fontSize: '1.4rem',
-                    border: selectedCharId === c.id ? '3px solid white' : `2px solid ${RANK_COLORS[c.rank]}`,
                     position: 'relative',
-                    boxShadow: selectedCharId === c.id ? '0 0 10px white' : 'none',
                     cursor: 'grab'
                   }}
                 >
-                  {c.imageUrl ? <img src={c.imageUrl} alt={c.name} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%', pointerEvents: 'none' }} /> : c.emoji}
+                  <CharacterAvatar
+                    character={c}
+                    size={52}
+                    style={{
+                      border: selectedCharId === c.id ? '3px solid white' : `2px solid ${RANK_COLORS[c.rank]}`,
+                      boxShadow: selectedCharId === c.id ? '0 0 10px white' : 'none'
+                    }}
+                  />
                   {c.eventBoost && (
                     <div style={{ position: 'absolute', top: -4, left: -4, background: '#ff2255', borderRadius: '50%', width: 14, height: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.45rem', color: 'white', fontWeight: 900, border: '1px solid white' }}>特</div>
                   )}
@@ -233,15 +234,16 @@ const TeamBuilder = () => {
                   draggable
                   onDragStart={(e) => handleDragStart(e, c.id)}
                 >
-                  <div className="char-icon" style={{
-                    backgroundColor: c.color, width: '60px', height: '60px', fontSize: '2rem',
-                    border: isSelected ? '3px solid white' : 'none',
-                    transform: isSelected ? 'scale(1.1)' : 'scale(1)',
-                    transition: 'all 0.2s',
-                    boxShadow: isSelected ? '0 0 15px rgba(255,255,255,0.5)' : 'var(--glass-shadow)'
-                  }}>
-                    {c.imageUrl ? <img src={c.imageUrl} alt={c.name} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%', pointerEvents: 'none' }} /> : c.emoji}
-                  </div>
+                  <CharacterAvatar
+                    character={c}
+                    size={60}
+                    style={{
+                      border: isSelected ? '3px solid white' : 'none',
+                      transform: isSelected ? 'scale(1.1)' : 'scale(1)',
+                      transition: 'all 0.2s',
+                      boxShadow: isSelected ? '0 0 15px rgba(255,255,255,0.5)' : 'var(--glass-shadow)'
+                    }}
+                  />
                   <span className="rank-badge" style={{ position: 'absolute', bottom: '-5px', right: '-5px', backgroundColor: RANK_COLORS[c.rank], fontSize: '0.65rem', padding: '1px 4px' }}>
                     {c.rank}
                   </span>
@@ -272,9 +274,10 @@ const TeamBuilder = () => {
             {/* Top: icon + stats */}
             <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start', marginBottom: '12px' }}>
               <div style={{ position: 'relative', flexShrink: 0 }}>
-                <div className="char-icon" style={{ backgroundColor: selectedCharDef.color, width: '64px', height: '64px', fontSize: '2rem' }}>
-                  {selectedCharDef.imageUrl ? <img src={selectedCharDef.imageUrl} alt={selectedCharDef.name} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} /> : selectedCharDef.emoji}
-                </div>
+                <CharacterAvatar
+                  character={selectedCharDef}
+                  size={64}
+                />
                 {selectedCharDef.eventBoost && (
                   <div style={{ position: 'absolute', top: -5, right: -5, background: '#ff2255', color: 'white', fontWeight: 900, fontSize: '0.55rem', padding: '2px 5px', borderRadius: '10px', border: '1.5px solid white', whiteSpace: 'nowrap' }}>特効中</div>
                 )}
@@ -352,7 +355,7 @@ const TeamBuilder = () => {
               <button
                 className="btn btn-green"
                 style={{ padding: '8px', fontSize: '0.8rem' }}
-                onClick={() => useExpItem(selectedCharDef.id, 'expSmall')}
+                onClick={() => consumeExpItem(selectedCharDef.id, 'expSmall')}
                 disabled={(items?.expSmall ?? 0) <= 0 || selectedCharData.level >= getMaxLevel(selectedCharDef.rank, selectedCharData.limitBreak || 0)}
               >
                 🔮 経験値だま小 ×{items?.expSmall ?? 0}
@@ -362,7 +365,7 @@ const TeamBuilder = () => {
               <button
                 className="btn btn-green"
                 style={{ padding: '8px', fontSize: '0.8rem' }}
-                onClick={() => useExpItem(selectedCharDef.id, 'expLarge')}
+                onClick={() => consumeExpItem(selectedCharDef.id, 'expLarge')}
                 disabled={(items?.expLarge ?? 0) <= 0 || selectedCharData.level >= getMaxLevel(selectedCharDef.rank, selectedCharData.limitBreak || 0)}
               >
                 ✨ 経験値だま大 ×{items?.expLarge ?? 0}
@@ -373,7 +376,7 @@ const TeamBuilder = () => {
                 <button
                   className="btn btn-secondary"
                   style={{ padding: '8px', fontSize: '0.8rem', gridColumn: 'span 2', background: (items?.skillBook ?? 0) > 0 && (selectedCharData.skillLevel || 1) < 5 ? 'linear-gradient(180deg, #9944ff 0%, #5500bb 100%)' : undefined }}
-                  onClick={() => useSkillBook(selectedCharDef.id)}
+                  onClick={() => consumeSkillBook(selectedCharDef.id)}
                   disabled={(items?.skillBook ?? 0) <= 0 || (selectedCharData.skillLevel || 1) >= 5}
                 >
                   📖 ひっさつ秘伝書 (わざLv.{selectedCharData.skillLevel || 1}→{Math.min(5, (selectedCharData.skillLevel || 1) + 1)}) ×{items?.skillBook ?? 0}

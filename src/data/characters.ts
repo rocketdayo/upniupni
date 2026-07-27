@@ -1,5 +1,58 @@
 export type Rank = 'E' | 'D' | 'C' | 'B' | 'A' | 'S' | 'SS';
 
+export const RANK_BASE_MAX_LEVEL: Record<Rank, number> = {
+  'SS': 60,
+  'S': 50,
+  'A': 40,
+  'B': 30,
+  'C': 25,
+  'D': 20,
+  'E': 10,
+};
+
+export const getCharacterMaxLevel = (rank: Rank, limitBreak: number = 0): number => {
+  const base = RANK_BASE_MAX_LEVEL[rank] || 30;
+  return base + (limitBreak || 0) * 10;
+};
+
+export const getPublicUrl = (path: string): string => {
+  if (!path) return '';
+  if (path.startsWith('data:') || path.startsWith('blob:') || path.startsWith('http://') || path.startsWith('https://')) {
+    return path;
+  }
+  let base = import.meta.env.BASE_URL || '/';
+  if (base === './' || !base) base = '/';
+  if (!base.endsWith('/')) base += '/';
+  
+  // Clean leading slashes or dot-slashes
+  let cleanPath = path;
+  while (cleanPath.startsWith('/') || cleanPath.startsWith('./')) {
+    cleanPath = cleanPath.replace(/^(\.\/|\/)+/, '');
+  }
+  
+  return base + cleanPath;
+};
+
+// Generates an inline SVG Data URL for guaranteed image rendering if photo/file fails
+export const createPuniSvgDataUrl = (emoji: string, bgColor: string = '#ff4488'): string => {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+    <defs>
+      <radialGradient id="grad" cx="35%" cy="30%" r="65%">
+        <stop offset="0%" stop-color="#ffffff" stop-opacity="0.8" />
+        <stop offset="30%" stop-color="${bgColor}" />
+        <stop offset="100%" stop-color="#111122" />
+      </radialGradient>
+      <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+        <feDropShadow dx="0" dy="4" stdDeviation="4" flood-color="#000" flood-opacity="0.4"/>
+      </filter>
+    </defs>
+    <circle cx="64" cy="64" r="56" fill="url(#grad)" filter="url(#shadow)" stroke="#ffffff" stroke-width="3" />
+    <ellipse cx="44" cy="38" rx="14" ry="7" fill="#ffffff" opacity="0.4" transform="rotate(-20 44 38)" />
+    <text x="64" y="78" font-size="52" text-anchor="middle" dominant-baseline="middle">${emoji}</text>
+  </svg>`;
+  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+};
+
 export interface Skill {
   name: string;
   type: 'damage' | 'heal';
@@ -27,13 +80,13 @@ const generateCharacters = (): Character[] => {
   let idCounter = 1;
 
   const rankImageMap: Record<Rank, string> = {
-    'E': import.meta.env.BASE_URL + 'puni_e.png',
-    'D': import.meta.env.BASE_URL + 'puni_d.png',
-    'C': import.meta.env.BASE_URL + 'puni_c.png',
-    'B': import.meta.env.BASE_URL + 'puni_b.png',
-    'A': import.meta.env.BASE_URL + 'puni_a.png',
-    'S': import.meta.env.BASE_URL + 'puni_s.png',
-    'SS': import.meta.env.BASE_URL + 'puni_s.png',
+    'E': getPublicUrl('puni_e.png'),
+    'D': getPublicUrl('puni_d.png'),
+    'C': getPublicUrl('puni_c.png'),
+    'B': getPublicUrl('puni_b.png'),
+    'A': getPublicUrl('puni_a.png'),
+    'S': getPublicUrl('puni_s.png'),
+    'SS': getPublicUrl('puni_s.png'),
   };
 
   interface CharacterDef {
@@ -54,7 +107,7 @@ const generateCharacters = (): Character[] => {
         color,
         emoji: a.emoji,
         rankImage: rankImageMap[rank],
-        imageUrl: import.meta.env.BASE_URL + `puni_${rank.toLowerCase()}_${(i % 10) + 1}.png`,
+        imageUrl: getPublicUrl(`puni_${rank.toLowerCase()}_${(i % 10) + 1}.png`),
         baseHp: baseHp + i * 8,
         baseAtk: baseAtk + i * 3,
       };

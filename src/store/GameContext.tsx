@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { loginAndGetData, savePlayerData } from '../firebase';
-import { CHARACTERS } from '../data/characters';
+import { CHARACTERS, getCharacterMaxLevel } from '../data/characters';
 import { CURRENT_EVENTS } from '../data/events';
 import type { PlayerData } from '../firebase';
 
@@ -10,14 +10,18 @@ interface GameState extends PlayerData {
   addMoney: (amount: number) => void;
   addYPoints: (amount: number) => void;
   unlockCharacter: (charId: string) => void;
+  unlockAllCharacters: () => void;
+  unlockAllStages: () => void;
+  addMaxItems: () => void;
   upgradeCharacter: (charId: string, moneyCost: number) => void;
-  useExpItem: (charId: string, itemType: 'expSmall' | 'expLarge') => void;
-  useSkillBook: (charId: string) => void;
+  consumeExpItem: (charId: string, itemType: 'expSmall' | 'expLarge') => void;
+  consumeSkillBook: (charId: string) => void;
   setTeam: (newTeam: string[]) => void;
   clearStage: (stageId: string, moneyReward: number, yPointReward: number) => void;
   trackMission: (type: string, amount?: number) => void;
   claimMission: (missionId: string) => void;
   recordGachaResult: (charIds: string[], newPityCount: number, newStepUpCount: number) => void;
+  setCustomCharacterImage: (charId: string, imageUrl: string) => void;
 }
 
 const GameContext = createContext<GameState | undefined>(undefined);
@@ -126,6 +130,38 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, [uid]);
 
+  const unlockAllCharacters = () => {
+    mutateAndSave(() => {
+      const allChars: PlayerData['characters'] = {};
+      CHARACTERS.forEach(c => {
+        const limitBreak = 5;
+        const maxLv = getCharacterMaxLevel(c.rank, limitBreak);
+        allChars[c.id] = {
+          level: maxLv,
+          skillLevel: 5,
+          limitBreak: limitBreak,
+          duplicates: 10,
+        };
+      });
+      return { characters: allChars };
+    });
+  };
+
+  const unlockAllStages = () => {
+    mutateAndSave(() => {
+      const allStageIds = ['stage_1', 'stage_2', 'stage_3', 'stage_4', 'stage_5', 'stage_6', 'stage_hidden_1', 'stage_hidden_2'];
+      return {
+        clearedStages: allStageIds,
+        maxClearedStageId: 'stage_hidden_2'
+      };
+    });
+  };
+
+  const addMaxItems = () => {
+    mutateAndSave(() => ({
+      items: { expSmall: 99, expLarge: 99, skillBook: 99 }
+    }));
+  };
   const addMoney = (amount: number) => mutateAndSave(prev => ({ money: prev.money + amount }));
   const addYPoints = (amount: number) => mutateAndSave(prev => ({ yPoints: prev.yPoints + amount }));
 
@@ -161,22 +197,25 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     let leveledUp = false;
     mutateAndSave(prev => {
       const charData = prev.characters[charId];
-      if (prev.money >= moneyCost && charData) {
-        leveledUp = true;
-        return {
-          money: prev.money - moneyCost,
-          characters: {
-            ...prev.characters,
-            [charId]: { ...charData, level: charData.level + 1 }
-          }
-        };
-      }
-      return {};
+      const charDef = CHARACTERS.find(c => c.id === charId);
+      if (!charData || !charDef || prev.money < moneyCost) return {};
+
+      const maxLv = getCharacterMaxLevel(charDef.rank, charData.limitBreak || 0);
+      if (charData.level >= maxLv) return {};
+
+      leveledUp = true;
+      return {
+        money: prev.money - moneyCost,
+        characters: {
+          ...prev.characters,
+          [charId]: { ...charData, level: charData.level + 1 }
+        }
+      };
     });
     if (leveledUp) setTimeout(() => trackMission('level_up', 1), 0);
   };
 
-  const useExpItem = (charId: string, itemType: 'expSmall' | 'expLarge') => {
+  const consumeExpItem = (charId: string, itemType: 'expSmall' | 'expLarge') => {
     let levelsGained = 0;
     mutateAndSave(prev => {
       const charData = prev.characters[charId];
@@ -184,8 +223,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (!charData || !charDef || (prev.items[itemType] || 0) <= 0) return {};
       
       const levelGain = itemType === 'expSmall' ? 1 : 5;
-      const limitBonus = (charData.limitBreak || 0) * 10;
-      const maxLv = { SS: 60, S: 50, A: 40, B: 30, C: 25, D: 20, E: 10 }[charDef.rank] + limitBonus;
+      const maxLv = getCharacterMaxLevel(charDef.rank, charData.limitBreak || 0);
       const newLevel = Math.min(maxLv, charData.level + levelGain);
       
       if (newLevel <= charData.level) return {};
@@ -199,7 +237,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (levelsGained > 0) setTimeout(() => trackMission('level_up', levelsGained), 0);
   };
 
-  const useSkillBook = (charId: string) => {
+  const consumeSkillBook = (charId: string) => {
     mutateAndSave(prev => {
       const charData = prev.characters[charId];
       if (!charData || (prev.items.skillBook || 0) <= 0) return {};
@@ -298,6 +336,15 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
   };
 
+  const setCustomCharacterImage = (charId: string, imageUrl: string) => {
+    mutateAndSave(prev => ({
+      customImages: {
+        ...(prev.customImages || {}),
+        [charId]: imageUrl
+      }
+    }));
+  };
+
   return (
     <GameContext.Provider value={{
       ...data,
@@ -306,14 +353,18 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       addMoney,
       addYPoints,
       unlockCharacter,
+      unlockAllCharacters,
+      unlockAllStages,
+      addMaxItems,
       upgradeCharacter,
-      useExpItem,
-      useSkillBook,
+      consumeExpItem,
+      consumeSkillBook,
       setTeam,
       clearStage,
       trackMission,
       claimMission,
       recordGachaResult,
+      setCustomCharacterImage,
     }}>
       {children}
     </GameContext.Provider>

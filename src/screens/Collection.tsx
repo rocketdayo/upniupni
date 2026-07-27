@@ -4,6 +4,7 @@ import { ArrowLeft, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useGame } from '../store/GameContext';
 import { CHARACTERS } from '../data/characters';
 import type { Rank } from '../data/characters';
+import { CharacterAvatar } from '../components/CharacterAvatar';
 
 const RANKS: Rank[] = ['SS', 'S', 'A', 'B', 'C', 'D', 'E'];
 const RANK_COLORS: Record<Rank, string> = {
@@ -97,51 +98,29 @@ const Collection = () => {
             const owned = !!characters[c.id];
             return (
               <div key={c.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
-                <div
-                  className="char-icon"
-                  style={{
-                    width: '52px',
-                    height: '52px',
-                    fontSize: '1.8rem',
-                    backgroundColor: owned ? c.color : '#222',
-                    border: `2px solid ${owned ? RANK_COLORS[c.rank] : '#333'}`,
-                    filter: owned ? 'none' : 'grayscale(100%) brightness(0.3)',
-                    position: 'relative',
-                    transition: 'all 0.2s',
-                  }}
-                >
-                  {owned ? (
-                    c.imageUrl ? (
-                      <img
-                        src={c.imageUrl}
-                        alt={c.name}
-                        style={{
-                          width: '100%', height: '100%',
-                          objectFit: 'cover',
-                          borderRadius: '50%'
-                        }}
-                      />
-                    ) : (
-                      c.emoji
-                    )
-                  ) : (
-                    '❓'
-                  )}
-                  {/* Rank badge */}
-                  <span style={{
-                    position: 'absolute',
-                    bottom: '-4px',
-                    right: '-4px',
-                    backgroundColor: RANK_COLORS[c.rank],
-                    color: 'white',
-                    fontSize: '0.55rem',
-                    fontWeight: 'bold',
-                    padding: '1px 4px',
-                    borderRadius: '4px',
-                  }}>
-                    {c.rank}
-                  </span>
-                </div>
+                {owned ? (
+                  <CharacterAvatar
+                    character={c}
+                    size={52}
+                    showRankBadge={true}
+                  />
+                ) : (
+                  <div
+                    style={{
+                      width: '52px',
+                      height: '52px',
+                      borderRadius: '50%',
+                      backgroundColor: '#222',
+                      border: '2px solid #333',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '1.4rem'
+                    }}
+                  >
+                    ❓
+                  </div>
+                )}
                 <span style={{
                   fontSize: '0.6rem',
                   color: owned ? 'var(--text-color)' : '#444',

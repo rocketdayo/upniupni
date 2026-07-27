@@ -24,6 +24,7 @@ export interface PlayerData {
   pityCount?: number;
   stepUpCount?: number;
   gachaHistory?: { timestamp: number; charId: string }[];
+  customImages?: Record<string, string>;
 }
 
 const DEFAULT_DATA: PlayerData = {
@@ -53,7 +54,7 @@ export const loginAndGetData = async (onDataLoaded: (data: PlayerData, uid: stri
   onDataLoaded(data, uid);
 };
 
-export const fetchPlayerData = async (uid: string): Promise<PlayerData> => {
+export const fetchPlayerData = async (_uid: string): Promise<PlayerData> => {
   try {
     const stored = localStorage.getItem('punipuni_save');
     if (stored) {
