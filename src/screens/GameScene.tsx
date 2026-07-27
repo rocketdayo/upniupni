@@ -4,6 +4,7 @@ import Matter from 'matter-js';
 import { useGame } from '../store/GameContext';
 import { STAGES } from '../data/stages';
 import { CHARACTERS, getPublicUrl, createPuniSvgDataUrl } from '../data/characters';
+import type { Character, SkillType } from '../data/characters';
 import { CURRENT_EVENTS } from '../data/events';
 import { Zap, Pause, Play, RotateCcw, ArrowLeft } from 'lucide-react';
 import { CharacterAvatar } from '../components/CharacterAvatar';
@@ -70,6 +71,10 @@ const GameScene = () => {
   const renderRef    = useRef<Matter.Render | null>(null);
   const runnerRef    = useRef<Matter.Runner | null>(null);
 
+  const bowlCenterRef = useRef<{ x: number; y: number }>({ x: 200, y: 200 });
+  const bowlRadiusRef = useRef<number>(180);
+  const spawnPuniRef  = useRef<() => void>(() => {});
+
   const [enemyHp,     setEnemyHp]     = useState(stage?.enemyHp || 100);
   const [playerHp,    setPlayerHp]    = useState(1);
   const [maxPlayerHp, setMaxPlayerHp] = useState(1);
@@ -86,6 +91,13 @@ const GameScene = () => {
   const [feverTimeLeft, setFeverTimeLeft] = useState(0);
   const feverDmgAccum = useRef(0);
   const [charGauges,  setCharGauges]  = useState<Record<string, number>>({});
+
+  const [skillCutIn, setSkillCutIn] = useState<{
+    character: Character;
+    skillName: string;
+    skillType: SkillType;
+  } | null>(null);
+  const [isShaking, setIsShaking] = useState(false);
 
   const selectedRef   = useRef<Matter.Body[]>([]);
   const isDragging    = useRef(false);
@@ -187,27 +199,136 @@ const GameScene = () => {
     return () => clearInterval(iv);
   }, [isFever, isPaused, isGameOver, isVictory, dealDamage]);
 
-  const triggerSkill = (charId: string) => {
-    if ((charGauges[charId] || 0) < 100 || isGameOver || isVictory || isPaused) return;
-    const cd = CHARACTERS.find(c => c.id === charId);
-    if (!cd || (cd.rank !== 'S' && cd.rank !== 'SS') || !cd.skill) return;
-    setCharGauges(prev => ({ ...prev, [charId]: 0 }));
-    const charData = characters[charId];
+  const executeSkillEffect = (cd: Character) => {
+    if (!cd.skill) return;
+    const charData = characters[cd.id];
     const skillLv = (charData as any)?.skillLevel || 1;
-    const skillPowerScale = 1 + (skillLv - 1) * 0.2; // +20% per skill level
-    if (cd.skill.type === 'damage') {
-      const dmg = Math.floor((cd.baseAtk + (charData?.level || 1) * 5) * cd.skill.power * skillPowerScale * boostMultiplier);
-      dealDamage(dmg);
-      const id = Date.now();
-      setDamageTexts(p => [...p, { id, val: dmg, x: 120, y: 120, color: cd.rank === 'SS' ? '#ff22ff' : '#ffff00' }]);
-      setTimeout(() => setDamageTexts(p => p.filter(t => t.id !== id)), 1500);
-    } else {
+    const skillPowerScale = 1 + (skillLv - 1) * 0.2;
+    const baseAtk = cd.baseAtk + (charData?.level || 1) * 5;
+
+    const engine = engineRef.current;
+
+    if (cd.skill.type === 'heal') {
       const heal = Math.floor(cd.skill.power * skillPowerScale);
       setPlayerHp(prev => Math.min(maxPlayerHp, prev + heal));
       const id = Date.now();
-      setDamageTexts(p => [...p, { id, val: heal, x: 120, y: 120, color: '#00ff88' }]);
+      setDamageTexts(p => [...p, { id, val: heal, x: 150, y: 150, color: '#00ff88' }]);
+      setTimeout(() => setDamageTexts(p => p.filter(t => t.id !== id)), 1500);
+      return;
+    }
+
+    if (cd.skill.type === 'damage' || !engine) {
+      const dmg = Math.floor(baseAtk * cd.skill.power * skillPowerScale * boostMultiplier);
+      dealDamage(dmg);
+      const id = Date.now();
+      setDamageTexts(p => [...p, { id, val: dmg, x: 150, y: 120, color: cd.rank === 'SS' ? '#ff22ff' : '#ffff00' }]);
+      setTimeout(() => setDamageTexts(p => p.filter(t => t.id !== id)), 1500);
+      return;
+    }
+
+    const allPuniBodies = Matter.Composite.allBodies(engine.world).filter(b => !b.isStatic);
+
+    if (cd.skill.type === 'center_pop') {
+      const centerBodies = allPuniBodies.filter(b => {
+        const dx = b.position.x - bowlCenterRef.current.x;
+        const dy = b.position.y - bowlCenterRef.current.y;
+        return Math.sqrt(dx * dx + dy * dy) < bowlRadiusRef.current * 0.58;
+      });
+      const popCount = Math.max(5, centerBodies.length);
+      centerBodies.forEach(b => Matter.Composite.remove(engine.world, b));
+
+      const dmg = Math.floor(baseAtk * cd.skill.power * (popCount * 0.22 + 1) * skillPowerScale * boostMultiplier);
+      dealDamage(dmg);
+
+      const id = Date.now();
+      setDamageTexts(p => [...p, { id, val: dmg, x: bowlCenterRef.current.x, y: bowlCenterRef.current.y, color: '#ff3366' }]);
+      setTimeout(() => setDamageTexts(p => p.filter(t => t.id !== id)), 1500);
+
+      setFeverGauge(prev => Math.min(FEVER_MAX, prev + popCount * 2.5));
+
+      for (let i = 0; i < popCount; i++) {
+        setTimeout(() => spawnPuniRef.current(), i * 40);
+      }
+    } else if (cd.skill.type === 'random_pop') {
+      const shuffled = [...allPuniBodies].sort(() => Math.random() - 0.5);
+      const targetCount = Math.min(shuffled.length, Math.floor(Math.random() * 5) + 9);
+      const popped = shuffled.slice(0, targetCount);
+      popped.forEach(b => Matter.Composite.remove(engine.world, b));
+
+      const dmg = Math.floor(baseAtk * cd.skill.power * (popped.length * 0.22 + 1) * skillPowerScale * boostMultiplier);
+      dealDamage(dmg);
+
+      const id = Date.now();
+      setDamageTexts(p => [...p, { id, val: dmg, x: 150, y: 180, color: '#00ccff' }]);
+      setTimeout(() => setDamageTexts(p => p.filter(t => t.id !== id)), 1500);
+
+      setFeverGauge(prev => Math.min(FEVER_MAX, prev + popped.length * 2.2));
+
+      for (let i = 0; i < popped.length; i++) {
+        setTimeout(() => spawnPuniRef.current(), i * 35);
+      }
+    } else if (cd.skill.type === 'all_pop') {
+      const popCount = allPuniBodies.length;
+      allPuniBodies.forEach(b => Matter.Composite.remove(engine.world, b));
+
+      const dmg = Math.floor(baseAtk * cd.skill.power * (popCount * 0.3 + 1.5) * skillPowerScale * boostMultiplier);
+      dealDamage(dmg);
+
+      const id = Date.now();
+      setDamageTexts(p => [...p, { id, val: dmg, x: 150, y: 160, color: '#ff0055' }]);
+      setTimeout(() => setDamageTexts(p => p.filter(t => t.id !== id)), 1800);
+
+      setFeverGauge(prev => Math.min(FEVER_MAX, prev + 35));
+
+      for (let i = 0; i < Math.max(15, popCount); i++) {
+        setTimeout(() => spawnPuniRef.current(), i * 30);
+      }
+    } else if (cd.skill.type === 'inflate_puni') {
+      const shuffled = [...allPuniBodies].sort(() => Math.random() - 0.5);
+      const targets = shuffled.slice(0, Math.min(shuffled.length, 3));
+      targets.forEach(b => {
+        const pd = (b as any).puniData as PuniData;
+        if (pd) {
+          pd.size += 5;
+          b.circleRadius = (b.circleRadius || PUNI_RADIUS) * 1.8;
+          Matter.Body.scale(b, 1.8, 1.8);
+        }
+      });
+
+      const dmg = Math.floor(baseAtk * cd.skill.power * skillPowerScale * boostMultiplier);
+      dealDamage(dmg);
+
+      const id = Date.now();
+      setDamageTexts(p => [...p, { id, val: dmg, x: 150, y: 180, color: '#ffff00' }]);
       setTimeout(() => setDamageTexts(p => p.filter(t => t.id !== id)), 1500);
     }
+  };
+
+  const triggerSkill = (charId: string) => {
+    if ((charGauges[charId] || 0) < 100 || isGameOver || isVictory || isPaused || skillCutIn) return;
+    const cd = CHARACTERS.find(c => c.id === charId);
+    if (!cd || !cd.skill) return;
+
+    setCharGauges(prev => ({ ...prev, [charId]: 0 }));
+
+    setSkillCutIn({
+      character: cd,
+      skillName: cd.skill.name,
+      skillType: cd.skill.type,
+    });
+
+    setTimeout(() => {
+      setIsShaking(true);
+      executeSkillEffect(cd);
+    }, 350);
+
+    setTimeout(() => {
+      setIsShaking(false);
+    }, 850);
+
+    setTimeout(() => {
+      setSkillCutIn(null);
+    }, 1100);
   };
 
   // ---------- Matter.js — built from actual container size ----------
@@ -253,6 +374,9 @@ const GameScene = () => {
       const bowlRadius  = Math.min((W / 2) - 6, (H / 2) - 10);
       const bowlCX      = W / 2;
       const bowlCY      = bowlRadius + 12;
+
+      bowlCenterRef.current = { x: bowlCX, y: bowlCY };
+      bowlRadiusRef.current = bowlRadius;
 
       // Build bowl from arc segments
       const walls: Matter.Body[] = [];
@@ -305,6 +429,7 @@ const GameScene = () => {
         (p as any).puniData = { charId, size: 1, level: lv } as PuniData;
         Composite.add(engine.world, p);
       };
+      spawnPuniRef.current = spawnPuni;
 
       for (let i = 0; i < 42; i++) setTimeout(spawnPuni, i * 40);
       const spawnIv = setInterval(() => {
@@ -581,7 +706,7 @@ const GameScene = () => {
   if (!stage || !team.length) return null;
 
   return (
-    <div className="view-container" style={{
+    <div className={`view-container ${isShaking ? 'animate-shake' : ''}`} style={{
       padding: '0',
       display: 'flex',
       flexDirection: 'column',
@@ -631,21 +756,21 @@ const GameScene = () => {
         {team.map(charId => {
           const cd   = CHARACTERS.find(c => c.id === charId);
           if (!cd) return null;
-          const isSkillChar = cd.rank === 'S' || cd.rank === 'SS';
+          const hasSkill = !!cd.skill;
           const g    = charGauges[charId] || 0;
           const full = g >= 100;
           return (
             <div key={charId} style={{ position: 'relative' }}>
               <div
-                className="char-icon"
-                onClick={() => full && isSkillChar ? triggerSkill(charId) : undefined}
+                className={`char-icon ${hasSkill && full ? 'animate-pulse' : ''}`}
+                onClick={() => full && hasSkill ? triggerSkill(charId) : undefined}
                 style={{
                   backgroundColor: 'transparent',
                   width: 50, height: 50,
-                  border:    isSkillChar && full ? `3px solid ${cd.rank === 'SS' ? '#ff22ff' : '#ffff00'}` : '2px solid #555',
+                  border:    hasSkill && full ? `3px solid ${cd.rank === 'SS' ? '#ff22ff' : '#ffff00'}` : '2px solid #555',
                   borderRadius: '50%',
-                  boxShadow: isSkillChar && full ? `0 0 14px ${cd.rank === 'SS' ? '#ff22ff' : '#ff0'}` : 'none',
-                  cursor:    isSkillChar && full ? 'pointer' : 'default',
+                  boxShadow: hasSkill && full ? `0 0 16px ${cd.rank === 'SS' ? '#ff22ff' : '#ffff00'}` : 'none',
+                  cursor:    hasSkill && full ? 'pointer' : 'default',
                   opacity:   full ? 1 : 0.7,
                   position: 'relative', overflow: 'hidden',
                   display: 'flex', alignItems: 'center', justifyContent: 'center'
@@ -654,7 +779,7 @@ const GameScene = () => {
                 <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: `${g}%`, background: 'rgba(255,255,255,0.35)', zIndex: 2 }} />
                 <CharacterAvatar character={cd} size={46} />
               </div>
-              {isSkillChar && full && (
+              {hasSkill && full && (
                 <div style={{ position: 'absolute', top: -8, right: -8, background: cd.rank === 'SS' ? '#ff22ff' : '#ffff00', color: '#000', borderRadius: '50%', padding: 2, zIndex: 5 }}>
                   <Zap size={14} />
                 </div>
@@ -684,6 +809,117 @@ const GameScene = () => {
             {dt.val}
           </div>
         ))}
+
+        {/* ── Skill Cut-In Overlay Animation ── */}
+        {skillCutIn && (
+          <div style={{
+            position: 'absolute',
+            inset: 0,
+            zIndex: 2000,
+            pointerEvents: 'none',
+            overflow: 'hidden',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}>
+            {/* Dynamic Background Banner */}
+            <div className="skill-cutin-bg" style={{
+              position: 'absolute',
+              width: '130%',
+              height: '190px',
+              background: skillCutIn.character.rank === 'SS' 
+                ? 'linear-gradient(110deg, #ff0055 0%, #aa00ff 50%, #ff00aa 100%)'
+                : skillCutIn.character.rank === 'S'
+                ? 'linear-gradient(110deg, #ffaa00 0%, #ff2200 50%, #ff6600 100%)'
+                : 'linear-gradient(110deg, #0088ff 0%, #00cc88 50%, #0044cc 100%)',
+              boxShadow: '0 0 50px rgba(255,255,255,0.8), inset 0 0 30px rgba(0,0,0,0.5)',
+              transform: 'rotate(-6deg)',
+              display: 'flex',
+              alignItems: 'center',
+              borderTop: '5px solid #ffffff',
+              borderBottom: '5px solid #ffffff',
+            }} />
+
+            {/* Flash overlay */}
+            <div className="skill-flash-overlay" style={{
+              position: 'absolute',
+              inset: 0,
+              background: 'white',
+              zIndex: 2005
+            }} />
+
+            {/* Character Cut-In Avatar & Info */}
+            <div className="skill-cutin-avatar" style={{
+              position: 'relative',
+              zIndex: 2010,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '15px',
+              paddingLeft: '10px',
+              paddingRight: '10px'
+            }}>
+              <div style={{
+                position: 'relative',
+                width: 96,
+                height: 96,
+                borderRadius: '50%',
+                border: '4px solid #ffffff',
+                boxShadow: '0 0 25px #ffffff, 0 0 50px ' + skillCutIn.character.color,
+                background: skillCutIn.character.color,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0
+              }}>
+                <CharacterAvatar character={skillCutIn.character} size={88} />
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                {/* Rank & Name */}
+                <div style={{
+                  fontSize: '0.95rem',
+                  fontWeight: 900,
+                  color: '#ffffff',
+                  textShadow: '0 2px 4px #000',
+                  letterSpacing: '1px'
+                }}>
+                  {skillCutIn.character.rank}ランク 【{skillCutIn.character.name}】
+                </div>
+                {/* Skill Name */}
+                <div className="skill-cutin-text" style={{
+                  fontSize: '2rem',
+                  fontWeight: 900,
+                  color: '#ffea00',
+                  textShadow: '-3px -3px 0 #000, 3px -3px 0 #000, -3px 3px 0 #000, 3px 3px 0 #000, 0 0 20px #ffaa00',
+                  whiteSpace: 'nowrap',
+                  marginTop: '2px'
+                }}>
+                  {skillCutIn.skillName}！！
+                </div>
+                {/* Skill Type Tag */}
+                <div style={{
+                  fontSize: '0.8rem',
+                  fontWeight: 900,
+                  color: '#ffffff',
+                  background: 'rgba(0,0,0,0.65)',
+                  padding: '3px 10px',
+                  borderRadius: '12px',
+                  alignSelf: 'flex-start',
+                  marginTop: '4px',
+                  border: '1px solid rgba(255,255,255,0.4)',
+                  boxShadow: '0 2px 6px rgba(0,0,0,0.5)'
+                }}>
+                  {skillCutIn.skillType === 'center_pop' && '🔥 中央のぷにを一括消去！'}
+                  {skillCutIn.skillType === 'random_pop' && '⚡ ランダムにぷにを大量消去！'}
+                  {skillCutIn.skillType === 'all_pop' && '💥 盤面のぷにを全消去！'}
+                  {skillCutIn.skillType === 'inflate_puni' && '✨ ぷにをでかぷに化！'}
+                  {skillCutIn.skillType === 'heal' && '💖 HPを大幅回復！'}
+                  {skillCutIn.skillType === 'damage' && '🗡️ 強烈な一撃必殺！'}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* ── Pause Modal Overlay ── */}
         {isPaused && (

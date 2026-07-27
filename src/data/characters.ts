@@ -72,11 +72,35 @@ export const createRankBadgeSvgDataUrl = (rank: string): string => {
   return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
 };
 
+export type SkillType = 'center_pop' | 'random_pop' | 'all_pop' | 'inflate_puni' | 'heal' | 'damage';
+
 export interface Skill {
   name: string;
-  type: 'damage' | 'heal';
+  type: SkillType;
   power: number; // multiplier for damage or flat heal
+  description?: string;
 }
+
+export const getSkillDescription = (skill?: Skill): string => {
+  if (!skill) return '必殺技を持っていません';
+  if (skill.description) return skill.description;
+  switch (skill.type) {
+    case 'center_pop':
+      return 'パズル中央付近のぷにを一気にまとめて消去し、敵にダメージ＋フィーバーゲージを加速！';
+    case 'random_pop':
+      return '盤面のぷにをランダムに大量消去し、敵に大ダメージを与える！';
+    case 'all_pop':
+      return '画面上のすべてのぷにを一瞬で全消去し、敵に超絶ダイレクト大ダメージ！';
+    case 'inflate_puni':
+      return '盤面のぷにをランダムで複数選んで一気に「でかぷに」へ成長させる！';
+    case 'heal':
+      return `プレイヤーのHPを ${skill.power} ポイント即座に回復する！`;
+    case 'damage':
+      return '敵単体に強力なダイレクトダメージを与える！';
+    default:
+      return '必殺技を発動してバトルを有利に進める！';
+  }
+};
 
 export interface Character {
   id: string;
@@ -113,7 +137,7 @@ const generateCharacters = (): Character[] => {
     emoji: string;
     trait?: string;
     skillName?: string;
-    skillType?: 'damage' | 'heal';
+    skillType?: SkillType;
     skillPower?: number;
   }
 
@@ -136,17 +160,19 @@ const generateCharacters = (): Character[] => {
           name: a.skillName,
           type: a.skillType,
           power: a.skillPower || (
-            rank === 'SS' ? (a.skillType === 'damage' ? 50 : 3000) :
-            rank === 'S'  ? (a.skillType === 'damage' ? 30 : 1500) :
-            (a.skillType === 'damage' ? 12 : 400)
+            rank === 'SS' ? (a.skillType === 'heal' ? 3000 : 50) :
+            rank === 'S'  ? (a.skillType === 'heal' ? 1500 : 30) :
+            (a.skillType === 'heal' ? 400 : 12)
           )
         };
       } else if (rank === 'S' || rank === 'SS') {
         const isSS = rank === 'SS';
+        const defaultTypes: SkillType[] = ['center_pop', 'random_pop', 'inflate_puni', 'heal', 'all_pop'];
+        const chosenType = defaultTypes[i % defaultTypes.length];
         char.skill = {
           name: isSS ? (i % 2 === 0 ? '覇王絶空斬' : '神聖なる光') : (i % 2 === 0 ? '爆裂連撃' : '癒やしの陣'),
-          type: i % 2 === 0 ? 'damage' : 'heal',
-          power: isSS ? (i % 2 === 0 ? 45 : 2500) : (i % 2 === 0 ? 25 : 1000),
+          type: chosenType,
+          power: isSS ? (chosenType === 'heal' ? 2500 : 45) : (chosenType === 'heal' ? 1000 : 25),
         };
       }
 
@@ -217,61 +243,61 @@ const generateCharacters = (): Character[] => {
 
   // Bランク妖怪
   const bList: CharacterDef[] = [
-    { name: 'さきがけの助', emoji: '🚩', trait: '一番槍を狙う一番手。', skillName: '突撃一番槍', skillType: 'damage' },
-    { name: 'グラグライオン', emoji: '🌋', trait: '大地をグラグラ揺らすライオン。', skillName: 'グラグララッシュ', skillType: 'damage' },
-    { name: 'クワノ武士', emoji: '🪲', trait: '立派なハサミで切断するクワガタ。', skillName: 'ハサミ一閃', skillType: 'damage' },
-    { name: 'フユニャン', emoji: '🐱', trait: '根性あふれるダークブルーのガッツネコ！', skillName: 'ど根性ストレート', skillType: 'damage' },
-    { name: '妖怪ガッツK', emoji: '⚾', trait: 'ガッツ溢れる伝説のベースボール妖怪。', skillName: 'ガッツフルスイング', skillType: 'damage' },
-    { name: 'フユニャン曹操', emoji: '👑', trait: '三国志の英雄・曹操となったフユニャン。', skillName: '覇王肉きゅう', skillType: 'damage' },
-    { name: 'さきがけの助金旋', emoji: '✨', trait: '金箔を施された特別なさきがけの助。', skillName: '黄金突撃', skillType: 'damage' },
+    { name: 'さきがけの助', emoji: '🚩', trait: '一番槍を狙う一番手。', skillName: '突撃一番槍', skillType: 'random_pop' },
+    { name: 'グラグライオン', emoji: '🌋', trait: '大地をグラグラ揺らすライオン。', skillName: 'グラグララッシュ', skillType: 'center_pop' },
+    { name: 'クワノ武士', emoji: '🪲', trait: '立派なハサミで切断するクワガタ。', skillName: 'ハサミ一閃', skillType: 'random_pop' },
+    { name: 'フユニャン', emoji: '🐱', trait: '根性あふれるダークブルーのガッツネコ！', skillName: 'ど根性ストレート', skillType: 'inflate_puni' },
+    { name: '妖怪ガッツK', emoji: '⚾', trait: 'ガッツ溢れる伝説のベースボール妖怪。', skillName: 'ガッツフルスイング', skillType: 'center_pop' },
+    { name: 'フユニャン曹操', emoji: '👑', trait: '三国志の英雄・曹操となったフユニャン。', skillName: '覇王肉きゅう', skillType: 'random_pop' },
+    { name: 'さきがけの助金旋', emoji: '✨', trait: '金箔を施された特別なさきがけの助。', skillName: '黄金突撃', skillType: 'center_pop' },
     { name: 'いばる〜ん', emoji: '😤', trait: '威張ってばかりいる気取った妖怪。', skillName: 'いばり威嚇', skillType: 'heal' },
-    { name: '早乙女乱馬', emoji: '🥋', trait: '無差別格闘早乙女流の継承者！', skillName: '飛龍昇天破', skillType: 'damage' },
-    { name: '犬夜叉', emoji: '🐕', trait: '鉄砕牙を操る半妖の少年！', skillName: '風の傷', skillType: 'damage' },
+    { name: '早乙女乱馬', emoji: '🥋', trait: '無差別格闘早乙女流の継承者！', skillName: '飛龍昇天破', skillType: 'all_pop' },
+    { name: '犬夜叉', emoji: '🐕', trait: '鉄砕牙を操る半妖の少年！', skillName: '風の傷', skillType: 'random_pop' },
   ];
   createSet('B', 300, 40, '#ff88aa', bList);
 
   // Aランク妖怪
   const aList: CharacterDef[] = [
-    { name: '轟獅子', emoji: '🦁', trait: '轟く咆哮で味方の士気を最大に高める！', skillName: '轟く咆哮', skillType: 'damage' },
-    { name: 'くしゃ武者', emoji: '😡', trait: 'くしゃくしゃに怒り狂う暴れ武者。', skillName: '怒髪天斬り', skillType: 'damage' },
-    { name: '万尾獅子', emoji: '🦁', trait: '「満を持して…今だ！」圧倒的一撃。', skillName: '満を持して連撃', skillType: 'damage' },
-    { name: 'モモタロニャン', emoji: '🍑', trait: '鬼退治の英雄となった桃ネコ妖怪。', skillName: 'きびだんごアタック', skillType: 'damage' },
-    { name: 'マスクドニャーン', emoji: '🎭', trait: '覆面を被った謎のプロレスニャン。', skillName: '必殺フライングプレス', skillType: 'damage' },
-    { name: 'ニャン騎士', emoji: '🛡️', trait: '騎士道精神に溢れる高貴なネコ騎士。', skillName: 'ホーリーセイバー', skillType: 'damage' },
+    { name: '轟獅子', emoji: '🦁', trait: '轟く咆哮で味方の士気を最大に高める！', skillName: '轟く咆哮', skillType: 'inflate_puni' },
+    { name: 'くしゃ武者', emoji: '😡', trait: 'くしゃくしゃに怒り狂う暴れ武者。', skillName: '怒髪天斬り', skillType: 'center_pop' },
+    { name: '万尾獅子', emoji: '🦁', trait: '「満を持して…今だ！」圧倒的一撃。', skillName: '満を持して連撃', skillType: 'random_pop' },
+    { name: 'モモタロニャン', emoji: '🍑', trait: '鬼退治の英雄となった桃ネコ妖怪。', skillName: 'きびだんごアタック', skillType: 'inflate_puni' },
+    { name: 'マスクドニャーン', emoji: '🎭', trait: '覆面を被った謎のプロレスニャン。', skillName: '必殺フライングプレス', skillType: 'center_pop' },
+    { name: 'ニャン騎士', emoji: '🛡️', trait: '騎士道精神に溢れる高貴なネコ騎士。', skillName: 'ホーリーセイバー', skillType: 'random_pop' },
     { name: '総ナメ', emoji: '👅', trait: 'あらゆる栄冠を総ナメにする豪運妖怪。', skillName: '栄光の舌舐め', skillType: 'heal' },
-    { name: '天下無僧', emoji: '⛩️', trait: '天下に敵なしと謳われる修行僧。', skillName: '天下無双掌', skillType: 'damage' },
-    { name: 'まさむね', emoji: '⚔️', trait: '名刀政宗を宿した天下一の剣士。', skillName: '名刀一刀両断', skillType: 'damage' },
-    { name: 'むらまさ', emoji: '🗡️', trait: '妖刀村正に魅せられた妖しき剣豪。', skillName: '妖刀連撃', skillType: 'damage' },
+    { name: '天下無僧', emoji: '⛩️', trait: '天下に敵なしと謳われる修行僧。', skillName: '天下無双掌', skillType: 'center_pop' },
+    { name: 'まさむね', emoji: '⚔️', trait: '名刀政宗を宿した天下一の剣士。', skillName: '名刀一刀両断', skillType: 'random_pop' },
+    { name: 'むらまさ', emoji: '🗡️', trait: '妖刀村正に魅せられた妖しき剣豪。', skillName: '妖刀連撃', skillType: 'random_pop' },
   ];
   createSet('A', 450, 60, '#ffaa00', aList);
 
   // Sランク妖怪
   const sList: CharacterDef[] = [
-    { name: '花垣武道', emoji: '👊', trait: '何度倒れても立ち上がるリベンジャー！', skillName: '譲れない思い', skillType: 'damage', skillPower: 35 },
-    { name: 'ミカサ', emoji: '⚔️', trait: '人類最強の戦闘能力を誇る調査兵団。', skillName: 'ブレード乱舞', skillType: 'damage', skillPower: 38 },
-    { name: 'ゴモラ', emoji: '🦖', trait: '超振動波で岩盤をも砕く古代怪獣！', skillName: '超振動波', skillType: 'damage', skillPower: 34 },
-    { name: 'ウルトラマン', emoji: '光', trait: 'M78星雲からきた光の巨人！', skillName: 'スペシウム光線', skillType: 'damage', skillPower: 40 },
-    { name: '獅白ぼたん', emoji: '♌', trait: 'ホロライブ所属のFPSゲーマー獅子！', skillName: 'エイム爆撃', skillType: 'damage', skillPower: 36 },
-    { name: '赤ぷよ', emoji: '🔴', trait: '4つ揃うと弾けて大連鎖を起こす！', skillName: 'ばよえ〜ん連鎖', skillType: 'damage', skillPower: 32 },
-    { name: 'アーサー', emoji: '👑', trait: '聖剣エクスカリバーを掲げる騎士王。', skillName: 'エクスカリバー', skillType: 'damage', skillPower: 38 },
-    { name: 'クワガ大将', emoji: '🪲', trait: 'クワガタ族の頂点に立つ将軍。', skillName: '大将の挟撃', skillType: 'damage', skillPower: 30 },
+    { name: '花垣武道', emoji: '👊', trait: '何度倒れても立ち上がるリベンジャー！', skillName: '譲れない思い', skillType: 'inflate_puni', skillPower: 35 },
+    { name: 'ミカサ', emoji: '⚔️', trait: '人類最強の戦闘能力を誇る調査兵団。', skillName: 'ブレード乱舞', skillType: 'random_pop', skillPower: 38 },
+    { name: 'ゴモラ', emoji: '🦖', trait: '超振動波で岩盤をも砕く古代怪獣！', skillName: '超振動波', skillType: 'center_pop', skillPower: 34 },
+    { name: 'ウルトラマン', emoji: '光', trait: 'M78星雲からきた光の巨人！', skillName: 'スペシウム光線', skillType: 'center_pop', skillPower: 40 },
+    { name: '獅白ぼたん', emoji: '♌', trait: 'ホロライブ所属のFPSゲーマー獅子！', skillName: 'エイム爆撃', skillType: 'random_pop', skillPower: 36 },
+    { name: '赤ぷよ', emoji: '🔴', trait: '4つ揃うと弾けて大連鎖を起こす！', skillName: 'ばよえ〜ん連鎖', skillType: 'all_pop', skillPower: 32 },
+    { name: 'アーサー', emoji: '👑', trait: '聖剣エクスカリバーを掲げる騎士王。', skillName: 'エクスカリバー', skillType: 'center_pop', skillPower: 38 },
+    { name: 'クワガ大将', emoji: '🪲', trait: 'クワガタ族の頂点に立つ将軍。', skillName: '大将の挟撃', skillType: 'random_pop', skillPower: 30 },
     { name: 'オオクワノ神', emoji: '✨', trait: '神の加護を受けたクワガタの神霊。', skillName: '神域の鋏', skillType: 'heal', skillPower: 2000 },
-    { name: 'なまはげ', emoji: '👹', trait: '「悪い子はいねーかー！」包丁を乱舞！', skillName: '悪い子乱舞', skillType: 'damage', skillPower: 38 },
+    { name: 'なまはげ', emoji: '👹', trait: '「悪い子はいねーかー！」包丁を乱舞！', skillName: '悪い子乱舞', skillType: 'random_pop', skillPower: 38 },
   ];
   createSet('S', 700, 100, '#ff2222', sList);
 
   // SSランク妖怪
   const ssList: CharacterDef[] = [
-    { name: 'パウロ', emoji: '🗡️', trait: '無職転生の伝承剣士。二刀流で敵を圧倒！', skillName: '二閃流斬撃', skillType: 'damage', skillPower: 60 },
-    { name: 'ベニマル', emoji: '🔥', trait: '鬼種族の若き大将。黒炎で敵を焼き尽くす！', skillName: '黒炎獄', skillType: 'damage', skillPower: 62 },
-    { name: '里羽リュウタ', emoji: '🐉', trait: '龍の血を継ぐ龍羽の戦士！', skillName: '龍神極光斬', skillType: 'damage', skillPower: 65 },
-    { name: '阿弥陀丸', emoji: '⚔️', trait: 'シャーマンキングの持霊！名刀春雨の一撃！', skillName: '真空仏陀切り', skillType: 'damage', skillPower: 64 },
-    { name: '覚醒早乙女乱馬', emoji: '🥋', trait: '究極の格闘センスが開花した乱馬！', skillName: '猛虎高飛車', skillType: 'damage', skillPower: 68 },
-    { name: 'フェルト', emoji: '風', trait: '風のように素早い風足の王位候補。', skillName: '風の疾走', skillType: 'damage', skillPower: 58 },
-    { name: 'めぐみん', emoji: '💥', trait: '爆裂魔法を愛し、爆裂魔法に生きる紅魔族！', skillName: 'エクスプロージョン！', skillType: 'damage', skillPower: 80 },
+    { name: 'パウロ', emoji: '🗡️', trait: '無職転生の伝承剣士。二刀流で敵を圧倒！', skillName: '二閃流斬撃', skillType: 'random_pop', skillPower: 60 },
+    { name: 'ベニマル', emoji: '🔥', trait: '鬼種族の若き大将。黒炎で敵を焼き尽くす！', skillName: '黒炎獄', skillType: 'center_pop', skillPower: 62 },
+    { name: '里羽リュウタ', emoji: '🐉', trait: '龍の血を継ぐ龍羽の戦士！', skillName: '龍神極光斬', skillType: 'inflate_puni', skillPower: 65 },
+    { name: '阿弥陀丸', emoji: '⚔️', trait: 'シャーマンキングの持霊！名刀春雨の一撃！', skillName: '真空仏陀切り', skillType: 'random_pop', skillPower: 64 },
+    { name: '覚醒早乙女乱馬', emoji: '🥋', trait: '究極の格闘センスが開花した乱馬！', skillName: '猛虎高飛車', skillType: 'inflate_puni', skillPower: 68 },
+    { name: 'フェルト', emoji: '風', trait: '風のように素早い風足の王位候補。', skillName: '風の疾走', skillType: 'random_pop', skillPower: 58 },
+    { name: 'めぐみん', emoji: '💥', trait: '爆裂魔法を愛し、爆裂魔法に生きる紅魔族！', skillName: 'エクスプロージョン！', skillType: 'all_pop', skillPower: 80 },
     { name: '五月', emoji: '⭐', trait: '五等分の花嫁！真面目で一途なパワー！', skillName: '星の祝福', skillType: 'heal', skillPower: 4500 },
-    { name: 'メリオダス', emoji: '😈', trait: '＜七つの大罪＞団長！魔神の力を全解放！', skillName: '全反撃（フルカウンター）', skillType: 'damage', skillPower: 75 },
-    { name: 'ブシ王', emoji: '👑', trait: 'レジェンド武士の王者！全妖怪を平定する！', skillName: '天下布武・千人斬り', skillType: 'damage', skillPower: 70 },
+    { name: 'メリオダス', emoji: '😈', trait: '＜七つの大罪＞団長！魔神の力を全解放！', skillName: '全反撃（フルカウンター）', skillType: 'all_pop', skillPower: 75 },
+    { name: 'ブシ王', emoji: '👑', trait: 'レジェンド武士の王者！全妖怪を平定する！', skillName: '天下布武・千人斬り', skillType: 'center_pop', skillPower: 70 },
   ];
   createSet('SS', 1200, 250, '#ff22ff', ssList);
 

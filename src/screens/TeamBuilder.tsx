@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useGame } from '../store/GameContext';
-import { CHARACTERS, getCharacterMaxLevel } from '../data/characters';
+import { CHARACTERS, getCharacterMaxLevel, getSkillDescription } from '../data/characters';
 import type { Rank } from '../data/characters';
 import { ArrowLeft, ArrowUpCircle, ChevronLeft, ChevronRight, Check, Star, Zap } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -294,16 +294,47 @@ const TeamBuilder = () => {
                   &nbsp;|&nbsp;HP:{selectedCharDef.baseHp + selectedCharData.level * 10}
                   &nbsp;|&nbsp;ATK:{selectedCharDef.baseAtk + selectedCharData.level * 5}
                 </div>
-                {/* わざレベル */}
-                {selectedCharDef.skill && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '5px', marginTop: '4px', fontSize: '0.75rem' }}>
-                    <Zap size={12} color="#cc8800" />
-                    <span style={{ color: '#cc8800', fontWeight: 'bold' }}>{selectedCharDef.skill.name}</span>
-                    <span style={{ color: '#666' }}>わざLv.</span>
-                    <StarRating count={selectedCharData.skillLevel || 1} />
-                  </div>
-                )}
               </div>
+            </div>
+
+            {/* 必殺技 (Skill) 詳細カード */}
+            <div style={{ marginBottom: '10px' }}>
+              {selectedCharDef.skill ? (
+                <div style={{
+                  background: 'linear-gradient(135deg, rgba(255,200,0,0.18) 0%, rgba(255,100,0,0.12) 100%)',
+                  borderRadius: '12px',
+                  padding: '10px 12px',
+                  border: '1.5px solid rgba(255,170,0,0.4)',
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <Zap size={16} color="#d97706" />
+                      <span style={{ fontWeight: 900, fontSize: '0.9rem', color: '#b45309' }}>
+                        {selectedCharDef.skill.name}
+                      </span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', color: '#78350f' }}>
+                      <span>技Lv.</span>
+                      <StarRating count={selectedCharData.skillLevel || 1} />
+                    </div>
+                  </div>
+                  <div style={{ fontSize: '0.8rem', color: '#451a03', lineHeight: '1.45', fontWeight: 600 }}>
+                    {getSkillDescription(selectedCharDef.skill)}
+                  </div>
+                </div>
+              ) : (
+                <div style={{
+                  background: 'rgba(0,0,0,0.04)',
+                  borderRadius: '10px',
+                  padding: '8px 12px',
+                  fontSize: '0.78rem',
+                  color: '#777',
+                  borderLeft: '3px solid #aaa'
+                }}>
+                  ⚡ 必殺技：なし
+                </div>
+              )}
             </div>
 
             {/* 特性 (Trait) + イベント特効情報 */}
