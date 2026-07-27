@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { loginAndGetData, savePlayerData } from '../firebase';
 import { CHARACTERS, getCharacterMaxLevel } from '../data/characters';
 import { CURRENT_EVENTS } from '../data/events';
+import { STAGES } from '../data/stages';
 import type { PlayerData } from '../firebase';
 
 interface GameState extends PlayerData {
@@ -148,10 +149,11 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const unlockAllStages = () => {
     mutateAndSave(() => {
-      const allStageIds = ['stage_1', 'stage_2', 'stage_3', 'stage_4', 'stage_5', 'stage_6', 'stage_hidden_1', 'stage_hidden_2'];
+      const allStageIds = STAGES.map(s => s.id);
+      const lastStageId = STAGES[STAGES.length - 1]?.id || 'stage_150';
       return {
         clearedStages: allStageIds,
-        maxClearedStageId: 'stage_hidden_2'
+        maxClearedStageId: lastStageId
       };
     });
   };

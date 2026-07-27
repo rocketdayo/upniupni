@@ -74,7 +74,9 @@ export const DebugConsoleScreen: React.FC = () => {
     return (
       <div style={{
         width: '100%',
-        minHeight: '100vh',
+        height: '100%',
+        overflowY: 'auto',
+        WebkitOverflowScrolling: 'touch',
         background: 'linear-gradient(135deg, #0f0c20, #1a102f)',
         color: '#fff',
         display: 'flex',
@@ -201,7 +203,9 @@ export const DebugConsoleScreen: React.FC = () => {
   return (
     <div style={{
       width: '100%',
-      minHeight: '100vh',
+      height: '100%',
+      overflowY: 'auto',
+      WebkitOverflowScrolling: 'touch',
       background: '#12121e',
       color: '#fff',
       display: 'flex',
@@ -210,6 +214,10 @@ export const DebugConsoleScreen: React.FC = () => {
     }}>
       {/* ヘッダー */}
       <div style={{
+        position: 'sticky',
+        top: 0,
+        zIndex: 10,
+        flexShrink: 0,
         background: '#1a1a2e',
         padding: '12px 16px',
         display: 'flex',
