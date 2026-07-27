@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { useGame } from '../store/GameContext';
 import { CHARACTERS, getCharacterMaxLevel } from '../data/characters';
+import { CharacterAvatar } from '../components/CharacterAvatar';
 
 export const DebugConsoleScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -377,28 +378,7 @@ export const DebugConsoleScreen: React.FC = () => {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', background: '#141428', padding: '10px', borderRadius: '8px' }}>
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
               {/* キャラ画像プレビュー */}
-              <div style={{
-                width: '44px',
-                height: '44px',
-                borderRadius: '50%',
-                background: selectedChar.color,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                position: 'relative',
-                flexShrink: 0,
-                border: '2px solid #fff'
-              }}>
-                {selectedChar.imageUrl ? (
-                  <img
-                    src={selectedChar.imageUrl}
-                    alt={selectedChar.name}
-                    onError={e => { (e.target as HTMLElement).style.display = 'none'; }}
-                    style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover', position: 'absolute', top: 0, left: 0 }}
-                  />
-                ) : null}
-                <span style={{ fontSize: '1.4rem' }}>{selectedChar.emoji}</span>
-              </div>
+              <CharacterAvatar character={selectedChar} size={44} />
 
               <select
                 value={selectedCharId}

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { getPublicUrl, createPuniSvgDataUrl } from '../data/characters';
+import { getPublicUrl } from '../data/characters';
 import type { Character } from '../data/characters';
 
 interface CharacterAvatarProps {
@@ -20,25 +20,11 @@ export const CharacterAvatar: React.FC<CharacterAvatarProps> = ({
   onClick
 }) => {
   const rawPath = character.imageUrl || '';
-  const cleanPath = rawPath.replace(/^(\.\/|\/)+/, '');
-
-  const sources = [
-    getPublicUrl(rawPath),
-    `./${cleanPath}`,
-    `/${cleanPath}`,
-    character.rankImage ? getPublicUrl(character.rankImage) : '',
-    createPuniSvgDataUrl(character.emoji, character.color)
-  ].filter(Boolean);
-
-  const [srcIndex, setSrcIndex] = useState(0);
-  const [imageFailed, setImageFailed] = useState(false);
+  const imgUrl = rawPath ? getPublicUrl(rawPath) : '';
+  const [imageFailed, setImageFailed] = useState(!imgUrl);
 
   const handleError = () => {
-    if (srcIndex < sources.length - 1) {
-      setSrcIndex(prev => prev + 1);
-    } else {
-      setImageFailed(true);
-    }
+    setImageFailed(true);
   };
 
   return (
@@ -65,8 +51,9 @@ export const CharacterAvatar: React.FC<CharacterAvatarProps> = ({
     >
       {!imageFailed ? (
         <img
-          src={sources[srcIndex]}
-          alt={character.name}
+          src={imgUrl}
+          alt=""
+          aria-hidden="true"
           onError={handleError}
           style={{
             width: '100%',
@@ -85,7 +72,8 @@ export const CharacterAvatar: React.FC<CharacterAvatarProps> = ({
             filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))',
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'center'
+            justifyContent: 'center',
+            userSelect: 'none'
           }}
         >
           {character.emoji || '👾'}

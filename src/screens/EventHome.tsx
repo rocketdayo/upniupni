@@ -1,9 +1,10 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Star, Zap } from 'lucide-react';
+import { ArrowLeft, Zap } from 'lucide-react';
 import { CURRENT_EVENTS } from '../data/events';
 import { CHARACTERS } from '../data/characters';
 import { useGame } from '../store/GameContext';
+import { CharacterAvatar } from '../components/CharacterAvatar';
 
 const EventHome = () => {
   const navigate = useNavigate();
@@ -73,13 +74,14 @@ const EventHome = () => {
                         display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px',
                         opacity: owned ? 1 : 0.4, position: 'relative',
                       }}>
-                        <div className="char-icon" style={{
-                          backgroundColor: c.color, width: '52px', height: '52px', fontSize: '1.5rem',
-                          border: owned ? '2px solid #ff2255' : '2px dashed #888',
-                          boxShadow: owned ? '0 0 10px rgba(255,34,85,0.5)' : 'none',
-                        }}>
-                          {c.imageUrl ? <img src={c.imageUrl} alt={c.name} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} /> : c.emoji}
-                        </div>
+                        <CharacterAvatar
+                          character={c}
+                          size={50}
+                          style={{
+                            border: owned ? '2px solid #ff2255' : '2px dashed #888',
+                            boxShadow: owned ? '0 0 10px rgba(255,34,85,0.5)' : 'none',
+                          }}
+                        />
                         <span style={{ fontSize: '0.65rem', color: owned ? 'white' : '#888', textAlign: 'center', maxWidth: '55px', lineHeight: 1.2 }}>{c.name}</span>
                         {!owned && (
                           <div style={{ position: 'absolute', top: -2, right: -2, background: '#888', borderRadius: '50%', width: 14, height: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.5rem', color: 'white' }}>?</div>
