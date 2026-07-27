@@ -206,11 +206,10 @@ const GameScene = () => {
       cvs.style.height     = '100%';
       cvs.style.touchAction= 'none';
 
-      // Bowl geometry: position bowl at center-to-lower-middle of scene, not at bottom of screen
-      const bowlRadius  = Math.min((W / 2) - 16, 170);
+      // Bowl geometry: Fill almost full width of scene like original game
+      const bowlRadius  = Math.min((W / 2) - 6, (H / 2) - 10);
       const bowlCX      = W / 2;
-      // bowlCY sets bowl center near upper-middle of scene, making bottom of bowl land comfortably at ~360px from top
-      const bowlCY      = bowlRadius + 20;
+      const bowlCY      = bowlRadius + 12;
 
       // Build bowl from arc segments (more segments = fewer gaps)
       const walls: Matter.Body[] = [];
@@ -264,10 +263,10 @@ const GameScene = () => {
         Composite.add(engine.world, p);
       };
 
-      for (let i = 0; i < 35; i++) setTimeout(spawnPuni, i * 80);
+      for (let i = 0; i < 42; i++) setTimeout(spawnPuni, i * 60);
       const spawnIv = setInterval(() => {
-        if (Composite.allBodies(engine.world).filter(b => !b.isStatic).length < 40) spawnPuni();
-      }, 500);
+        if (Composite.allBodies(engine.world).filter(b => !b.isStatic).length < 48) spawnPuni();
+      }, 400);
 
       // Coordinate scale (canvas internal size == W×H, CSS size == container size)
       const getPos = (e: PointerEvent) => {
