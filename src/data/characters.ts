@@ -42,6 +42,7 @@ const generateCharacters = (): Character[] => {
     trait?: string;
     skillName?: string;
     skillType?: 'damage' | 'heal';
+    skillPower?: number;
   }
 
   const createSet = (rank: Rank, baseHp: number, baseAtk: number, color: string, list: CharacterDef[]) => {
@@ -62,14 +63,18 @@ const generateCharacters = (): Character[] => {
         char.skill = {
           name: a.skillName,
           type: a.skillType,
-          power: rank === 'SS' ? (a.skillType === 'damage' ? 35 : 1800) : rank === 'S' ? (a.skillType === 'damage' ? 20 : 800) : (a.skillType === 'damage' ? 10 : 300)
+          power: a.skillPower || (
+            rank === 'SS' ? (a.skillType === 'damage' ? 50 : 3000) :
+            rank === 'S'  ? (a.skillType === 'damage' ? 30 : 1500) :
+            (a.skillType === 'damage' ? 12 : 400)
+          )
         };
       } else if (rank === 'S' || rank === 'SS') {
         const isSS = rank === 'SS';
         char.skill = {
           name: isSS ? (i % 2 === 0 ? '覇王絶空斬' : '神聖なる光') : (i % 2 === 0 ? '爆裂連撃' : '癒やしの陣'),
           type: i % 2 === 0 ? 'damage' : 'heal',
-          power: isSS ? (i % 2 === 0 ? 30 : 1500) : (i % 2 === 0 ? 15 : 500),
+          power: isSS ? (i % 2 === 0 ? 45 : 2500) : (i % 2 === 0 ? 25 : 1000),
         };
       }
 
@@ -94,12 +99,12 @@ const generateCharacters = (): Character[] => {
   };
 
   // Eランク妖怪（各族ミックス）
-  const eList = [
+  const eList: CharacterDef[] = [
     { name: 'ぶようじん坊', emoji: '🗡️', trait: 'いつも油断ばかりしている足軽妖怪。' },
     { name: 'わすれん帽', emoji: '🎩', trait: '取り憑かれると大事なことを忘れてしまう。' },
     { name: 'どき土器', emoji: '🏺', trait: '何でもドキドキしてしまう土器の妖怪。' },
     { name: 'ひも爺', emoji: '👴', trait: 'お腹を空かせるひもじいパワーの持ち主。' },
-    { name: 'ネガティブーン', emoji: '蚊', trait: 'ネガティブな気持ちにさせる小さな妖怪。' },
+    { name: 'ネガティブーン', emoji: '🦟', trait: 'ネガティブな気持ちにさせる小さな妖怪。' },
     { name: 'じんめん犬', emoji: '🐶', trait: '顔が人間、体が犬のシュールな妖怪。' },
     { name: 'ツチノコ', emoji: '🐍', trait: 'めったに出会えないラッキーな妖怪。' },
     { name: 'ジミー', emoji: '🥷', trait: '存在感がとても薄い忍者妖怪。' },
@@ -109,7 +114,7 @@ const generateCharacters = (): Character[] => {
   createSet('E', 100, 10, '#88cc88', eList);
 
   // Dランク妖怪（各族ミックス）
-  const dList = [
+  const dList: CharacterDef[] = [
     { name: 'ノガッパ', emoji: '🥒', trait: 'キュウリが大好きな河童妖怪。' },
     { name: 'グレるリン', emoji: '🕶️', trait: 'リーゼントが自慢の不良妖怪。' },
     { name: 'バクロ婆', emoji: '👵', trait: '隠し事を暴露させてしまうおばあさん。' },
@@ -124,7 +129,7 @@ const generateCharacters = (): Character[] => {
   createSet('D', 150, 15, '#55aa55', dList);
 
   // Cランク妖怪（各族ミックス）
-  const cList = [
+  const cList: CharacterDef[] = [
     { name: 'コマじろう', emoji: '🐯', trait: 'コマさんの弟。都会にすっかり慣れている。' },
     { name: 'メラメライオン', emoji: '🦁', trait: '燃え上がる情熱でみんなをアツくする！' },
     { name: 'ほのボーノ', emoji: '☀️', trait: '場をほのぼのさせる癒やし系妖怪。' },
@@ -168,33 +173,33 @@ const generateCharacters = (): Character[] => {
   ];
   createSet('A', 450, 60, '#ffaa00', aList);
 
-  // Sランク妖怪（各族ミックス）
+  // Sランク妖怪（各族ミックス・多彩で強力な必殺技）
   const sList: CharacterDef[] = [
-    { name: 'オロチ', emoji: '🐍', trait: 'さすらいの妖魔。龍の影を自在に操る。', skillName: 'やたの鏡・龍の影', skillType: 'damage' },
-    { name: 'キュウビ', emoji: '🦊', trait: '九つの尾を持つ最高峰の狐妖怪。', skillName: '紅蓮地獄', skillType: 'damage' },
-    { name: 'ブシニャン', emoji: '⚔️', trait: 'レジェンド妖怪！伝説の剣技を解き放つ！', skillName: 'カツオ節斬り', skillType: 'damage' },
-    { name: 'あつガルル', emoji: '🐺', trait: '灼熱の炎を身に纏う凄まじい狼。', skillName: 'プロミネンス', skillType: 'damage' },
-    { name: '百鬼姫', emoji: '👸', trait: '鬼族の姫君。漆黒の闇花を咲かせる。', skillName: 'ブラックホール', skillType: 'damage' },
-    { name: '影オロチ', emoji: '👤', trait: '影の暗殺者。一瞬でターゲットを屠る。', skillName: '影殺し', skillType: 'damage' },
-    { name: 'なまはげ', emoji: '👹', trait: '「悪い子はいねーかー！」包丁を振るう！', skillName: '包丁乱撃', skillType: 'damage' },
-    { name: '土蜘蛛', emoji: '🕷️', trait: '元祖軍の大将。威風堂々とした蜘蛛妖怪。', skillName: '土蜘蛛の陣', skillType: 'damage' },
-    { name: '大ガマ', emoji: '🐸', trait: '本家軍の大将。ガマの油で味方を癒やす。', skillName: '蝦蟇油の秘術', skillType: 'heal' },
-    { name: 'ぬらりひょん', emoji: '👨‍💼', trait: '妖魔界の評議長。圧倒的なカリスマを誇る。', skillName: '波動砲', skillType: 'damage' },
+    { name: 'オロチ', emoji: '🐍', trait: 'さすらいの妖魔。龍の影を自在に操る。', skillName: 'やたの鏡', skillType: 'damage', skillPower: 30 },
+    { name: 'キュウビ', emoji: '🦊', trait: '九つの尾を持つ最高峰の狐妖怪。', skillName: '紅蓮地獄', skillType: 'damage', skillPower: 32 },
+    { name: 'ブシニャン', emoji: '⚔️', trait: 'レジェンド妖怪！伝説の剣技を解き放つ！', skillName: 'カツオ節斬り', skillType: 'damage', skillPower: 35 },
+    { name: 'あつガルル', emoji: '🐺', trait: '灼熱の炎を身に纏う凄まじい狼。', skillName: 'アツアツメラメラ', skillType: 'damage', skillPower: 30 },
+    { name: '百鬼姫', emoji: '👸', trait: '鬼族の姫君。漆黒の闇花を咲かせる。', skillName: '百鬼夜行', skillType: 'damage', skillPower: 28 },
+    { name: '影オロチ', emoji: '👤', trait: '影の暗殺者。一瞬でターゲットを屠る。', skillName: '影流やたの鏡', skillType: 'heal', skillPower: 1500 },
+    { name: 'なまはげ', emoji: '👹', trait: '「悪い子はいねーかー！」包丁を振るう！', skillName: '悪い子はいねーかー', skillType: 'damage', skillPower: 38 },
+    { name: '土蜘蛛', emoji: '🕷️', trait: '元祖軍の大将。威風堂々とした蜘蛛妖怪。', skillName: '土蜘蛛の大陣', skillType: 'damage', skillPower: 32 },
+    { name: '大ガマ', emoji: '🐸', trait: '本家軍の大将。ガマの油で味方を癒やす。', skillName: '蝦蟇油の護り', skillType: 'heal', skillPower: 1800 },
+    { name: 'ぬらりひょん', emoji: '👨‍💼', trait: '妖魔界の評議長。圧倒的なカリスマを誇る。', skillName: '波動滅殺砲', skillType: 'damage', skillPower: 34 },
   ];
   createSet('S', 700, 100, '#ff2222', sList);
 
-  // SSランク妖怪（伝説・神クラス）
+  // SSランク妖怪（伝説・神クラスの超絶威力必殺技）
   const ssList: CharacterDef[] = [
-    { name: 'エンマ大王', emoji: '👑', trait: '妖魔界を統べる若き大王！全属性を凌駕する覇道！', skillName: '覇王黒龍波', skillType: 'damage' },
-    { name: '覚醒日野神', emoji: '💻', trait: '神の領域に達した創造主。無限のアイディアで攻撃！', skillName: 'メガゾーンブレイク', skillType: 'damage' },
-    { name: '不動明王', emoji: '🗡️', trait: '不動の心で悪を断ち切る神聖なる剣豪！', skillName: '不動雷鳴剣', skillType: 'damage' },
-    { name: '太陽神エンマ', emoji: '☀️', trait: '太陽の輝きを身に纏うエンマの神形態！', skillName: 'ソーラーフレア', skillType: 'damage' },
-    { name: '暗黒神エンマ', emoji: '🌑', trait: '暗黒の力を解放した極限のエンマ大王！', skillName: 'ダークネスクラッシュ', skillType: 'damage' },
-    { name: '極オロチ', emoji: '🐉', trait: '極の称号を得た最恐のオロチ！', skillName: '極龍影破', skillType: 'damage' },
-    { name: '極ツチノコ', emoji: '🐍', trait: '幻の中の幻！絶大な幸運をもたらす。', skillName: '千客万来ラッキー', skillType: 'heal' },
-    { name: '暴走エンマ', emoji: '⚡', trait: '制御不能の雷光を放つ怒りのエンマ！', skillName: 'ライトニングドライブ', skillType: 'damage' },
-    { name: 'ラストブシニャン', emoji: '🇺🇸', trait: 'メリケンレジェンド！ド派手な一撃を見舞う！', skillName: 'ハラキリソード', skillType: 'damage' },
-    { name: '覚醒赤鬼', emoji: '👹', trait: '覚醒した鬼の王。大地を揺るがすパワー！', skillName: '金棒大噴火', skillType: 'damage' },
+    { name: 'エンマ大王', emoji: '👑', trait: '妖魔界を統べる若き大王！全属性を凌駕する覇道！', skillName: '覇王閻魔陣', skillType: 'damage', skillPower: 55 },
+    { name: '覚醒日野神', emoji: '💻', trait: '神の領域に達した創造主。無限のアイディアで攻撃！', skillName: '締め切りラッシュ', skillType: 'damage', skillPower: 58 },
+    { name: '不動明王', emoji: '🗡️', trait: '不動の心で悪を断ち切る神聖なる剣豪！', skillName: '不動雷鳴剣・天地一閃', skillType: 'damage', skillPower: 65 },
+    { name: '太陽神エンマ', emoji: '☀️', trait: '太陽の輝きを身に纏うエンマの神形態！', skillName: '日輪閻魔天', skillType: 'damage', skillPower: 60 },
+    { name: '暗黒神エンマ', emoji: '🌑', trait: '暗黒の力を解放した極限のエンマ大王！', skillName: '極暗黒閻魔波', skillType: 'damage', skillPower: 64 },
+    { name: '極オロチ', emoji: '🐉', trait: '極の称号を得た最恐のオロチ！', skillName: '極・やたの鏡', skillType: 'damage', skillPower: 58 },
+    { name: '極ツチノコ', emoji: '🐍', trait: '幻の中の幻！絶大な幸運と大回復をもたらす。', skillName: '超ラッキーゴールド', skillType: 'heal', skillPower: 4000 },
+    { name: '暴走エンマ', emoji: '⚡', trait: '制御不能の雷光を放つ怒りのエンマ！', skillName: '暴走閻魔雷撃', skillType: 'damage', skillPower: 70 },
+    { name: 'ラストブシニャン', emoji: '🇺🇸', trait: 'メリケンレジェンド！ド派手な一撃を見舞う！', skillName: 'ハラキリ切腹斬り', skillType: 'damage', skillPower: 62 },
+    { name: '覚醒赤鬼', emoji: '👹', trait: '覚醒した鬼の王。大地を揺るがすパワー！', skillName: '金棒超大噴火', skillType: 'damage', skillPower: 56 },
   ];
   createSet('SS', 1200, 250, '#ff22ff', ssList);
 
@@ -202,4 +207,3 @@ const generateCharacters = (): Character[] => {
 };
 
 export const CHARACTERS = generateCharacters();
-
