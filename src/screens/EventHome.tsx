@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Zap } from 'lucide-react';
+import { ArrowLeft, Zap, ChevronRight } from 'lucide-react';
 import { CURRENT_EVENTS } from '../data/events';
 import { CHARACTERS } from '../data/characters';
 import { useGame } from '../store/GameContext';
@@ -8,7 +8,7 @@ import { CharacterAvatar } from '../components/CharacterAvatar';
 
 const EventHome = () => {
   const navigate = useNavigate();
-  const { characters, missionProgress, completedMissions } = useGame();
+  const { characters, completedMissions } = useGame();
 
   const eventBoostChars = CHARACTERS.filter(c => c.eventBoost);
   const ownedBoostChars = eventBoostChars.filter(c => characters[c.id]);
@@ -20,6 +20,72 @@ const EventHome = () => {
           <ArrowLeft size={20} />
         </button>
         <h2 style={{ margin: 0 }}>🎪 イベント</h2>
+      </div>
+
+      {/* 超巨大・激アツ裏マップ「常夏ビーチ(裏)」突入バナー */}
+      <div
+        onClick={() => navigate('/event/map')}
+        style={{
+          background: 'linear-gradient(135deg, #7c2d12 0%, #ea580c 50%, #b45309 100%)',
+          border: '4px solid #fde047',
+          borderRadius: '24px',
+          padding: '20px 22px',
+          marginBottom: '24px',
+          boxShadow: '0 12px 35px rgba(234, 88, 12, 0.6), 0 0 20px rgba(253, 224, 71, 0.4)',
+          position: 'relative',
+          overflow: 'hidden',
+          cursor: 'pointer',
+          transition: 'all 0.2s ease',
+        }}
+        onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.03)'}
+        onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+      >
+        <div style={{ position: 'absolute', top: -15, right: -15, fontSize: '6.5rem', opacity: 0.25 }}>👑</div>
+        
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+          <span style={{
+            background: 'linear-gradient(90deg, #ef4444, #dc2626)',
+            color: '#fff',
+            fontSize: '0.8rem',
+            fontWeight: 900,
+            padding: '4px 12px',
+            borderRadius: '16px',
+            boxShadow: '0 0 12px #ef4444',
+            letterSpacing: '1px'
+          }}>
+            🔥 超激ムズ 裏マップ解放中！
+          </span>
+          <span style={{ fontSize: '0.8rem', color: '#fef08a', fontWeight: 900 }}>全5ステージ</span>
+        </div>
+
+        <div style={{ fontSize: '1.8rem', fontWeight: 900, color: '#ffffff', textShadow: '0 2px 8px rgba(0,0,0,0.8)', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          🏝️ 常夏ビーチ (裏) 👑
+        </div>
+
+        <div style={{ fontSize: '0.9rem', color: '#ffedd5', lineHeight: 1.5, marginBottom: '16px', fontWeight: 600 }}>
+          最奥に潜む「サマーエンマ大王」を撃破せよ！<br />
+          クリアで<strong style={{ color: '#fde047', fontSize: '1rem' }}>最大20,000 pt Yポイント</strong>＆超豪華報酬を獲得！
+        </div>
+
+        {/* 超デカい特注アクションボタン */}
+        <div style={{
+          background: 'linear-gradient(135deg, #f59e0b, #d97706)',
+          color: '#000000',
+          border: '3px solid #fef08a',
+          borderRadius: '16px',
+          padding: '14px 20px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '10px',
+          fontWeight: 900,
+          fontSize: '1.25rem',
+          boxShadow: '0 6px 18px rgba(0,0,0,0.5)',
+          letterSpacing: '1px'
+        }}>
+          <span>⚔️ 裏マップへ挑戦する！</span>
+          <ChevronRight size={28} strokeWidth={3} />
+        </div>
       </div>
 
       {CURRENT_EVENTS.map(event => {

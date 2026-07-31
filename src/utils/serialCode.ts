@@ -1,10 +1,13 @@
 export interface SerialCodePayload {
   yPoints?: number;
   money?: number;
+  unlockStagesCount?: number; // 通常ステージを進める数
   items?: {
     expSmall?: number;
     expLarge?: number;
     skillBook?: number;
+    godSkillBook?: number;
+    superLimitBreakBook?: number;
   };
   title?: string;
   nonce?: string;
@@ -74,12 +77,39 @@ export function decodeSerialCode(code: string): { success: boolean; payload?: Se
     return { success: false, error: 'シリアルコードを入力してください' };
   }
 
-  const cleanCode = code.trim();
-  if (!cleanCode.startsWith('PUNI-')) {
-    return { success: false, error: '無効な形式のシリアルコードです (PUNI-から始まる必要があります)' };
+  const cleanCode = code.trim().toUpperCase();
+
+  // キーワードコードの特別対応 (例: STAGE-SKIP-1, STAGE-SKIP-5, STAGE-SKIP-10, STAGE-CLEAR-ALL)
+  if (cleanCode === 'STAGE-SKIP-1' || cleanCode === 'STAGE1' || cleanCode === 'SKIP1') {
+    return {
+      success: true,
+      payload: { unlockStagesCount: 1, title: '通常ステージ1進む' }
+    };
+  }
+  if (cleanCode === 'STAGE-SKIP-5' || cleanCode === 'STAGE5' || cleanCode === 'SKIP5') {
+    return {
+      success: true,
+      payload: { unlockStagesCount: 5, title: '通常ステージ5進む' }
+    };
+  }
+  if (cleanCode === 'STAGE-SKIP-10' || cleanCode === 'STAGE10' || cleanCode === 'SKIP10') {
+    return {
+      success: true,
+      payload: { unlockStagesCount: 10, title: '通常ステージ10進む' }
+    };
+  }
+  if (cleanCode === 'STAGE-CLEAR-ALL' || cleanCode === 'STAGE-ALL' || cleanCode === 'ALL-STAGE') {
+    return {
+      success: true,
+      payload: { unlockStagesCount: 150, title: '通常ステージ全開放' }
+    };
   }
 
-  const rawBase64 = cleanCode.substring(5);
+  if (!code.trim().startsWith('PUNI-')) {
+    return { success: false, error: '無効な形式のシリアルコードです' };
+  }
+
+  const rawBase64 = code.trim().substring(5);
   if (!rawBase64) {
     return { success: false, error: 'シリアルコードが破損しています' };
   }
@@ -89,7 +119,7 @@ export function decodeSerialCode(code: string): { success: boolean; payload?: Se
     const json = xorEncryptDecrypt(encrypted, SECRET_SALT);
     const payload = JSON.parse(json) as SerialCodePayload;
 
-    if (!payload || (payload.yPoints === undefined && payload.money === undefined && !payload.items)) {
+    if (!payload || (payload.yPoints === undefined && payload.money === undefined && !payload.items && !payload.unlockStagesCount)) {
       return { success: false, error: 'シリアルコードの内容が不正です' };
     }
 

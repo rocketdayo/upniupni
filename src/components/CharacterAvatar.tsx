@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { getPublicUrl } from '../data/characters';
+import React, { useState, useEffect } from 'react';
+import { getPublicUrl, createPuniSvgDataUrl } from '../data/characters';
 import type { Character } from '../data/characters';
 
 interface CharacterAvatarProps {
@@ -20,11 +20,19 @@ export const CharacterAvatar: React.FC<CharacterAvatarProps> = ({
   onClick
 }) => {
   const rawPath = character.imageUrl || '';
-  const imgUrl = rawPath ? getPublicUrl(rawPath) : '';
-  const [imageFailed, setImageFailed] = useState(!imgUrl);
+  const initialImgUrl = rawPath ? getPublicUrl(rawPath) : createPuniSvgDataUrl(character.name, character.color, character.rank, character.emoji);
+  const [currentImgUrl, setCurrentImgUrl] = useState(initialImgUrl);
+
+  useEffect(() => {
+    const src = rawPath ? getPublicUrl(rawPath) : createPuniSvgDataUrl(character.name, character.color, character.rank, character.emoji);
+    setCurrentImgUrl(src);
+  }, [character.id, character.imageUrl, character.name, character.rank, character.color, character.emoji, rawPath]);
 
   const handleError = () => {
-    setImageFailed(true);
+    const fallback = createPuniSvgDataUrl(character.name, character.color, character.rank, character.emoji);
+    if (currentImgUrl !== fallback) {
+      setCurrentImgUrl(fallback);
+    }
   };
 
   return (
@@ -49,36 +57,19 @@ export const CharacterAvatar: React.FC<CharacterAvatarProps> = ({
         ...style
       }}
     >
-      {!imageFailed ? (
-        <img
-          src={imgUrl}
-          alt=""
-          aria-hidden="true"
-          onError={handleError}
-          style={{
-            width: '100%',
-            height: '100%',
-            objectFit: 'contain',
-            borderRadius: '50%',
-            padding: '2px',
-            filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.4))'
-          }}
-        />
-      ) : (
-        <span
-          style={{
-            fontSize: `${size * 0.55}px`,
-            lineHeight: 1,
-            filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.5))',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            userSelect: 'none'
-          }}
-        >
-          {character.emoji || '👾'}
-        </span>
-      )}
+      <img
+        src={currentImgUrl}
+        alt=""
+        aria-hidden="true"
+        onError={handleError}
+        style={{
+          width: '100%',
+          height: '100%',
+          objectFit: 'cover',
+          borderRadius: '50%',
+          filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.4))'
+        }}
+      />
 
       {/* Rank Badge */}
       {showRankBadge && (

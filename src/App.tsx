@@ -1,6 +1,7 @@
 import React from 'react';
-import { Routes, Route, useNavigate } from 'react-router-dom';
+import { Routes, Route } from 'react-router-dom';
 import { useGame } from './store/GameContext';
+import { formatJapaneseNumber } from './utils/format';
 
 import TitleScreen from './screens/TitleScreen';
 import Home from './screens/Home';
@@ -10,36 +11,16 @@ import StageSelect from './screens/StageSelect';
 import GameScene from './screens/GameScene';
 import Collection from './screens/Collection';
 import EventHome from './screens/EventHome';
+import { EventMap } from './screens/EventMap';
 import MissionList from './screens/MissionList';
+import ScoreAttack from './screens/ScoreAttack';
 import { DebugConsoleScreen } from './screens/NyankoDebugScene';
 import { SerialCodeModal } from './components/SerialCodeModal';
 import { Plus } from 'lucide-react';
 
 const App = () => {
-  const { loading, money, yPoints } = useGame();
-  const navigate = useNavigate();
+  const { loading, money, yPoints, summerMedals } = useGame();
   const [isSerialModalOpen, setIsSerialModalOpen] = React.useState(false);
-
-  React.useEffect(() => {
-    console.log(
-      '%c[開発者ツール] デバッグ画面を開くにはコンソールで openDebug("puni") または debug("nyanko") を実行してください。',
-      'color: #00ccff; font-weight: bold; font-size: 13px;'
-    );
-
-    (window as any).openDebug = (code?: string) => {
-      const validCodes = ['puni', 'nyanko', 'debug', 'cheat', 'yokai'];
-      if (code && typeof code === 'string' && validCodes.includes(code.trim().toLowerCase())) {
-        sessionStorage.setItem('debug_unlocked', 'true');
-        console.log('%c[DEBUG] デバッグモード認証成功！デバッグ画面を開きます...', 'color: #00ff88; font-weight: bold; font-size: 14px;');
-        navigate('/debug');
-        return '✅ 認証成功！デバッグ画面を開きます。';
-      } else {
-        console.warn('[DEBUG] 認証失敗: 合言葉を指定してください (例: openDebug("puni") または openDebug("nyanko"))');
-        return '❌ 認証失敗: 正しい合言葉を入力してください (例: openDebug("puni"))';
-      }
-    };
-    (window as any).debug = (window as any).openDebug;
-  }, [navigate]);
 
   if (loading) {
     return <div className="app-container" style={{ justifyContent: 'center', alignItems: 'center' }}>Loading...</div>;
@@ -51,47 +32,53 @@ const App = () => {
       <Routes>
         <Route path="/" element={<TitleScreen />} />
         <Route path="/stage/:stageId" element={<GameScene />} />
+        <Route path="/game/:stageId" element={<GameScene />} />
         <Route path="/debug" element={<DebugConsoleScreen />} />
         <Route path="/debug-nyanko" element={<DebugConsoleScreen />} />
         <Route path="*" element={
           <>
-              <div className="header">
-                <div style={{ display: 'flex', gap: '5px', alignItems: 'center' }}>
+              <div className="header" style={{ padding: '8px 10px', gap: '3px' }}>
+                <div style={{ display: 'flex', gap: '3px', alignItems: 'center' }}>
                   {/* Spirit (Stamina) */}
-                  <div className="currency-badge">
-                    <div className="currency-icon spirit-icon">+1</div>
-                    <span style={{ fontSize: '0.9rem' }}>99</span>
+                  <div className="currency-badge" style={{ padding: '3px 8px 3px 22px', fontSize: '0.85rem', marginLeft: '5px' }}>
+                    <div className="currency-icon spirit-icon" style={{ width: '22px', height: '22px', left: '-5px' }}>+1</div>
+                    <span>99</span>
                   </div>
                 </div>
-                <div style={{ display: 'flex', gap: '5px' }}>
-                  <div className="currency-badge">
-                    <div className="currency-icon money-icon">y</div>
-                    {money}
+                <div style={{ display: 'flex', gap: '3px', flexWrap: 'wrap', justifyContent: 'end' }}>
+                  <div className="currency-badge" style={{ padding: '3px 8px 3px 22px', fontSize: '0.85rem', marginLeft: '5px' }}>
+                    <div className="currency-icon money-icon" style={{ width: '22px', height: '22px', left: '-5px' }}>y</div>
+                    <span>{formatJapaneseNumber(money)}</span>
                   </div>
-                  <div className="currency-badge" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    <div className="currency-icon y-point-icon">y</div>
-                    <span>{yPoints}</span>
+                  <div className="currency-badge" style={{ display: 'flex', alignItems: 'center', gap: '2px', padding: '3px 8px 3px 22px', fontSize: '0.85rem', marginLeft: '5px' }}>
+                    <div className="currency-icon y-point-icon" style={{ width: '22px', height: '22px', left: '-5px' }}>y</div>
+                    <span>{formatJapaneseNumber(yPoints)}</span>
                     <button
                       onClick={() => setIsSerialModalOpen(true)}
                       style={{
-                        marginLeft: '3px',
+                        marginLeft: '2px',
                         background: 'linear-gradient(135deg, #3b82f6, #1d4ed8)',
                         color: '#ffffff',
                         border: 'none',
                         borderRadius: '50%',
-                        width: '20px',
-                        height: '20px',
+                        width: '16px',
+                        height: '16px',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         cursor: 'pointer',
-                        boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                        boxShadow: '0 1px 2px rgba(0,0,0,0.2)',
                         padding: 0
                       }}
                       title="シリアルコード入力"
                     >
-                      <Plus size={14} strokeWidth={3} />
+                      <Plus size={10} strokeWidth={4} />
                     </button>
+                  </div>
+                  {/* Summer Medals */}
+                  <div className="currency-badge" style={{ display: 'flex', alignItems: 'center', gap: '2px', padding: '3px 8px 3px 22px', fontSize: '0.85rem', marginLeft: '5px', background: 'linear-gradient(135deg, #0ea5e9, #0284c7)', borderColor: '#0284c7', color: '#fff' }}>
+                    <div className="currency-icon" style={{ width: '22px', height: '22px', left: '-5px', background: 'linear-gradient(135deg, #fde047, #ca8a04)', border: '1px solid #fff', fontSize: '0.8rem', color: '#000' }}>🏝️</div>
+                    <span style={{ fontWeight: '900' }}>{formatJapaneseNumber(summerMedals || 0)}</span>
                   </div>
                 </div>
               </div>
@@ -103,7 +90,9 @@ const App = () => {
               <Route path="/stages" element={<StageSelect />} />
               <Route path="/collection" element={<Collection />} />
               <Route path="/event" element={<EventHome />} />
+              <Route path="/event/map" element={<EventMap />} />
               <Route path="/missions" element={<MissionList />} />
+              <Route path="/score_attack" element={<ScoreAttack />} />
             </Routes>
           </>
         } />

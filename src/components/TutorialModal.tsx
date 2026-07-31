@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, ChevronRight, ChevronLeft, Sparkles, Shield, Play } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Sparkles } from 'lucide-react';
 
 interface TutorialModalProps {
   onClose: () => void;
@@ -21,11 +21,11 @@ const STEPS = [
     color: '#2288ff',
   },
   {
-    title: '妖怪ガシャ＆イベント',
-    subtitle: '最強チームを目指そう！',
-    icon: '🌟',
-    description: 'ステージクリアで入手したYポイントでガシャを回そう！SSランクのレア妖怪をゲットして、イベントマップなどの強敵に挑もう！',
-    color: '#ff2255',
+    title: 'ステージドロップ＆秘伝書',
+    subtitle: 'バトル勝利で超激レアアイテムGET！',
+    icon: '📜',
+    description: 'ステージをクリアすると低確率で「経験値玉」や「妖怪キャラクター」がドロップ！さらに超低確率でひっさつわざレベルを上げる「必殺技の秘伝書」が落ちることも！何度もクリアして最強のチームを育てよう！',
+    color: '#ffd700',
   },
 ];
 

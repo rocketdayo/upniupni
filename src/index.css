@@ -40,6 +40,19 @@
   -webkit-touch-callout: none;
 }
 
+canvas {
+  touch-action: none;
+  transform: translateZ(0);
+  will-change: transform;
+  backface-visibility: hidden;
+}
+
+.damage-text {
+  pointer-events: none;
+  will-change: transform, opacity;
+  transform: translateZ(0);
+}
+
 body {
   margin: 0;
   padding: 0;
@@ -208,6 +221,28 @@ body {
   transform: translateY(4px);
 }
 
+/* Purple Button */
+.btn-purple {
+  background: linear-gradient(180deg, #c084fc 0%, #9333ea 100%);
+  border: 4px solid white;
+  box-shadow: 0 6px 0 #6b21a8, 0 8px 6px rgba(0,0,0,0.4);
+}
+.btn-purple:active {
+  box-shadow: 0 2px 0 #6b21a8, 0 4px 4px rgba(0,0,0,0.4);
+  transform: translateY(4px);
+}
+
+/* Yellow Button */
+.btn-yellow {
+  background: linear-gradient(180deg, #fbbf24 0%, #d97706 100%);
+  border: 4px solid white;
+  box-shadow: 0 6px 0 #92400e, 0 8px 6px rgba(0,0,0,0.4);
+}
+.btn-yellow:active {
+  box-shadow: 0 2px 0 #92400e, 0 4px 4px rgba(0,0,0,0.4);
+  transform: translateY(4px);
+}
+
 /* Outlined Text Helper */
 .text-outline {
   color: white;
@@ -301,6 +336,85 @@ body {
   animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
 }
 
+/* ── ⚡ 必殺技専用・超激しい画面シェイク ── */
+@keyframes skillScreenShake {
+  0% { transform: translate(0, 0) scale(1) rotate(0deg); }
+  8% { transform: translate(-10px, 8px) scale(1.02) rotate(-1.5deg); }
+  16% { transform: translate(12px, -10px) scale(1.03) rotate(1.8deg); }
+  24% { transform: translate(-14px, -6px) scale(1.02) rotate(-1deg); }
+  32% { transform: translate(10px, 12px) scale(1.01) rotate(1.2deg); }
+  40% { transform: translate(-8px, -12px) scale(1.02) rotate(-0.8deg); }
+  48% { transform: translate(12px, 6px) scale(1.01) rotate(1deg); }
+  56% { transform: translate(-6px, -8px) scale(1.01) rotate(-0.5deg); }
+  64% { transform: translate(8px, 6px) scale(1.005) rotate(0.5deg); }
+  72% { transform: translate(-4px, -4px) scale(1.002) rotate(-0.2deg); }
+  80% { transform: translate(4px, 2px) scale(1) rotate(0deg); }
+  100% { transform: translate(0, 0) scale(1) rotate(0deg); }
+}
+.animate-skill-screen-shake {
+  animation: skillScreenShake 1.2s cubic-bezier(.36,.07,.19,.97) both;
+}
+
+/* ── ✨ 必殺技パーティクル＆演出エフェクトキーフレーム ── */
+@keyframes particleExplode {
+  0% {
+    transform: translate(-50%, -50%) translate(0, 0) scale(0) rotate(0deg);
+    opacity: 1;
+    filter: brightness(2);
+  }
+  30% {
+    opacity: 1;
+    filter: brightness(1.5);
+  }
+  100% {
+    transform: translate(-50%, -50%) translate(var(--tw-translate-x, 100px), var(--tw-translate-y, -100px)) scale(var(--tw-scale, 1.2)) rotate(360deg);
+    opacity: 0;
+    filter: brightness(1);
+  }
+}
+
+@keyframes energyRingExpand {
+  0% {
+    transform: translate(-50%, -50%) scale(0.1);
+    opacity: 0.9;
+    border-width: 12px;
+  }
+  50% {
+    opacity: 0.8;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(2.8);
+    opacity: 0;
+    border-width: 1px;
+  }
+}
+
+@keyframes speedLinesRotate {
+  0% {
+    transform: rotate(0deg) scale(1.2);
+    opacity: 0.35;
+  }
+  50% {
+    transform: rotate(180deg) scale(1.4);
+    opacity: 0.6;
+  }
+  100% {
+    transform: rotate(360deg) scale(1.2);
+    opacity: 0.35;
+  }
+}
+
+@keyframes auraGlowPulse {
+  0%, 100% {
+    box-shadow: 0 0 20px #ffffff, 0 0 40px var(--glow-color, #ffaa00), inset 0 0 15px #ffffff;
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 40px #ffffff, 0 0 80px var(--glow-color, #ffaa00), inset 0 0 25px #ffffff;
+    transform: scale(1.08);
+  }
+}
+
 @keyframes skillBgIn {
   0% { opacity: 0; transform: scale(1.3) rotate(-5deg); }
   15% { opacity: 1; transform: scale(1) rotate(0deg); }
@@ -343,6 +457,9 @@ body {
 .skill-flash-overlay {
   animation: skillFlash 0.4s ease-out forwards;
 }
+.skill-aura-glow {
+  animation: auraGlowPulse 1s ease-in-out infinite;
+}
 
 .gacha-swipe-container {
   display: flex;
@@ -361,4 +478,134 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
+}
+
+/* Fever Finish Enemy & Damage Animations */
+@keyframes feverEnemyShake {
+  0% { transform: scale(1) rotate(0deg) translate(0, 0); filter: drop-shadow(0 0 25px #ff0055) brightness(1.2); }
+  10% { transform: scale(1.4) rotate(-12deg) translate(-10px, -5px); filter: drop-shadow(0 0 35px #ffff00) brightness(2.5) sepia(1) hue-rotate(-50deg); }
+  20% { transform: scale(0.9) rotate(12deg) translate(12px, 8px); filter: drop-shadow(0 0 40px #ff0000) brightness(3); }
+  30% { transform: scale(1.35) rotate(-10deg) translate(-8px, -12px); filter: drop-shadow(0 0 30px #ff00ff) brightness(2); }
+  40% { transform: scale(0.95) rotate(10deg) translate(10px, 6px); filter: drop-shadow(0 0 35px #ffff00) brightness(2.5); }
+  50% { transform: scale(1.25) rotate(-8deg) translate(-6px, -6px); filter: drop-shadow(0 0 30px #ff0055) brightness(2); }
+  60% { transform: scale(0.98) rotate(6deg) translate(6px, 4px); filter: drop-shadow(0 0 25px #ff00ff) brightness(1.8); }
+  70% { transform: scale(1.15) rotate(-4deg) translate(-4px, -4px); filter: drop-shadow(0 0 20px #ff0000) brightness(1.5); }
+  80% { transform: scale(1.02) rotate(2deg) translate(2px, 2px); filter: drop-shadow(0 0 15px #ffaa00) brightness(1.3); }
+  100% { transform: scale(1) rotate(0deg) translate(0, 0); filter: drop-shadow(0 0 10px #ff0055) brightness(1); }
+}
+
+@keyframes feverFinishPop {
+  0% { transform: scale(0.2) translateY(20px); opacity: 0; }
+  50% { transform: scale(1.35) translateY(-10px); opacity: 1; }
+  75% { transform: scale(0.95) translateY(0px); opacity: 1; }
+  100% { transform: scale(1) translateY(0); opacity: 1; }
+}
+
+@keyframes feverDamagePop {
+  0% { transform: scale(0.3) translateY(30px); opacity: 0; }
+  25% { transform: scale(1.4) translateY(-20px); opacity: 1; }
+  50% { transform: scale(1.1) translateY(-10px); opacity: 1; }
+  80% { transform: scale(1) translateY(-30px); opacity: 0.9; }
+  100% { transform: scale(0.8) translateY(-50px); opacity: 0; }
+}
+
+.fever-finish-damage-text {
+  position: absolute;
+  pointer-events: none;
+  z-index: 100;
+  font-weight: 900;
+  font-size: 1.8rem;
+  color: #fff;
+  text-shadow: 
+    0 0 10px #ff0055,
+    0 0 20px #ff00ff,
+    0 0 30px #ffff00,
+    0 2px 0 #000,
+    0 -2px 0 #000,
+    2px 0 0 #000,
+    -2px 0 0 #000;
+  animation: feverDamagePop 1.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+  white-space: nowrap;
+}
+
+/* Gacha Capsule Animations & Styles */
+@keyframes capsulePulse {
+  0% { transform: scale(1); filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.6)); }
+  50% { transform: scale(1.08); filter: drop-shadow(0 0 22px rgba(255, 255, 255, 0.95)); }
+  100% { transform: scale(1); filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.6)); }
+}
+
+@keyframes rainbowGlow {
+  0% { filter: drop-shadow(0 0 12px #ff007f) drop-shadow(0 0 25px #00ffff) brightness(1.1); }
+  33% { filter: drop-shadow(0 0 12px #ffff00) drop-shadow(0 0 25px #ff00ff) brightness(1.3); }
+  66% { filter: drop-shadow(0 0 12px #00ff88) drop-shadow(0 0 25px #ff0055) brightness(1.2); }
+  100% { filter: drop-shadow(0 0 12px #ff007f) drop-shadow(0 0 25px #00ffff) brightness(1.1); }
+}
+
+@keyframes tapBadgeBlink {
+  0% { transform: scale(0.92) rotate(-3deg); filter: brightness(1); }
+  50% { transform: scale(1.15) rotate(3deg); filter: brightness(1.4) drop-shadow(0 0 10px #ff0055); }
+  100% { transform: scale(0.92) rotate(-3deg); filter: brightness(1); }
+}
+
+@keyframes capsuleOpenPop {
+  0% { transform: scale(0.3) rotate(-20deg); opacity: 0; }
+  60% { transform: scale(1.3) rotate(10deg); opacity: 1; }
+  85% { transform: scale(0.95) rotate(-2deg); opacity: 1; }
+  100% { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+
+.gacha-capsule {
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  position: relative;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s ease;
+  user-select: none;
+  animation: capsulePulse 2.2s ease-in-out infinite;
+}
+
+.gacha-capsule:active {
+  transform: scale(0.92);
+}
+
+.gacha-capsule-rainbow {
+  background: radial-gradient(circle at 30% 30%, #ffffff 0%, #ff77ff 25%, #00ffff 50%, #ffff00 75%, #ff0055 100%);
+  border: 3px solid #ffffff;
+  box-shadow: inset -4px -4px 10px rgba(0, 0, 0, 0.4), inset 4px 4px 10px rgba(255, 255, 255, 0.9);
+  animation: rainbowGlow 2.5s linear infinite, capsulePulse 1.8s ease-in-out infinite;
+}
+
+.gacha-capsule-gold {
+  background: radial-gradient(circle at 30% 30%, #ffffff 0%, #ffe600 35%, #ffaa00 70%, #d47a00 100%);
+  border: 3px solid #fff5aa;
+  box-shadow: inset -4px -4px 10px rgba(0, 0, 0, 0.4), inset 4px 4px 10px rgba(255, 255, 255, 0.9), 0 0 18px rgba(255, 215, 0, 0.8);
+}
+
+.gacha-capsule-red {
+  background: radial-gradient(circle at 30% 30%, #ffffff 0%, #ff3366 40%, #cc0033 80%, #880022 100%);
+  border: 3px solid #ff99bb;
+  box-shadow: inset -4px -4px 10px rgba(0, 0, 0, 0.4), inset 4px 4px 10px rgba(255, 255, 255, 0.8), 0 0 12px rgba(255, 0, 85, 0.6);
+}
+
+.tap-badge {
+  position: absolute;
+  top: -12px;
+  background: linear-gradient(135deg, #ff0055 0%, #ff00ff 100%);
+  color: #ffffff;
+  font-weight: 900;
+  font-size: 0.82rem;
+  padding: 2px 8px;
+  border-radius: 12px;
+  border: 2px solid #ffffff;
+  box-shadow: 0 0 10px #ff007f, 0 2px 4px #000000;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 10;
+  animation: tapBadgeBlink 0.9s ease-in-out infinite;
+  text-shadow: 0 1px 2px #000000;
 }

@@ -9,7 +9,6 @@ import {
   Sliders,
   CheckCircle2,
   Lock,
-  Terminal,
   KeyRound,
   ShieldAlert,
   Copy,
@@ -29,6 +28,8 @@ export const DebugConsoleScreen: React.FC = () => {
     clearedStages,
     addMoney,
     addYPoints,
+    setMoney,
+    setYPoints,
     unlockCharacter,
     unlockAllCharacters,
     unlockAllStages,
@@ -57,7 +58,7 @@ export const DebugConsoleScreen: React.FC = () => {
       setErrorMsg(null);
       showToast('デバッグモードの認証に成功しました！');
     } else {
-      setErrorMsg('合言葉が違います。デベロッパーツール(Console)で openDebug("puni") を実行するか正しい合言葉を入力してください。');
+      setErrorMsg('合言葉が違います。正しい合言葉を入力してください。');
     }
   };
 
@@ -76,9 +77,12 @@ export const DebugConsoleScreen: React.FC = () => {
   const [genTitle, setGenTitle] = useState<string>('特別プレゼント');
   const [genYPoints, setGenYPoints] = useState<number>(5000);
   const [genMoney, setGenMoney] = useState<number>(10000);
+  const [genUnlockStages, setGenUnlockStages] = useState<number>(0);
   const [genExpSmall, setGenExpSmall] = useState<number>(3);
   const [genExpLarge, setGenExpLarge] = useState<number>(1);
   const [genSkillBook, setGenSkillBook] = useState<number>(1);
+  const [genGodSkillBook, setGenGodSkillBook] = useState<number>(1);
+  const [genSuperLimitBreakBook, setGenSuperLimitBreakBook] = useState<number>(1);
   const [generatedCode, setGeneratedCode] = useState<string | null>(null);
   const [copied, setCopied] = useState<boolean>(false);
 
@@ -87,10 +91,13 @@ export const DebugConsoleScreen: React.FC = () => {
       title: genTitle,
       yPoints: genYPoints,
       money: genMoney,
+      unlockStagesCount: genUnlockStages,
       items: {
         expSmall: genExpSmall,
         expLarge: genExpLarge,
         skillBook: genSkillBook,
+        godSkillBook: genGodSkillBook,
+        superLimitBreakBook: genSuperLimitBreakBook,
       },
     });
     setGeneratedCode(code);
@@ -155,29 +162,8 @@ export const DebugConsoleScreen: React.FC = () => {
             </h2>
             <p style={{ margin: 0, fontSize: '0.8rem', color: '#aaa', lineHeight: 1.5 }}>
               この画面は開発者専用ツールです。<br />
-              デベロッパーツールで特定のコマンドを実行するか、合言葉を入力して解除してください。
+              アクセスするには管理キー（合言葉）を入力して解除してください。
             </p>
-          </div>
-
-          <div style={{
-            background: 'rgba(0,0,0,0.5)',
-            padding: '12px',
-            borderRadius: '8px',
-            borderLeft: '4px solid #00ccff',
-            textAlign: 'left',
-            width: '100%',
-            fontSize: '0.75rem',
-            color: '#00ccff',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '6px'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 'bold' }}>
-              <Terminal size={14} /> デベロッパーツール (Console) のコマンド:
-            </div>
-            <code style={{ background: '#111', padding: '6px 8px', borderRadius: '4px', color: '#00ff88', fontFamily: 'monospace' }}>
-              openDebug("puni")
-            </code>
           </div>
 
           <form onSubmit={handleUnlockWithPasscode} style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -352,6 +338,16 @@ export const DebugConsoleScreen: React.FC = () => {
             >
               💵 Yマネー +100,000
             </button>
+            <button
+              className="btn btn-primary"
+              onClick={() => {
+                addMoney(-100000);
+                showToast('Yマネー -100,000 減算しました');
+              }}
+              style={{ fontSize: '0.8rem', padding: '10px', backgroundColor: '#aa0055', borderColor: '#cc0066' }}
+            >
+              💵 Yマネー -100,000
+            </button>
 
             <button
               className="btn btn-primary"
@@ -363,10 +359,20 @@ export const DebugConsoleScreen: React.FC = () => {
             >
               🌟 Yポイント +50,000
             </button>
+            <button
+              className="btn btn-primary"
+              onClick={() => {
+                addYPoints(-50000);
+                showToast('Yポイント -50,000 減算しました');
+              }}
+              style={{ fontSize: '0.8rem', padding: '10px', backgroundColor: '#cc5500', borderColor: '#aa4400' }}
+            >
+              🌟 Yポイント -50,000
+            </button>
           </div>
 
           {/* 自由入力設定 */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', borderTop: '1px solid #333', paddingTop: '10px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', borderTop: '1px solid #333', paddingTop: '15px' }}>
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
               <input
                 type="number"
@@ -381,9 +387,49 @@ export const DebugConsoleScreen: React.FC = () => {
                   addMoney(customMoney);
                   showToast(`Yマネー +${customMoney.toLocaleString()} 付与しました`);
                 }}
-                style={{ fontSize: '0.8rem', padding: '8px 12px' }}
+                style={{ fontSize: '0.8rem', padding: '8px 12px', background: '#00aa55', borderColor: '#00cc66' }}
               >
                 マネー加算
+              </button>
+              <button
+                className="btn btn-secondary"
+                onClick={() => {
+                  setMoney(customMoney);
+                  showToast(`Yマネーを ${customMoney.toLocaleString()} にセットしました`);
+                }}
+                style={{ fontSize: '0.8rem', padding: '8px 12px', background: '#cc0066', borderColor: '#aa0055' }}
+              >
+                マネーセット
+              </button>
+            </div>
+            
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <input
+                type="number"
+                value={customMoney} // Reuse customMoney for yPoints for simplicity or add state
+                onChange={e => setCustomMoney(Number(e.target.value))}
+                style={{ flex: 1, padding: '8px', background: '#111', border: '1px solid #555', color: '#fff', borderRadius: '6px', fontSize: '0.85rem' }}
+                placeholder="Yポイント数値"
+              />
+              <button
+                className="btn btn-secondary"
+                onClick={() => {
+                  addYPoints(customMoney);
+                  showToast(`Yポイント +${customMoney.toLocaleString()} 付与しました`);
+                }}
+                style={{ fontSize: '0.8rem', padding: '8px 12px', background: '#ff8800', borderColor: '#ffaa00' }}
+              >
+                加算
+              </button>
+              <button
+                className="btn btn-secondary"
+                onClick={() => {
+                  setYPoints(customMoney);
+                  showToast(`Yポイントを ${customMoney.toLocaleString()} にセットしました`);
+                }}
+                style={{ fontSize: '0.8rem', padding: '8px 12px', background: '#cc5500', borderColor: '#aa4400' }}
+              >
+                セット
               </button>
             </div>
           </div>
@@ -522,7 +568,7 @@ export const DebugConsoleScreen: React.FC = () => {
               />
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                 <label style={{ fontSize: '0.75rem', color: '#ffaa00' }}>🌟 Yポイント:</label>
                 <input
@@ -540,6 +586,17 @@ export const DebugConsoleScreen: React.FC = () => {
                   value={genMoney}
                   onChange={e => setGenMoney(Number(e.target.value))}
                   style={{ background: '#111', border: '1px solid #555', color: '#fff', borderRadius: '6px', padding: '6px 8px', fontSize: '0.8rem' }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <label style={{ fontSize: '0.75rem', color: '#38bdf8' }}>🚀 通常ステージ進行:</label>
+                <input
+                  type="number"
+                  value={genUnlockStages}
+                  onChange={e => setGenUnlockStages(Number(e.target.value))}
+                  style={{ background: '#111', border: '1px solid #555', color: '#fff', borderRadius: '6px', padding: '6px 8px', fontSize: '0.8rem' }}
+                  placeholder="例: 1"
                 />
               </div>
             </div>
@@ -566,11 +623,31 @@ export const DebugConsoleScreen: React.FC = () => {
               </div>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <label style={{ fontSize: '0.7rem', color: '#ff5588' }}>秘伝書:</label>
+                <label style={{ fontSize: '0.7rem', color: '#a855f7' }}>秘伝書:</label>
                 <input
                   type="number"
                   value={genSkillBook}
                   onChange={e => setGenSkillBook(Number(e.target.value))}
+                  style={{ background: '#111', border: '1px solid #555', color: '#fff', borderRadius: '6px', padding: '6px 8px', fontSize: '0.8rem' }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <label style={{ fontSize: '0.7rem', color: '#f59e0b' }}>神秘伝書:</label>
+                <input
+                  type="number"
+                  value={genGodSkillBook}
+                  onChange={e => setGenGodSkillBook(Number(e.target.value))}
+                  style={{ background: '#111', border: '1px solid #555', color: '#fff', borderRadius: '6px', padding: '6px 8px', fontSize: '0.8rem' }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', gridColumn: 'span 2' }}>
+                <label style={{ fontSize: '0.7rem', color: '#ec4899' }}>超限界突破の書:</label>
+                <input
+                  type="number"
+                  value={genSuperLimitBreakBook}
+                  onChange={e => setGenSuperLimitBreakBook(Number(e.target.value))}
                   style={{ background: '#111', border: '1px solid #555', color: '#fff', borderRadius: '6px', padding: '6px 8px', fontSize: '0.8rem' }}
                 />
               </div>

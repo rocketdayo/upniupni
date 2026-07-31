@@ -104,7 +104,7 @@ export const SerialCodeModal: React.FC<SerialCodeModalProps> = ({ isOpen, onClos
             fontWeight: 500,
             textAlign: 'center'
           }}>
-            暗号化されたシリアルコード（<code style={{ background: '#eff6ff', color: '#1d4ed8', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>PUNI-xxx</code>）を入力すると、豪華な特典を受け取れます！
+            シリアルコード（<code style={{ background: '#eff6ff', color: '#1d4ed8', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>PUNI-xxx</code> や <code style={{ background: '#fef3c7', color: '#d97706', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>STAGE-SKIP-5</code> など）を入力すると、アイテム獲得や通常ステージスキップができます！
           </div>
 
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
