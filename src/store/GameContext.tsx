@@ -1,17 +1,99 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { loginAndGetData, savePlayerData, saveToLocalStorageDirectly } from '../storage';
 import { CHARACTERS, getCharacterMaxLevel, migrateCharId } from '../data/characters';
-import type { Rank } from '../data/characters';
+import type { Rank, Character } from '../data/characters';
 import { CURRENT_EVENTS } from '../data/events';
 import { STAGES, EVENT_SNOW_STAGES } from '../data/stages';
 import { decodeSerialCode } from '../utils/serialCode';
 import type { PlayerData } from '../storage';
 import { DAILY_MISSIONS_POOL, getTodayDailyMissions } from '../data/dailyMissions';
 
+export const getWeeklyRewardWeekKey = (): string => {
+  const d = new Date();
+  const day = d.getDay(); // 0 = Sunday
+  const sunday = new Date(d);
+  sunday.setDate(d.getDate() - day);
+  const year = sunday.getFullYear();
+  const month = String(sunday.getMonth() + 1).padStart(2, '0');
+  const date = String(sunday.getDate()).padStart(2, '0');
+  return `${year}-${month}-${date}`;
+};
+
+export const computeUnlockedTitles = (playerData: PlayerData): string[] => {
+  const currentUnlocked = new Set<string>(playerData.unlockedTitles || ['新米妖怪レーサー']);
+  const ownedCharList = CHARACTERS.filter(c => playerData.characters?.[c.id]);
+  const ownedCharCount = ownedCharList.length;
+  const clearedStages = playerData.clearedStages || [];
+  const items = playerData.items || { expSmall: 0, expLarge: 0, skillBook: 0, godSkillBook: 0, superLimitBreakBook: 0 };
+  const yPoints = playerData.yPoints || 0;
+
+  currentUnlocked.add('新米妖怪レーサー');
+
+  if (clearedStages.includes('st_1')) currentUnlocked.add('ぷにぷに駆け出し');
+  if (clearedStages.includes('st_5')) currentUnlocked.add('さくらニュータウンの英雄');
+  if (clearedStages.some(s => s.startsWith('event_'))) currentUnlocked.add('サマービーチの思い出');
+  if (clearedStages.includes('event_st_5')) currentUnlocked.add('常夏の支配者');
+
+  if (yPoints >= 1000) currentUnlocked.add('貯金家');
+  if (yPoints >= 50000) currentUnlocked.add('Yポイント大富豪');
+  if (Object.values(playerData.characters || {}).some(c => (c?.limitBreak || 0) > 0)) currentUnlocked.add('限界を超えし者');
+  if (Object.values(playerData.characters || {}).some(c => (c?.skillLevel || 0) >= 7)) currentUnlocked.add('ひっさつ極めし者');
+  if (Object.values(playerData.characters || {}).some(c => (c?.level || 0) >= 50)) currentUnlocked.add('覚醒の刻');
+  if ((items.skillBook || 0) >= 3 || (items.godSkillBook || 0) >= 1) currentUnlocked.add('秘伝書マニア');
+
+  if ((playerData.gachaHistory?.length || 0) >= 30) currentUnlocked.add('ラッキーガチャマン');
+  if (ownedCharList.some(c => c.rank === 'Z' || c.rank === 'SSS')) currentUnlocked.add('虹カプセルの奇跡');
+  if (ownedCharCount >= 20) currentUnlocked.add('妖怪大百科の完成者');
+
+  const tribeCounts: Record<string, number> = {};
+  ownedCharList.forEach(c => {
+    tribeCounts[c.tribe] = (tribeCounts[c.tribe] || 0) + 1;
+  });
+  if ((tribeCounts['イサマシ'] || 0) >= 3) currentUnlocked.add('勇猛なる獅子');
+  if ((tribeCounts['フシギ'] || 0) >= 3) currentUnlocked.add('知恵の探求者');
+  if ((tribeCounts['ゴウケツ'] || 0) >= 3) currentUnlocked.add('金剛の盾');
+  if ((tribeCounts['プリチー'] || 0) >= 3) currentUnlocked.add('キュートなアイドル');
+  if ((tribeCounts['ポカポカ'] || 0) >= 3) currentUnlocked.add('太陽の祝福');
+  if ((tribeCounts['ウスラカゲ'] || 0) >= 3) currentUnlocked.add('宵闇の支配者');
+  if ((tribeCounts['ブキミー'] || 0) >= 3) currentUnlocked.add('怪異の怪導');
+  if ((tribeCounts['ニョロロン'] || 0) >= 3) currentUnlocked.add('流天の龍神');
+  if ((tribeCounts['エンマ'] || 0) >= 1) currentUnlocked.add('エンマ親衛隊');
+  if (ownedCharList.some(c => c.id === 'char_z_2' || c.name.includes('ハグキ'))) currentUnlocked.add('ハグキ党名誉党員');
+  if (ownedCharList.filter(c => c.name.includes('ジバニャン')).length >= 2) currentUnlocked.add('ジバニャン親衛隊');
+
+  if ((playerData.scoreAttackHighScore || 0) >= 5000000) currentUnlocked.add('スコアタ王者');
+  if ((playerData.scoreAttackHighScore || 0) >= 5000000000000000 || playerData.unlockedTitles?.includes('神覇者')) currentUnlocked.add('神覇者');
+
+  const missionProg = playerData.missionProgress || {};
+  if ((missionProg['m_fever_1'] || 0) >= 1 || (missionProg['m_fever_2'] || 0) >= 5) currentUnlocked.add('でかぷに職人');
+  if ((missionProg['m_deka_1'] || 0) >= 10) currentUnlocked.add('ぷにぷにマスター');
+  if ((missionProg['m_fever_2'] || 0) >= 5) currentUnlocked.add('フィーバーロード');
+  if (clearedStages.length >= 10) currentUnlocked.add('百戦錬磨の勇士');
+
+  if (currentUnlocked.size >= 15) currentUnlocked.add('ぷにぷに神');
+
+  // --- 超難関LEGEND称号解禁条件 ---
+  if ((playerData.scoreAttackHighScore || 0) >= 100000000) currentUnlocked.add('一億突破の絶対神');
+  if (yPoints >= 100000) currentUnlocked.add('Ypt兆万長者');
+  if ((playerData.gachaHistory?.length || 0) >= 100) currentUnlocked.add('神引きの覇王');
+  if (clearedStages.length >= 10 && clearedStages.some(s => s.startsWith('ura_'))) currentUnlocked.add('全界の超征服者');
+  if (Object.values(playerData.characters || {}).some(c => (c?.limitBreak || 0) >= 3)) currentUnlocked.add('限界突破の極意');
+  if ((items.godSkillBook || 0) >= 2 && (items.superLimitBreakBook || 0) >= 2) currentUnlocked.add('神技の体得者');
+  if (ownedCharList.filter(c => c.rank === 'Z').length >= 2) currentUnlocked.add('Zランク絶神軍団');
+  if ((missionProg['m_fever_2'] || 0) >= 25) currentUnlocked.add('神速の千連鎖');
+  if ((missionProg['m_fever_2'] || 0) >= 100) currentUnlocked.add('永劫のフィーバー');
+
+  if (currentUnlocked.size >= 25) currentUnlocked.add('ぷにぷに界の創造主');
+
+  return Array.from(currentUnlocked);
+};
+
 export interface StageDropReward {
   expSmallCount: number;
   expLargeCount: number;
   skillBookCount: number;
+  bleachRingCount?: number;
+  godAscensionStoneCount?: number; // 虚圏高難度ボス初クリア報酬
   droppedCharacter?: {
     id: string;
     name: string;
@@ -21,6 +103,74 @@ export interface StageDropReward {
   };
 }
 
+export interface BleachShopItem {
+  id: string;
+  name: string;
+  icon: string;
+  cost: number;
+  limit: number;
+  description: string;
+}
+
+export const BLEACH_SHOP_ITEMS: BleachShopItem[] = [
+  {
+    id: 'godAscensionStone',
+    name: '神昇の秘石',
+    icon: '💎',
+    cost: 80,
+    limit: 3,
+    description: "Z'キャラを全13体の神ランク『ZZ』へランダム神昇降臨させる至高の秘石。"
+  },
+  {
+    id: 'superLimitBreakBook',
+    name: '超限界突破の書',
+    icon: '📕',
+    cost: 40,
+    limit: 5,
+    description: 'キャラクターの限界突破段階を+1アップさせる貴重な指南書。'
+  },
+  {
+    id: 'godSkillBook',
+    name: '神・ひっさつの秘伝書',
+    icon: '📖',
+    cost: 25,
+    limit: 10,
+    description: 'キャラクターの必殺技レベルを一気にMAXまで強化する神代の書。'
+  },
+  {
+    id: 'skillBook',
+    name: 'ひっさつの秘伝書',
+    icon: '📜',
+    cost: 10,
+    limit: 20,
+    description: 'キャラクターの必殺技レベルを+1強化する秘伝書。'
+  },
+  {
+    id: 'expLarge',
+    name: '超けいけんちだま (5個)',
+    icon: '🍡',
+    cost: 5,
+    limit: 999,
+    description: '経験値を大量に獲得できる超けいけんちだまの5個セット。'
+  },
+  {
+    id: 'money_100k',
+    name: 'マネー 100,000',
+    icon: '💰',
+    cost: 5,
+    limit: 999,
+    description: '妖怪ぷにの育成やレベル上限解放に使えるマネー100,000。'
+  },
+  {
+    id: 'ypoints_3k',
+    name: 'Yポイント 3,000 pt',
+    icon: '🌟',
+    cost: 15,
+    limit: 999,
+    description: 'ガシャや各種解放に使えるYポイント3,000pt。'
+  }
+];
+
 interface GameState extends PlayerData {
   uid: string | null;
   loading: boolean;
@@ -29,18 +179,22 @@ interface GameState extends PlayerData {
   setMoney: (amount: number) => void;
   setYPoints: (amount: number) => void;
   addSummerMedals: (amount: number) => void;
+  addBleachRings: (amount: number) => void;
   unlockCharacter: (charId: string) => void;
   unlockAllCharacters: () => void;
   unlockAllStages: () => void;
   unlockEventStages: () => void;
   addMaxItems: () => void;
+  addItem: (itemId: string, count: number) => void;
   upgradeCharacter: (charId: string, moneyCost: number) => void;
   consumeExpItem: (charId: string, itemType: 'expSmall' | 'expLarge') => void;
   consumeSkillBook: (charId: string) => void;
   consumeGodSkillBook: (charId: string) => void;
   consumeSuperLimitBreakBook: (charId: string) => void;
+  ascendToZZ: (baseCharId: string) => { success: boolean; message: string; targetCharId?: string; isNewUnlock?: boolean };
   setSelectedTitle: (titleName: string) => void;
   unlockTitle: (titleName: string) => void;
+  acknowledgeTitle: (titleName: string) => void;
   setTeam: (newTeam: string[]) => void;
   setActiveTeamIndex: (index: number) => void;
   updateSavedTeamName: (index: number, name: string) => void;
@@ -56,6 +210,12 @@ interface GameState extends PlayerData {
   recordGachaResult: (charIds: string[], newPityCount: number, newStepUpCount: number) => void;
   redeemSerialCode: (code: string) => { success: boolean; message: string; rewardsSummary?: string };
   convertYPointsToSummerMedals: (amount: number) => { success: boolean; message: string };
+  convertYPointsToBleachRings: (amount: number) => { success: boolean; message: string };
+  exchangeBleachRing: (itemId: string) => { success: boolean; message: string };
+  claimScoreMilestone: (milestoneReq: string) => { success: boolean; message: string };
+  claimWeeklyReward: (weekKey: string) => void;
+  exportRawPlayerData: () => PlayerData;
+  importAllPlayerData: (importedData: Partial<PlayerData>) => void;
 }
 
 const GameContext = createContext<GameState | undefined>(undefined);
@@ -101,6 +261,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     loginAndGetData((playerData, uid) => {
       if (playerData.summerMedals === undefined) playerData.summerMedals = 0;
+      if (playerData.bleachRings === undefined) playerData.bleachRings = 10;
       if (!playerData.clearedStages) playerData.clearedStages = [];
       if (!playerData.items) playerData.items = DEFAULT_ITEMS;
       if (!playerData.missionProgress) playerData.missionProgress = {};
@@ -168,7 +329,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         validTeam = validTeam.slice(0, 5);
       }
       playerData.team = validTeam;
-      savePlayerData(uid, { characters: playerData.characters, team: validTeam, minRequiredTeamSize: playerData.minRequiredTeamSize });
+      playerData.unlockedTitles = computeUnlockedTitles(playerData);
+      savePlayerData(uid, { characters: playerData.characters, team: validTeam, minRequiredTeamSize: playerData.minRequiredTeamSize, unlockedTitles: playerData.unlockedTitles });
       setData(playerData);
       setUid(uid);
       setLoading(false);
@@ -178,7 +340,9 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const mutateAndSave = (updater: Partial<PlayerData> | ((prev: PlayerData) => Partial<PlayerData>)) => {
     setData(prev => {
       const newData = typeof updater === 'function' ? updater(prev) : updater;
-      const updated = { ...prev, ...newData };
+      const baseUpdated = { ...prev, ...newData };
+      const autoUnlocked = computeUnlockedTitles(baseUpdated);
+      const updated = { ...baseUpdated, unlockedTitles: autoUnlocked };
       // Save entire state directly into localStorage to prevent any stale state loss
       if (uid) {
         savePlayerData(uid, updated);
@@ -258,11 +422,29 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }));
   };
+
+  const addItem = (itemId: string, count: number = 1) => {
+    mutateAndSave(prev => {
+      const currentItems = prev.items || {};
+      const currentCount = (currentItems as Record<string, number>)[itemId] || 0;
+      return {
+        items: {
+          ...currentItems,
+          [itemId]: currentCount + count
+        }
+      };
+    });
+  };
+
+  const claimWeeklyReward = (weekKey: string) => {
+    mutateAndSave({ lastClaimedWeeklyRewardWeek: weekKey });
+  };
   const addMoney = (amount: number) => mutateAndSave(prev => ({ money: prev.money + amount }));
   const setMoney = (amount: number) => mutateAndSave({ money: amount });
   const addYPoints = (amount: number) => mutateAndSave(prev => ({ yPoints: prev.yPoints + amount }));
   const setYPoints = (amount: number) => mutateAndSave({ yPoints: amount });
   const addSummerMedals = (amount: number) => mutateAndSave(prev => ({ summerMedals: (prev.summerMedals || 0) + amount }));
+  const addBleachRings = (amount: number) => mutateAndSave(prev => ({ bleachRings: (prev.bleachRings || 0) + amount }));
 
   const unlockCharacter = (charId: string) => {
     mutateAndSave(prev => {
@@ -402,6 +584,92 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
   };
 
+  const ascendToZZ = (baseCharId: string): { success: boolean; message: string; targetCharId?: string; isNewUnlock?: boolean } => {
+    const baseChar = CHARACTERS.find(c => c.id === baseCharId);
+    const baseCharData = data.characters[baseCharId];
+    if (!baseChar || !baseCharData) {
+      return { success: false, message: '神昇進化のベースとなるキャラクターを所持していません。' };
+    }
+
+    if (baseChar.rank !== "Z'" && baseChar.rank !== 'Z') {
+      return { success: false, message: '神昇進化はZ\'ランクまたはZランクのキャラクターのみ実行可能です。' };
+    }
+
+    const stones = data.items.godAscensionStone || 0;
+    if (stones < 1) {
+      return { success: false, message: `『神昇の秘石』が足りません（必要数: 1個 / 所持: ${stones}個）` };
+    }
+
+    // 全13体のZZキャラクタープールからランダム選出
+    const zzPool = CHARACTERS.filter(c => c.rank === 'ZZ');
+    if (zzPool.length === 0) {
+      return { success: false, message: 'ZZキャラクターデータが見つかりません。' };
+    }
+
+    // 未所持のZZキャラクターを優遇（70%で未所持から、30%または全員所持時は全プールから公平ランダム）
+    const unownedZZ = zzPool.filter(c => !data.characters[c.id]);
+    let targetChar: Character;
+    if (unownedZZ.length > 0 && Math.random() < 0.7) {
+      targetChar = unownedZZ[Math.floor(Math.random() * unownedZZ.length)];
+    } else {
+      targetChar = zzPool[Math.floor(Math.random() * zzPool.length)];
+    }
+
+    let successMsg = '';
+    let isNewUnlock = false;
+
+    mutateAndSave(prev => {
+      const currentStones = prev.items.godAscensionStone || 0;
+      const currentChars = { ...prev.characters };
+      const baseInfo = currentChars[baseCharId] || { level: 1, skillLevel: 1, limitBreak: 0, duplicates: 1 };
+      
+      const existingTarget = currentChars[targetChar.id];
+      if (!existingTarget) {
+        isNewUnlock = true;
+        currentChars[targetChar.id] = {
+          level: Math.max(1, baseInfo.level || 1),
+          skillLevel: Math.max(1, baseInfo.skillLevel || 1),
+          limitBreak: baseInfo.limitBreak || 0,
+          duplicates: 1,
+        };
+      } else {
+        // 重複時は限界突破+1（上限10）＆高レベル/スキル引き継ぎ
+        const newLb = Math.min(10, (existingTarget.limitBreak || 0) + 1);
+        currentChars[targetChar.id] = {
+          level: Math.max(existingTarget.level || 1, baseInfo.level || 1),
+          skillLevel: Math.max(existingTarget.skillLevel || 1, baseInfo.skillLevel || 1),
+          limitBreak: newLb,
+          duplicates: (existingTarget.duplicates || 0) + 1,
+        };
+      }
+
+      // チーム編成：もしベースキャラが編成されていた場合、新たに獲得したZZキャラで更新
+      const updatedTeam = (prev.team || []).map(id => id === baseCharId ? targetChar.id : id);
+      const updatedSavedTeams = (prev.savedTeams || []).map(t => ({
+        ...t,
+        team: (t.team || []).map(id => id === baseCharId ? targetChar.id : id)
+      }));
+
+      const unlocked = prev.unlockedTitles || ['新米妖怪レーサー'];
+      const newUnlocked = unlocked.includes('神昇の到達者') ? unlocked : [...unlocked, '神昇の到達者'];
+
+      successMsg = `神昇の秘石の力により、神域の扉が開かれた！『${targetChar.name}』が降臨しました！`;
+
+      return {
+        items: {
+          ...prev.items,
+          godAscensionStone: Math.max(0, currentStones - 1)
+        },
+        characters: currentChars,
+        team: updatedTeam,
+        savedTeams: updatedSavedTeams,
+        unlockedTitles: newUnlocked
+      };
+    });
+
+    return { success: true, message: successMsg, targetCharId: targetChar.id, isNewUnlock };
+  };
+
   const setSelectedTitle = (titleName: string) => {
     mutateAndSave({ selectedTitle: titleName });
   };
@@ -411,6 +679,14 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const unlocked = prev.unlockedTitles || ['新米妖怪レーサー'];
       if (unlocked.includes(titleName)) return {};
       return { unlockedTitles: [...unlocked, titleName] };
+    });
+  };
+
+  const acknowledgeTitle = (titleName: string) => {
+    mutateAndSave(prev => {
+      const notified = new Set(prev.notifiedUnlockedTitles || []);
+      notified.add(titleName);
+      return { notifiedUnlockedTitles: Array.from(notified) };
     });
   };
 
@@ -612,6 +888,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       skillBookCount: 0,
     };
     const isSummerStage = stageId.startsWith('event_snow_');
+    const isBleachStage = stageId.startsWith('bleach_st_');
     
     mutateAndSave(prev => {
       const newCleared = prev.clearedStages.includes(stageId)
@@ -645,7 +922,39 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       didClear = true;
       
-      if (isSummerStage) {
+      if (isBleachStage) {
+        const bleachRingReward = 
+          stageId === 'bleach_st_8' ? 1000 :
+          stageId === 'bleach_st_7' ? 250 :
+          stageId === 'bleach_st_6' ? 50 :
+          stageId === 'bleach_st_5' ? 10 :
+          stageId === 'bleach_st_4' ? 7 :
+          stageId === 'bleach_st_3' ? 5 :
+          stageId === 'bleach_st_2' ? 3 : 1;
+        drops.bleachRingCount = bleachRingReward;
+
+        // 虚圏特別マップ 高難度ボスの初クリア報酬: 神昇の秘石
+        const isFirstClear = !prev.clearedStages.includes(stageId);
+        if (isFirstClear) {
+          if (stageId === 'bleach_st_8') {
+            drops.godAscensionStoneCount = 2;
+            newItems.godAscensionStone = (newItems.godAscensionStone || 0) + 2;
+          } else if (stageId === 'bleach_st_7' || stageId === 'bleach_st_6') {
+            drops.godAscensionStoneCount = 1;
+            newItems.godAscensionStone = (newItems.godAscensionStone || 0) + 1;
+          }
+        }
+
+        return {
+          money: prev.money + moneyReward,
+          yPoints: prev.yPoints + yPointReward,
+          bleachRings: (prev.bleachRings || 0) + bleachRingReward,
+          maxClearedStageId: stageId,
+          clearedStages: newCleared,
+          items: newItems,
+          characters: newChars,
+        };
+      } else if (isSummerStage) {
         return {
           money: prev.money + moneyReward,
           summerMedals: (prev.summerMedals || 0) + yPointReward,
@@ -907,6 +1216,164 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return { success: true, message: `${cost.toLocaleString()} Yポイントを消費して、${medals}枚のサマーコインに変換しました！` };
   };
 
+  const convertYPointsToBleachRings = (amount: number): { success: boolean; message: string } => {
+    // 5,000 YP = 1 Bleach Ring (または 50,000 YP = 10 Rings)
+    const multiplier = Math.floor(amount / 5000);
+    if (multiplier < 1) {
+      return { success: false, message: '5,000 Yポイント以上からブリーチリングに変換可能です！' };
+    }
+    const cost = multiplier * 5000;
+    const rings = multiplier;
+
+    if ((data.yPoints || 0) < cost) {
+      return { success: false, message: 'Yポイントが足りません！' };
+    }
+
+    mutateAndSave(prev => ({
+      yPoints: prev.yPoints - cost,
+      bleachRings: (prev.bleachRings || 0) + rings
+    }));
+
+    return { success: true, message: `${cost.toLocaleString()} Yポイントを消費して、${rings}個のブリーチリング 💍 に変換しました！` };
+  };
+
+  const exchangeBleachRing = (itemId: string): { success: boolean; message: string } => {
+    const itemDef = BLEACH_SHOP_ITEMS.find(i => i.id === itemId);
+    if (!itemDef) return { success: false, message: '指定された交換アイテムが見つかりません。' };
+
+    const currentRings = data.bleachRings || 0;
+    if (currentRings < itemDef.cost) {
+      return { success: false, message: `ブリーチリング 💍 が不足しています（必要: ${itemDef.cost}個 / 所持: ${currentRings}個）` };
+    }
+
+    const currentPurchased = (data.bleachRingExchanges || {})[itemId] || 0;
+    if (itemDef.limit < 999 && currentPurchased >= itemDef.limit) {
+      return { success: false, message: `このアイテムは交換上限（${itemDef.limit}個）に達しています。` };
+    }
+
+    let itemAddedText = '';
+    mutateAndSave(prev => {
+      const prevExchanges = prev.bleachRingExchanges || {};
+      const newExchanges = { ...prevExchanges, [itemId]: currentPurchased + 1 };
+      const newItems = { ...prev.items };
+      let newMoney = prev.money;
+      let newYPoints = prev.yPoints;
+
+      if (itemId === 'godAscensionStone') {
+        newItems.godAscensionStone = (newItems.godAscensionStone || 0) + 1;
+        itemAddedText = '『💎 神昇の秘石』×1';
+      } else if (itemId === 'superLimitBreakBook') {
+        newItems.superLimitBreakBook = (newItems.superLimitBreakBook || 0) + 1;
+        itemAddedText = '『📕 超限界突破の書』×1';
+      } else if (itemId === 'godSkillBook') {
+        newItems.godSkillBook = (newItems.godSkillBook || 0) + 1;
+        itemAddedText = '『📖 神・ひっさつの秘伝書』×1';
+      } else if (itemId === 'skillBook') {
+        newItems.skillBook = (newItems.skillBook || 0) + 1;
+        itemAddedText = '『📜 ひっさつの秘伝書』×1';
+      } else if (itemId === 'expLarge') {
+        newItems.expLarge = (newItems.expLarge || 0) + 5;
+        itemAddedText = '『🍡 超けいけんちだま』×5';
+      } else if (itemId === 'money_100k') {
+        newMoney += 100000;
+        itemAddedText = '『💰 マネー 100,000』';
+      } else if (itemId === 'ypoints_3k') {
+        newYPoints += 3000;
+        itemAddedText = '『🌟 Yポイント 3,000 pt』';
+      }
+
+      return {
+        bleachRings: Math.max(0, (prev.bleachRings || 0) - itemDef.cost),
+        bleachRingExchanges: newExchanges,
+        items: newItems,
+        money: newMoney,
+        yPoints: newYPoints,
+      };
+    });
+
+    return { success: true, message: `ブリーチリング 💍 ${itemDef.cost}個を消費して、${itemAddedText} を獲得しました！` };
+  };
+
+  const claimScoreMilestone = (milestoneReq: string): { success: boolean; message: string } => {
+    const highScore = data.scoreAttackHighScore || 0;
+    const claimedList = data.scoreAttackClaimedMilestones || [];
+
+    if (claimedList.includes(milestoneReq)) {
+      return { success: false, message: 'このスコア報酬は既に受け取り済みです。' };
+    }
+
+    const reqValues: Record<string, number> = {
+      '10万 pt': 100000,
+      '100万 pt': 1000000,
+      '1億 pt': 100000000,
+      '1000億 pt': 100000000000,
+      '10兆 pt': 10000000000000,
+      '1000兆 pt': 1000000000000000,
+    };
+
+    const targetVal = reqValues[milestoneReq];
+    if (targetVal === undefined) return { success: false, message: '無効なスコア報酬です。' };
+
+    if (highScore < targetVal) {
+      return { success: false, message: `スコアが目標に到達していません（必要: ${milestoneReq}）` };
+    }
+
+    let summaryText = '';
+    mutateAndSave(prev => {
+      const newClaimed = [...(prev.scoreAttackClaimedMilestones || []), milestoneReq];
+      const newItems = { ...prev.items };
+      let newYPoints = prev.yPoints;
+
+      if (milestoneReq === '10万 pt') {
+        newYPoints += 100;
+        summaryText = 'Yポイント x100';
+      } else if (milestoneReq === '100万 pt') {
+        newYPoints += 300;
+        newItems.expSmall = (newItems.expSmall || 0) + 1;
+        summaryText = 'Yポイント x300, 小けいけんちだま x1';
+      } else if (milestoneReq === '1億 pt') {
+        newYPoints += 500;
+        newItems.skillBook = (newItems.skillBook || 0) + 1;
+        summaryText = 'Yポイント x500, ひっさつの秘伝書 x1';
+      } else if (milestoneReq === '1000億 pt') {
+        newYPoints += 1000;
+        newItems.godSkillBook = (newItems.godSkillBook || 0) + 1;
+        summaryText = 'Yポイント x1,000, 神ひっさつの秘伝書 x1';
+      } else if (milestoneReq === '10兆 pt') {
+        newYPoints += 3000;
+        newItems.godSkillBook = (newItems.godSkillBook || 0) + 2;
+        newItems.godAscensionStone = (newItems.godAscensionStone || 0) + 1;
+        summaryText = '💎神昇の秘石 x1, Yポイント x3,000, 神ひっさつの秘伝書 x2';
+      } else if (milestoneReq === '1000兆 pt') {
+        newYPoints += 5000;
+        newItems.superLimitBreakBook = (newItems.superLimitBreakBook || 0) + 1;
+        newItems.godAscensionStone = (newItems.godAscensionStone || 0) + 2;
+        summaryText = '💎神昇の秘石 x2, Yポイント x5,000, 超限界突破の書 x1';
+      }
+
+      return {
+        scoreAttackClaimedMilestones: newClaimed,
+        items: newItems,
+        yPoints: newYPoints,
+      };
+    });
+
+    return { success: true, message: `【${milestoneReq} 達成報酬】\n${summaryText} を獲得しました！` };
+  };
+
+  const exportRawPlayerData = (): PlayerData => {
+    return { ...data };
+  };
+
+  const importAllPlayerData = (importedData: Partial<PlayerData>) => {
+    mutateAndSave(() => {
+      // 全データを上書き＆必要な初期値補完
+      return {
+        ...importedData
+      };
+    });
+  };
+
   return (
     <GameContext.Provider value={{
       ...data,
@@ -917,18 +1384,22 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setMoney,
       setYPoints,
       addSummerMedals,
+      addBleachRings,
       unlockCharacter,
       unlockAllCharacters,
       unlockAllStages,
       unlockEventStages,
       addMaxItems,
+      addItem,
       upgradeCharacter,
       consumeExpItem,
       consumeSkillBook,
       consumeGodSkillBook,
       consumeSuperLimitBreakBook,
+      ascendToZZ,
       setSelectedTitle,
       unlockTitle,
+      acknowledgeTitle,
       setTeam,
       setActiveTeamIndex,
       updateSavedTeamName,
@@ -944,6 +1415,12 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       recordGachaResult,
       redeemSerialCode,
       convertYPointsToSummerMedals,
+      convertYPointsToBleachRings,
+      exchangeBleachRing,
+      claimScoreMilestone,
+      claimWeeklyReward,
+      exportRawPlayerData,
+      importAllPlayerData,
     }}>
       {children}
     </GameContext.Provider>

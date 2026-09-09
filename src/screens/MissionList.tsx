@@ -33,7 +33,7 @@ const MissionList = () => {
     <div className="view-container">
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '15px' }}>
-        <button className="btn btn-secondary" onClick={() => navigate('/event')} style={{ padding: '8px 12px' }}>
+        <button className="btn btn-secondary" onClick={() => { if (window.history.length > 2) { navigate(-1); } else { navigate('/home'); } }} style={{ padding: '8px 12px' }}>
           <ArrowLeft size={20} />
         </button>
         <h2 style={{ margin: 0 }}>📋 ミッション一覧</h2>

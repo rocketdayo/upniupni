@@ -5,12 +5,12 @@ import { useGame } from '../store/GameContext';
 import { STAGES } from '../data/stages';
 import { CHARACTERS, getPublicUrl, createPuniSvgDataUrl, getTribeMultiplier, TRIBES } from '../data/characters';
 import type { Character, SkillType } from '../data/characters';
-import { CURRENT_EVENTS } from '../data/events';
 import { Zap, Pause, Play, RotateCcw, ArrowLeft } from 'lucide-react';
 import { CharacterAvatar } from '../components/CharacterAvatar';
 import type { StageDropReward } from '../store/GameContext';
 import { StageResultModal } from '../components/StageResultModal';
 import { SkillParticleEffect } from '../components/SkillParticleEffect';
+import { getTitleEffect } from '../data/titles';
 
 const PUNI_RADIUS      = 23;
 const BIG_PUNI_MULT    = 1.5;
@@ -111,7 +111,10 @@ const getOrCreateOffscreenPuniCanvas = (cd: Character, radius: number): HTMLCanv
   // Outer rank border ring
   ctx.beginPath();
   ctx.arc(x, y, r - 1, 0, Math.PI * 2);
-  if (cd.rank === 'Z') {
+  if (cd.rank === "Z'") {
+    ctx.strokeStyle = '#ff3399';
+    ctx.lineWidth = 4.5;
+  } else if (cd.rank === 'Z') {
     ctx.strokeStyle = '#00ffff';
     ctx.lineWidth = 4;
   } else if (cd.rank === 'SSS') {
@@ -227,7 +230,9 @@ interface PuniData { charId: string; size: number; level: number; }
 const GameScene = () => {
   const { stageId } = useParams();
   const navigate    = useNavigate();
-  const { team, characters, clearStage, trackMission, submitScoreAttackScore } = useGame();
+  const { team, characters, clearStage, trackMission, submitScoreAttackScore, selectedTitle = '新米妖怪レーサー' } = useGame();
+
+  const titleEffect = useMemo(() => getTitleEffect(selectedTitle), [selectedTitle]);
 
   useEffect(() => {
     CHARACTERS.forEach(c => {
@@ -235,14 +240,8 @@ const GameScene = () => {
     });
   }, []);
 
-  // Helper to get individual character's event boost multiplier
-  const getCharBoostMultiplier = (c?: Character): number => {
-    if (!c || !c.eventBoost) return 1;
-    if (c.rank === 'Z') return 30; // Zキャラ特攻30倍
-    if (c.rank === 'SSS') return 10; // SSSキャラ特攻10倍
-    if (c.rank === 'SS') return CURRENT_EVENTS[0]?.boostMultiplier ?? 3; // SS特攻3倍
-    return 2;
-  };
+  // Helper to get individual character's event boost multiplier（特攻はなし）
+  const getCharBoostMultiplier = (_c?: Character): number => 1;
 
   // チーム内の同じ種族の数を集計
   const tribeCounts = useMemo(() => {
@@ -256,28 +255,107 @@ const GameScene = () => {
     return counts;
   }, [team]);
 
-  // 各キャラの種族倍率を取得するヘルパー (1体:1倍, 2体:2倍, 3体:3倍, 4体:4倍, 5体:5倍)
+  // チーム全体のパッシブスキルを集計 (常時発動)
+  const teamPassiveEffects = useMemo(() => {
+    let damageCutPct = 0;
+    let feverBoostPct = 0;
+    let gaugeBoostPct = 0;
+    let connectRangeMult = 1.0;
+    let teamDamageUpPct = 0;
+    let tribeBoostPct = 0;
+    const charStartGauges: Record<string, number> = {};
+
+    team.forEach(charId => {
+      const cd = CHARACTERS.find(c => c.id === charId);
+      if (!cd || !cd.passiveSkills) return;
+      cd.passiveSkills.forEach(ps => {
+        if (ps.type === 'damage_cut') {
+          damageCutPct = Math.min(80, damageCutPct + (ps.value || 15));
+        } else if (ps.type === 'fever_boost') {
+          feverBoostPct += (ps.value || 25);
+        } else if (ps.type === 'gauge_boost') {
+          gaugeBoostPct += (ps.value || 25);
+        } else if (ps.type === 'connect_boost') {
+          connectRangeMult = Math.max(connectRangeMult, 1 + (ps.value || 30) / 100);
+        } else if (ps.type === 'damage_boost') {
+          teamDamageUpPct += (ps.value || 20);
+        } else if (ps.type === 'tribe_boost') {
+          tribeBoostPct += (ps.value || 20);
+        } else if (ps.type === 'gauge_start') {
+          charStartGauges[charId] = Math.max(charStartGauges[charId] || 0, ps.value || 50);
+        }
+      });
+    });
+
+    return {
+      damageCutPct,
+      feverBoostPct,
+      gaugeBoostPct,
+      connectRangeMult,
+      teamDamageUpPct,
+      tribeBoostPct,
+      charStartGauges
+    };
+  }, [team]);
+
+  // 各キャラの種族倍率を取得するヘルパー (1体:1倍, 2体:2倍, 3体:3倍, 4体:4倍, 5体:5倍 ＋ パッシブ種族効果アップ)
   const getCharTribeMultiplier = useCallback((c?: Character): number => {
     if (!c) return 1;
     const count = tribeCounts[c.tribe] || 1;
-    return getTribeMultiplier(count);
-  }, [tribeCounts]);
+    const baseMult = getTribeMultiplier(count);
+    const passiveBoost = 1 + (teamPassiveEffects.tribeBoostPct / 100);
+    return baseMult * passiveBoost;
+  }, [tribeCounts, teamPassiveEffects.tribeBoostPct]);
 
-  // チーム全体の合計攻撃力（パーティ全員の攻撃力の和）
+  // ---------- BLEACH Z' Character Unique Battle Buffs & Mechanics ----------
+  const [enemyFrozenSec, setEnemyFrozenSec] = useState<number>(0);
+  const enemyFrozenSecRef = useRef<number>(0);
+  useEffect(() => { enemyFrozenSecRef.current = enemyFrozenSec; }, [enemyFrozenSec]);
+
+  const [hasShield, setHasShield] = useState<boolean>(false);
+  const hasShieldRef = useRef<boolean>(false);
+  useEffect(() => { hasShieldRef.current = hasShield; }, [hasShield]);
+
+  const [hasReraise, setHasReraise] = useState<boolean>(false);
+  const hasReraiseRef = useRef<boolean>(false);
+  useEffect(() => { hasReraiseRef.current = hasReraise; }, [hasReraise]);
+
+  const [permanentAtkBonusPct, setPermanentAtkBonusPct] = useState<number>(0);
+  const permanentAtkBonusPctRef = useRef<number>(0);
+  useEffect(() => { permanentAtkBonusPctRef.current = permanentAtkBonusPct; }, [permanentAtkBonusPct]);
+
+  // チーム全体の合計攻撃力（パーティ全員の攻撃力の和 ＋ 称号補正 ＋ パッシブダメージアップ ＋ 永続バフ）
   const totalTeamAtk = useMemo(() => {
-    const rawAtk = team.reduce((sum, charId) => {
+    let rawAtk = team.reduce((sum, charId) => {
       const cd = CHARACTERS.find(c => c.id === charId);
       if (!cd) return sum;
       const charData = characters[charId];
       const level = charData?.level || 1;
-      return sum + (cd.baseAtk + level * 5);
+      let base = cd.baseAtk + level * 5;
+      // 種族特化称号ボーナス
+      if (titleEffect?.tribeAtkBonus && titleEffect.tribeAtkBonus.tribe === cd.tribe) {
+        base = Math.floor(base * (1 + titleEffect.tribeAtkBonus.percent / 100));
+      }
+      return sum + base;
     }, 0);
     // 単推し（メンバー数が5人未満）の救済・反映：5人分の強さにスケーリングする
     if (team.length > 0 && team.length < 5) {
-      return Math.floor(rawAtk * (5 / team.length));
+      rawAtk = Math.floor(rawAtk * (5 / team.length));
+    }
+    // 称号全体攻撃力％アップ
+    if (titleEffect?.atkPercent) {
+      rawAtk = Math.floor(rawAtk * (1 + titleEffect.atkPercent / 100));
+    }
+    // パッシブスキル全体ダメージ％アップ
+    if (teamPassiveEffects.teamDamageUpPct > 0) {
+      rawAtk = Math.floor(rawAtk * (1 + teamPassiveEffects.teamDamageUpPct / 100));
+    }
+    // バトル中永続攻撃力バフ（ゾマリ/アーロニーロ等の奪取効果）
+    if (permanentAtkBonusPct > 0) {
+      rawAtk = Math.floor(rawAtk * (1 + permanentAtkBonusPct / 100));
     }
     return rawAtk;
-  }, [team, characters]);
+  }, [team, characters, titleEffect, permanentAtkBonusPct, teamPassiveEffects.teamDamageUpPct]);
 
   const stage = STAGES.find(s => s.id === stageId);
 
@@ -377,6 +455,10 @@ const GameScene = () => {
     setScoreAttackTimeLeft(60);
     setIsSaFinished(false);
     setSaResult(null);
+    setEnemyFrozenSec(0);
+    setHasShield(false);
+    setHasReraise(false);
+    setPermanentAtkBonusPct(0);
     const g: Record<string, number> = {};
     team.forEach(id => { g[id] = 0; });
     setCharGauges(g);
@@ -399,24 +481,94 @@ const GameScene = () => {
       const c = CHARACTERS.find(x => x.id === id);
       if (!c) return;
       hp += c.baseHp + (characters[id]?.level || 1) * 10;
-      g[id] = 0;
+      g[id] = teamPassiveEffects.charStartGauges[id] || 0;
     });
     // 単推し（メンバー数5人未満）の救済スケーリング
     if (team.length < 5) {
       hp = Math.floor(hp * (5 / team.length));
     }
+    // 称号HPアップ
+    if (titleEffect?.hpPercent) {
+      hp = Math.floor(hp * (1 + titleEffect.hpPercent / 100));
+    }
     setPlayerHp(hp);
     setMaxPlayerHp(hp);
     setCharGauges(g);
-  }, [team, characters]);
+  }, [team, characters, titleEffect, teamPassiveEffects.charStartGauges]);
 
   // ---------- enemy attack timer ----------
+  const enemyHpRef = useRef(enemyHp);
+  useEffect(() => { enemyHpRef.current = enemyHp; }, [enemyHp]);
+
+  const maxPlayerHpRef = useRef(maxPlayerHp);
+  useEffect(() => { maxPlayerHpRef.current = maxPlayerHp; }, [maxPlayerHp]);
+
+  const isGameOverRef = useRef(isGameOver);
+  useEffect(() => { isGameOverRef.current = isGameOver; }, [isGameOver]);
+
+  const isVictoryRef = useRef(isVictory);
+  useEffect(() => { isVictoryRef.current = isVictory; }, [isVictory]);
+
+  const isSaFinishedRef = useRef(isSaFinished);
+  useEffect(() => { isSaFinishedRef.current = isSaFinished; }, [isSaFinished]);
+
+  const skillCutInRef = useRef<boolean>(!!skillCutIn);
+  useEffect(() => { skillCutInRef.current = !!skillCutIn; }, [skillCutIn]);
+
+  const stageRef = useRef(stage);
+  useEffect(() => { stageRef.current = stage; }, [stage]);
+
   useEffect(() => {
-    if (!stage || isGameOver || isVictory || isFever || isPaused || enemyHp <= 0 || isSaFinished || skillCutIn) return;
+    if (!stage) return;
     const iv = setInterval(() => {
+      if (
+        !stageRef.current ||
+        isGameOverRef.current ||
+        isVictoryRef.current ||
+        isFeverRef.current ||
+        isPausedRef.current ||
+        enemyHpRef.current <= 0 ||
+        isSaFinishedRef.current ||
+        skillCutInRef.current
+      ) {
+        return;
+      }
+
+      // バラガンの死の息吹による敵行動停止（フリーズ）チェック
+      if (enemyFrozenSecRef.current > 0) {
+        setEnemyFrozenSec(prev => Math.max(0, prev - 3));
+        const id = Date.now() + Math.random();
+        setDamageTexts(t => [...t, { id, val: 0, x: 200, y: 70, color: '#a855f7' }]);
+        setTimeout(() => setDamageTexts(t => t.filter(x => x.id !== id)), 1000);
+        return;
+      }
+
       setPlayerHp(prev => {
-        const next = Math.max(0, prev - stage.enemyAtk);
+        const currentStage = stageRef.current;
+        if (!currentStage) return prev;
+        let atkDamage = isScoreAttack ? Math.max(1, Math.floor(maxPlayerHpRef.current * 0.1)) : currentStage.enemyAtk;
+        
+        // パッシブスキルによる被ダメージカット (常時軽減)
+        if (teamPassiveEffects.damageCutPct > 0) {
+          atkDamage = Math.max(1, Math.floor(atkDamage * (1 - teamPassiveEffects.damageCutPct / 100)));
+        }
+
+        // ノイトラの鋼皮（イエロ）による被ダメージ90%カット
+        if (hasShieldRef.current) {
+          atkDamage = Math.max(1, Math.floor(atkDamage * 0.1));
+        }
+
+        const next = Math.max(0, prev - atkDamage);
         if (next === 0) {
+          // ザエルアポロの受胎告知による自動蘇生チェック
+          if (hasReraiseRef.current) {
+            setHasReraise(false);
+            const id = Date.now() + Math.random();
+            setDamageTexts(t => [...t, { id, val: maxPlayerHpRef.current, x: 150, y: 150, color: '#ec4899' }]);
+            setTimeout(() => setDamageTexts(t => t.filter(x => x.id !== id)), 1500);
+            return maxPlayerHpRef.current; // HP100%で完全蘇生！
+          }
+
           if (isScoreAttack) {
             setIsSaFinished(true);
           } else {
@@ -424,19 +576,26 @@ const GameScene = () => {
           }
         }
         const id = Date.now() + Math.random();
-        setDamageTexts(t => [...t, { id, val: stage.enemyAtk, x: 60, y: 40, color: '#ff4444' }]);
+        setDamageTexts(t => [...t, { id, val: atkDamage, x: 60, y: 40, color: hasShieldRef.current ? '#38bdf8' : '#ff4444' }]);
         setTimeout(() => setDamageTexts(t => t.filter(x => x.id !== id)), 900);
         return next;
       });
     }, 3000);
     return () => clearInterval(iv);
-  }, [stage, isGameOver, isVictory, isFever, isPaused, enemyHp, isSaFinished, isScoreAttack, skillCutIn]);
+  }, [stage, isScoreAttack, teamPassiveEffects.damageCutPct]);
 
   // ---------- damage / win ----------
   const dealDamage = useCallback((dmg: number) => {
-    setEnemyHp(prev => Math.max(0, prev - dmg));
+    setEnemyHp(prev => {
+      const next = prev - dmg;
+      if (isScoreAttack) {
+        // スコアタは実質無限HP：減っても常に超高HPを補給・維持し、決して撃破されない
+        return next <= 0 ? Number.MAX_SAFE_INTEGER : next;
+      }
+      return Math.max(0, next);
+    });
     setScore(s => s + Math.floor(dmg * 10));
-  }, []);
+  }, [isScoreAttack]);
 
   const isFeverRef = useRef(isFever);
   useEffect(() => {
@@ -502,11 +661,20 @@ const GameScene = () => {
 
   // ---------- victory check ----------
   useEffect(() => {
-    if (enemyHp <= 0 && !clearedRef.current && stage) {
+    if (!isScoreAttack && enemyHp <= 0 && !clearedRef.current && stage) {
       clearedRef.current = true;
       const sId = stage.id;
-      const rMoney = stage.rewardMoney;
-      const rYpt = stage.rewardYPoints;
+      let rMoney = stage.rewardMoney;
+      let rYpt = stage.rewardYPoints;
+
+      // 称号ボーナス適用
+      if (titleEffect?.yPointPercent) {
+        rYpt = Math.floor(rYpt * (1 + titleEffect.yPointPercent / 100));
+      }
+      if (titleEffect?.moneyPercent) {
+        rMoney = Math.floor(rMoney * (1 + titleEffect.moneyPercent / 100));
+      }
+
       const drops = clearStage(sId, rMoney, rYpt);
       setDropResult(drops);
 
@@ -515,7 +683,7 @@ const GameScene = () => {
         setIsVictory(true);
       }, 1200);
     }
-  }, [enemyHp, stage, clearStage]);
+  }, [enemyHp, stage, clearStage, isScoreAttack, titleEffect]);
 
   // ---------- fever start ----------
   useEffect(() => {
@@ -550,7 +718,7 @@ const GameScene = () => {
     if (!cd.skill) return;
     const charData = characters[cd.id];
     const skillLv = Math.max(1, (charData as any)?.skillLevel || 1);
-    const baseAtk = totalTeamAtk;
+    const baseAtk = Math.max(10, Math.round(totalTeamAtk * 0.08));
     const charBoost = getCharBoostMultiplier(cd);
     const charTribeMult = getCharTribeMultiplier(cd);
     const totalBoost = charBoost * charTribeMult;
@@ -572,7 +740,8 @@ const GameScene = () => {
       applyDamage(dmg);
       const id = Date.now() + Math.random();
       let textDmgColor = '#ffff00';
-      if (cd.rank === 'Z') textDmgColor = '#00ffff';
+      if (cd.rank === "Z'") textDmgColor = '#ff3399';
+      else if (cd.rank === 'Z') textDmgColor = '#00ffff';
       else if (cd.rank === 'SSS') textDmgColor = '#ffd700';
       else if (cd.rank === 'SS') textDmgColor = '#ff22ff';
       setDamageTexts(p => [...p, { id, val: dmg, x: 150, y: 120, color: textDmgColor }]);
@@ -593,7 +762,7 @@ const GameScene = () => {
       centerBodies.forEach(b => Matter.Composite.remove(engine.world, b));
 
       const power = Math.round(cd.skill.power * (1 + (skillLv - 1) * 0.25));
-      const dmg = Math.floor(baseAtk * power * (popCount * 0.2 + 1) * totalBoost);
+      const dmg = Math.floor(baseAtk * power * (popCount * 0.05 + 1.0) * totalBoost);
       applyDamage(dmg);
 
       const id = Date.now() + Math.random();
@@ -612,7 +781,7 @@ const GameScene = () => {
       popped.forEach(b => Matter.Composite.remove(engine.world, b));
 
       const power = Math.round(cd.skill.power * (1 + (skillLv - 1) * 0.25));
-      const dmg = Math.floor(baseAtk * power * (popped.length * 0.2 + 1) * totalBoost);
+      const dmg = Math.floor(baseAtk * power * (popped.length * 0.05 + 1.0) * totalBoost);
       applyDamage(dmg);
 
       const id = Date.now() + Math.random();
@@ -629,7 +798,7 @@ const GameScene = () => {
       allPuniBodies.forEach(b => Matter.Composite.remove(engine.world, b));
 
       const power = Math.round(cd.skill.power * (1 + (skillLv - 1) * 0.3));
-      const dmg = Math.floor(baseAtk * power * (popCount * 0.28 + 1.5) * totalBoost);
+      const dmg = Math.floor(baseAtk * power * (popCount * 0.06 + 1.2) * totalBoost);
       applyDamage(dmg);
 
       const id = Date.now() + Math.random();
@@ -657,26 +826,28 @@ const GameScene = () => {
         }
       });
 
-      const dmg = Math.floor(baseAtk * cd.skill.power * (targetCount * 0.3 + 1) * totalBoost);
+      const dmg = Math.floor(baseAtk * cd.skill.power * (targetCount * 0.1 + 1.0) * totalBoost);
       applyDamage(dmg);
 
       const id = Date.now() + Math.random();
       setDamageTexts(p => [...p, { id, val: dmg, x: 150, y: 180, color: '#ffff00' }]);
       setTimeout(() => setDamageTexts(p => p.filter(t => t.id !== id)), 1500);
     } else if (cd.skill.type === 'fever_charge') {
+      // フィーバーゲージを貯める技（※フィーバー中は効果をなくす）
+      if (!isFeverRef.current) {
+        const chargeAmount = Math.min(FEVER_MAX, FEVER_MAX * (0.3 + skillLv * 0.05));
+        setFeverGauge(prev => Math.min(FEVER_MAX, prev + chargeAmount));
+      }
+
       const power = Math.round(cd.skill.power * (1 + (skillLv - 1) * 0.3));
       const dmg = Math.floor(baseAtk * power * totalBoost);
       applyDamage(dmg);
-
-      setFeverGauge(FEVER_MAX);
-      if (isFeverRef.current) {
-        setFeverTimeLeft(FEVER_DURATION); // フィーバー中なら残り時間を10秒に即時全回復！
-      }
 
       const id = Date.now() + Math.random();
       setDamageTexts(p => [...p, { id, val: dmg, x: 150, y: 150, color: '#ff8800' }]);
       setTimeout(() => setDamageTexts(p => p.filter(t => t.id !== id)), 1500);
     } else if (cd.skill.type === 'puni_unify') {
+      // ぷに変化（盤面全ぷにを自キャラ色へ変化）
       allPuniBodies.forEach(b => {
         const pd = (b as any).puniData as PuniData;
         if (pd) {
@@ -693,10 +864,12 @@ const GameScene = () => {
       setDamageTexts(p => [...p, { id, val: dmg, x: 150, y: 150, color: '#00ffff' }]);
       setTimeout(() => setDamageTexts(p => p.filter(t => t.id !== id)), 1500);
     } else if (cd.skill.type === 'team_gauge_fill') {
+      // 全味方の技ゲージ上昇（満タンではなく割合上昇）
+      const chargePct = 20 + skillLv * 4;
       setCharGauges(prev => {
         const next = { ...prev };
         team.forEach(id => {
-          next[id] = Math.min(100, (next[id] || 0) + 50);
+          next[id] = Math.min(100, (next[id] || 0) + chargePct);
         });
         return next;
       });
@@ -708,20 +881,164 @@ const GameScene = () => {
       const id = Date.now() + Math.random();
       setDamageTexts(p => [...p, { id, val: dmg, x: 150, y: 150, color: '#a855f7' }]);
       setTimeout(() => setDamageTexts(p => p.filter(t => t.id !== id)), 1500);
-    } else if (cd.skill.type === 'god_burst') {
-      const popCount = allPuniBodies.length;
-      allPuniBodies.forEach(b => Matter.Composite.remove(engine.world, b));
+    } else if (cd.skill.type === 'trace_pop') {
+      // なぞり消し（軌跡上のぷにを消去＆多段スラッシュダメージ）
+      const targetCount = Math.min(allPuniBodies.length, 14 + skillLv * 2);
+      const shuffled = [...allPuniBodies].sort(() => Math.random() - 0.5);
+      const popped = shuffled.slice(0, targetCount);
+      popped.forEach(b => Matter.Composite.remove(engine.world, b));
 
-      const healAmount = Math.round(50000 * (1 + (skillLv - 1) * 0.3));
-      setPlayerHp(prev => Math.min(maxPlayerHp, prev + healAmount));
+      const power = Math.round(cd.skill.power * (1 + (skillLv - 1) * 0.32));
+      const totalDmg = Math.floor(baseAtk * power * (popped.length * 0.06 + 1.2) * totalBoost);
+      const slashCount = 5;
+      const hitDmg = Math.floor(totalDmg / slashCount);
 
-      setFeverGauge(FEVER_MAX);
+      if (!isFeverRef.current) {
+        setFeverGauge(prev => Math.min(FEVER_MAX, prev + 25));
+      }
+
+      for (let i = 0; i < slashCount; i++) {
+        setTimeout(() => {
+          applyDamage(hitDmg);
+          const id = Date.now() + Math.random();
+          const offsetX = (Math.random() - 0.5) * 100;
+          const offsetY = (Math.random() - 0.5) * 70;
+          setDamageTexts(p => [...p, { id, val: hitDmg, x: 150 + offsetX, y: 130 + offsetY, color: '#00ffff' }]);
+          setTimeout(() => setDamageTexts(p => p.filter(t => t.id !== id)), 900);
+        }, i * 70);
+      }
+
+      for (let i = 0; i < popped.length; i++) {
+        setTimeout(() => spawnPuniRef.current(), i * 30);
+      }
+    } else if (cd.skill.type === 'tap_pop') {
+      // タップ技（複数箇所で連鎖大爆破）
+      const popCount = Math.min(allPuniBodies.length, 16 + skillLv * 2);
+      const targets = [...allPuniBodies].sort(() => Math.random() - 0.5).slice(0, popCount);
+      targets.forEach(b => Matter.Composite.remove(engine.world, b));
+
+      const power = Math.round(cd.skill.power * (1 + (skillLv - 1) * 0.35));
+      const totalDmg = Math.floor(baseAtk * power * (targets.length * 0.06 + 1.2) * totalBoost);
+      const burstCount = 4;
+      const hitDmg = Math.floor(totalDmg / burstCount);
+
+      for (let i = 0; i < burstCount; i++) {
+        setTimeout(() => {
+          applyDamage(hitDmg);
+          const id = Date.now() + Math.random();
+          const offsetX = (Math.random() - 0.5) * 120;
+          const offsetY = (Math.random() - 0.5) * 80;
+          setDamageTexts(p => [...p, { id, val: hitDmg, x: 150 + offsetX, y: 140 + offsetY, color: '#f59e0b' }]);
+          setTimeout(() => setDamageTexts(p => p.filter(t => t.id !== id)), 1000);
+        }, i * 80);
+      }
+
+      if (!isFeverRef.current) {
+        setFeverGauge(prev => Math.min(FEVER_MAX, prev + 30));
+      }
+
+      for (let i = 0; i < targets.length; i++) {
+        setTimeout(() => spawnPuniRef.current(), i * 25);
+      }
+    } else if (cd.skill.type === 'super_fever') {
+      // スーパーフィーバー（フィーバー中なら残り時間延長、非フィーバーならフィーバー大幅チャージ）
       if (isFeverRef.current) {
-        setFeverTimeLeft(FEVER_DURATION); // フィーバー中なら残り時間を10秒に即時全回復！
+        setFeverTimeLeft(prev => Math.min(15, prev + 4));
+      } else {
+        setFeverGauge(prev => Math.min(FEVER_MAX, prev + 50));
       }
 
       const power = Math.round(cd.skill.power * (1 + (skillLv - 1) * 0.35));
-      const dmg = Math.floor(baseAtk * power * (popCount * 0.3 + 2.0) * totalBoost);
+      const dmg = Math.floor(baseAtk * power * 1.5 * totalBoost);
+      applyDamage(dmg);
+
+      const id = Date.now() + Math.random();
+      setDamageTexts(p => [...p, { id, val: dmg, x: 150, y: 140, color: '#ec4899' }]);
+      setTimeout(() => setDamageTexts(p => p.filter(t => t.id !== id)), 1500);
+    } else if (cd.skill.type === 'puni_tidy') {
+      // ぷに整理（全ぷにを自キャラ＆同種族の2種類に均等整理）
+      allPuniBodies.forEach((b, idx) => {
+        const pd = (b as any).puniData as PuniData;
+        if (pd) {
+          pd.charId = idx % 2 === 0 ? cd.id : (team.find(id => id !== cd.id) || cd.id);
+          const targetChar = CHARACTERS.find(c => c.id === pd.charId);
+          if (targetChar) b.render.fillStyle = targetChar.color;
+        }
+      });
+
+      const power = Math.round(cd.skill.power * (1 + (skillLv - 1) * 0.3));
+      const dmg = Math.floor(baseAtk * power * 1.2 * totalBoost);
+      applyDamage(dmg);
+
+      const id = Date.now() + Math.random();
+      setDamageTexts(p => [...p, { id, val: dmg, x: 150, y: 150, color: '#38bdf8' }]);
+      setTimeout(() => setDamageTexts(p => p.filter(t => t.id !== id)), 1500);
+    } else if (cd.skill.type === 'deka_create') {
+      // デカぷに生成（サイズ10〜15の巨大ぷにを生成）
+      const spawnCount = Math.min(3, 1 + Math.floor(skillLv / 3));
+      for (let i = 0; i < spawnCount; i++) {
+        setTimeout(() => {
+          if (!engineRef.current) return;
+          const dropX = bowlCenterRef.current.x + (i - (spawnCount - 1) / 2) * 45;
+          const dropY = bowlCenterRef.current.y - bowlRadiusRef.current * 0.7;
+          const sz = 10 + skillLv;
+          const r = PUNI_RADIUS * Math.min(2.8, 1 + sz * 0.12);
+          const body = Matter.Bodies.circle(dropX, dropY, r, {
+            restitution: 0.2,
+            friction: 0.1,
+            density: 0.003 * (1 + sz * 0.15),
+            render: { fillStyle: cd.color }
+          });
+          (body as any).puniData = { charId: cd.id, size: sz, level: 1 };
+          Matter.Composite.add(engineRef.current.world, body);
+        }, i * 80);
+      }
+
+      const power = Math.round(cd.skill.power * (1 + (skillLv - 1) * 0.3));
+      const dmg = Math.floor(baseAtk * power * 1.3 * totalBoost);
+      applyDamage(dmg);
+
+      const id = Date.now() + Math.random();
+      setDamageTexts(p => [...p, { id, val: dmg, x: 150, y: 150, color: '#ffd700' }]);
+      setTimeout(() => setDamageTexts(p => p.filter(t => t.id !== id)), 1500);
+    } else if (cd.skill.type === 'range_pop') {
+      // 範囲消し（画面中央〜下部一閃）
+      const targets = allPuniBodies.filter(b => b.position.y >= bowlCenterRef.current.y * 0.7);
+      targets.forEach(b => Matter.Composite.remove(engine.world, b));
+
+      const power = Math.round(cd.skill.power * (1 + (skillLv - 1) * 0.35));
+      const dmg = Math.floor(baseAtk * power * (targets.length * 0.05 + 1.2) * totalBoost);
+      applyDamage(dmg);
+
+      const id = Date.now() + Math.random();
+      setDamageTexts(p => [...p, { id, val: dmg, x: 150, y: 150, color: '#ef4444' }]);
+      setTimeout(() => setDamageTexts(p => p.filter(t => t.id !== id)), 1500);
+
+      for (let i = 0; i < targets.length; i++) {
+        setTimeout(() => spawnPuniRef.current(), i * 30);
+      }
+    } else if (cd.skill.type === 'gauge_charge') {
+      // 自身の技ゲージ上昇
+      const chargeAmount = 30 + skillLv * 5;
+      setCharGauges(prev => ({
+        ...prev,
+        [cd.id]: Math.min(100, (prev[cd.id] || 0) + chargeAmount)
+      }));
+
+      const power = Math.round(cd.skill.power * (1 + (skillLv - 1) * 0.3));
+      const dmg = Math.floor(baseAtk * power * 1.1 * totalBoost);
+      applyDamage(dmg);
+
+      const id = Date.now() + Math.random();
+      setDamageTexts(p => [...p, { id, val: dmg, x: 150, y: 150, color: '#10b981' }]);
+      setTimeout(() => setDamageTexts(p => p.filter(t => t.id !== id)), 1500);
+    } else if (cd.skill.type === 'god_burst') {
+      // 創世神奥義（全画面ぷに一撃消滅）
+      const popCount = allPuniBodies.length;
+      allPuniBodies.forEach(b => Matter.Composite.remove(engine.world, b));
+
+      const power = Math.round(cd.skill.power * (1 + (skillLv - 1) * 0.35));
+      const dmg = Math.floor(baseAtk * power * (popCount * 0.06 + 1.5) * totalBoost);
       applyDamage(dmg);
 
       const id = Date.now() + Math.random();
@@ -730,6 +1047,540 @@ const GameScene = () => {
 
       for (let i = 0; i < Math.max(15, popCount); i++) {
         setTimeout(() => spawnPuniRef.current(), i * 30);
+      }
+    } else if (cd.skill.type === 'bleach_lansa') {
+      // ウルキオラ (Z'): 雷霆の槍（なぞり爆破消去＆多段スラッシュ）
+      const targetCount = Math.min(allPuniBodies.length, 16 + skillLv * 2);
+      const shuffled = [...allPuniBodies].sort(() => Math.random() - 0.5);
+      const popped = shuffled.slice(0, targetCount);
+      popped.forEach(b => Matter.Composite.remove(engine.world, b));
+
+      const power = Math.round(cd.skill.power * (1 + (skillLv - 1) * 0.35));
+      const totalDmg = Math.floor(baseAtk * power * (popped.length * 0.06 + 1.2) * totalBoost);
+      const slashCount = 6;
+      const hitDmg = Math.floor(totalDmg / slashCount);
+
+      for (let i = 0; i < slashCount; i++) {
+        setTimeout(() => {
+          applyDamage(hitDmg);
+          const hitId = Date.now() + Math.random();
+          const offsetX = (Math.random() - 0.5) * 100;
+          const offsetY = (Math.random() - 0.5) * 70;
+          setDamageTexts(p => [...p, { id: hitId, val: hitDmg, x: 150 + offsetX, y: 130 + offsetY, color: '#00ff88' }]);
+          setTimeout(() => setDamageTexts(p => p.filter(t => t.id !== hitId)), 900);
+        }, i * 65);
+      }
+
+      for (let i = 0; i < popped.length; i++) {
+        setTimeout(() => spawnPuniRef.current(), i * 25);
+      }
+    } else if (cd.skill.type === 'bleach_desgarron') {
+      // グリムジョー (Z'): 豹王の爪（青き10連爪撃乱舞多段タップ爆破）
+      const popCount = Math.min(allPuniBodies.length, 18 + skillLv * 2);
+      const targets = [...allPuniBodies].sort(() => Math.random() - 0.5).slice(0, popCount);
+      targets.forEach(b => Matter.Composite.remove(engine.world, b));
+
+      const power = Math.round(cd.skill.power * (1 + (skillLv - 1) * 0.35));
+      const totalDmg = Math.floor(baseAtk * power * 2.2 * totalBoost);
+      const hitDmg = Math.floor(totalDmg / 10);
+
+      for (let i = 0; i < 10; i++) {
+        setTimeout(() => {
+          applyDamage(hitDmg);
+          const hitId = Date.now() + Math.random();
+          const offsetX = (Math.random() - 0.5) * 120;
+          const offsetY = (Math.random() - 0.5) * 80;
+          setDamageTexts(p => [...p, { id: hitId, val: hitDmg, x: 150 + offsetX, y: 140 + offsetY, color: '#38bdf8' }]);
+          setTimeout(() => setDamageTexts(p => p.filter(t => t.id !== hitId)), 900);
+        }, i * 65);
+      }
+
+      for (let i = 0; i < targets.length; i++) {
+        setTimeout(() => spawnPuniRef.current(), i * 25);
+      }
+    } else if (cd.skill.type === 'bleach_cero_metralleta') {
+      // スターク (Z'): 無限装弾虚閃（全味方技ゲージ上昇＋大ダメージ）
+      const chargePct = 25 + skillLv * 3;
+      setCharGauges(prev => {
+        const next = { ...prev };
+        team.forEach(id => {
+          next[id] = Math.min(100, (next[id] || 0) + chargePct);
+        });
+        return next;
+      });
+
+      const power = Math.round(cd.skill.power * (1 + (skillLv - 1) * 0.35));
+      const dmg = Math.floor(baseAtk * power * 1.5 * totalBoost);
+      applyDamage(dmg);
+
+      const id = Date.now() + Math.random();
+      setDamageTexts(p => [...p, { id, val: dmg, x: 150, y: 150, color: '#38bdf8' }]);
+      setTimeout(() => setDamageTexts(p => p.filter(t => t.id !== id)), 1500);
+    } else if (cd.skill.type === 'bleach_respira') {
+      // バラガン (Z'): 死の吐息・絶対腐朽（敵攻撃7秒凍結＋スリップ割合ダメージ）
+      setEnemyFrozenSec(prev => prev + 7);
+      const currEnemyHp = enemyHpRef.current;
+      const pctDmg = Math.floor(currEnemyHp * 0.03);
+      const power = Math.round(cd.skill.power * (1 + (skillLv - 1) * 0.35));
+      const baseDmg = Math.floor(baseAtk * power * 1.4 * totalBoost);
+      const dmg = pctDmg + baseDmg;
+      applyDamage(dmg);
+
+      const id = Date.now() + Math.random();
+      setDamageTexts(p => [...p, { id, val: dmg, x: 150, y: 150, color: '#a855f7' }]);
+      setTimeout(() => setDamageTexts(p => p.filter(t => t.id !== id)), 1800);
+    } else if (cd.skill.type === 'bleach_caudal') {
+      // ハリベル (Z'): 皇鮫後・断瀑（画面下部60%のぷに水流消滅）
+      const bottomBodies = allPuniBodies.filter(b => b.position.y > bowlCenterRef.current.y * 0.6);
+      bottomBodies.forEach(b => Matter.Composite.remove(engine.world, b));
+
+      const power = Math.round(cd.skill.power * (1 + (skillLv - 1) * 0.35));
+      const dmg = Math.floor(baseAtk * power * (Math.max(10, bottomBodies.length) * 0.06 + 1.2) * totalBoost);
+      applyDamage(dmg);
+
+      for (let i = 0; i < bottomBodies.length; i++) {
+        setTimeout(() => spawnPuniRef.current(), i * 25);
+      }
+
+      const id = Date.now() + Math.random();
+      setDamageTexts(p => [...p, { id, val: dmg, x: 150, y: 150, color: '#06b6d4' }]);
+      setTimeout(() => setDamageTexts(p => p.filter(t => t.id !== id)), 1500);
+    } else if (cd.skill.type === 'bleach_santa_teresa') {
+      // ノイトラ (Z'): 聖哭螳螂・六臂絶命連斬（十字範囲6連撃）
+      const power = Math.round(cd.skill.power * (1 + (skillLv - 1) * 0.35));
+      const totalDmg = Math.floor(baseAtk * power * 2.2 * totalBoost);
+      const hitDmg = Math.floor(totalDmg / 6);
+
+      for (let i = 0; i < 6; i++) {
+        setTimeout(() => {
+          applyDamage(hitDmg);
+          const hitId = Date.now() + Math.random();
+          const offsetX = (Math.random() - 0.5) * 80;
+          const offsetY = (Math.random() - 0.5) * 60;
+          setDamageTexts(p => [...p, { id: hitId, val: hitDmg, x: 150 + offsetX, y: 130 + offsetY, color: '#ef4444' }]);
+          setTimeout(() => setDamageTexts(p => p.filter(t => t.id !== hitId)), 1000);
+        }, i * 80);
+      }
+    } else if (cd.skill.type === 'bleach_gran_rey_cero') {
+      // ヤミー (Z'): 巨獣圧縮破（特大でかぷに（サイズ20）生成）
+      const cx = bowlCenterRef.current.x;
+      const dropY = bowlCenterRef.current.y - bowlRadiusRef.current * 0.6;
+      const megaR = PUNI_RADIUS * 2.6;
+      const megaBody = Matter.Bodies.circle(cx, dropY, megaR, {
+        restitution: 0.2,
+        friction: 0.1,
+        density: 0.02,
+        render: { fillStyle: cd.color }
+      });
+      (megaBody as any).puniData = { charId: cd.id, size: 20, level: 1 };
+      Matter.Composite.add(engine.world, megaBody);
+
+      const power = Math.round(cd.skill.power * (1 + (skillLv - 1) * 0.38));
+      const dmg = Math.floor(baseAtk * power * 1.6 * totalBoost);
+      applyDamage(dmg);
+
+      const id = Date.now() + Math.random();
+      setDamageTexts(p => [...p, { id, val: dmg, x: 150, y: 150, color: '#f97316' }]);
+      setTimeout(() => setDamageTexts(p => p.filter(t => t.id !== id)), 1500);
+    } else if (cd.skill.type === 'bleach_brujeria') {
+      // ゾマリ (Z'): 双児響転・愛の支配（盤面2種類整理）
+      allPuniBodies.forEach((b, idx) => {
+        const pd = (b as any).puniData as PuniData;
+        if (pd) {
+          pd.charId = idx % 2 === 0 ? cd.id : (team.find(id => id !== cd.id) || cd.id);
+          const targetChar = CHARACTERS.find(c => c.id === pd.charId);
+          if (targetChar) b.render.fillStyle = targetChar.color;
+        }
+      });
+
+      const power = Math.round(cd.skill.power * (1 + (skillLv - 1) * 0.35));
+      const dmg = Math.floor(baseAtk * power * 1.4 * totalBoost);
+      applyDamage(dmg);
+
+      const id = Date.now() + Math.random();
+      setDamageTexts(p => [...p, { id, val: dmg, x: 150, y: 150, color: '#c084fc' }]);
+      setTimeout(() => setDamageTexts(p => p.filter(t => t.id !== id)), 1500);
+    } else if (cd.skill.type === 'bleach_teatro') {
+      // ザエルアポロ (Z'): 受胎告知・細胞再生（HP特大回復）
+      const healAmount = Math.round(60000 * (1 + (skillLv - 1) * 0.3));
+      setPlayerHp(prev => Math.min(maxPlayerHp, prev + healAmount));
+
+      const power = Math.round(cd.skill.power * (1 + (skillLv - 1) * 0.35));
+      const dmg = Math.floor(baseAtk * power * 1.2 * totalBoost);
+      applyDamage(dmg);
+
+      const id = Date.now() + Math.random();
+      setDamageTexts(p => [...p, { id, val: dmg, x: 150, y: 150, color: '#ec4899' }]);
+      setTimeout(() => setDamageTexts(p => p.filter(t => t.id !== id)), 1500);
+    } else if (cd.skill.type === 'bleach_glotoneria') {
+      // アーロニーロ (Z'): 喰虚（全ぷにを自色へ統一変化）
+      allPuniBodies.forEach(b => {
+        const pd = (b as any).puniData as PuniData;
+        if (pd) {
+          pd.charId = cd.id;
+          b.render.fillStyle = cd.color;
+        }
+      });
+
+      const power = Math.round(cd.skill.power * (1 + (skillLv - 1) * 0.35));
+      const dmg = Math.floor(baseAtk * power * 1.4 * totalBoost);
+      applyDamage(dmg);
+
+      const id = Date.now() + Math.random();
+      setDamageTexts(p => [...p, { id, val: dmg, x: 150, y: 150, color: '#14b8a6' }]);
+      setTimeout(() => setDamageTexts(p => p.filter(t => t.id !== id)), 1500);
+    } else if (cd.skill.type === 'bleach_kurohitsugi') {
+      // 藍染惣右介 (Z'): 破道の九十「黒棺」（全画面ぷに消滅＆大ダメージ）
+      const popCount = allPuniBodies.length;
+      allPuniBodies.forEach(b => Matter.Composite.remove(engine.world, b));
+
+      const power = Math.round(cd.skill.power * (1 + (skillLv - 1) * 0.45));
+      const dmg = Math.floor(baseAtk * power * (popCount * 0.08 + 1.8) * totalBoost);
+      applyDamage(dmg);
+
+      for (let i = 0; i < Math.max(20, popCount); i++) {
+        setTimeout(() => spawnPuniRef.current(), i * 25);
+      }
+
+      const id = Date.now() + Math.random();
+      setDamageTexts(p => [...p, { id, val: dmg, x: 150, y: 120, color: '#facc15' }]);
+      setTimeout(() => setDamageTexts(p => p.filter(t => t.id !== id)), 2000);
+    }
+
+    // ==========================================
+    // ZZランク専用：キャラ固有のデュアル必殺技（最大2つの効果）
+    // ==========================================
+    else if (cd.skill.type === 'zz_god_lansa') {
+      // 1. ウルキオラZZ: なぞり消し ＋ 特大でかぷに（サイズ15×2個）生成
+      const targetCount = Math.min(allPuniBodies.length, 18);
+      const shuffled = [...allPuniBodies].sort(() => Math.random() - 0.5);
+      const popped = shuffled.slice(0, targetCount);
+      popped.forEach(b => Matter.Composite.remove(engine.world, b));
+
+      // 特大でかぷに（サイズ15）2個生成
+      for (let i = 0; i < 2; i++) {
+        setTimeout(() => {
+          if (!engineRef.current) return;
+          const dropX = bowlCenterRef.current.x + (i === 0 ? -40 : 40);
+          const dropY = bowlCenterRef.current.y - bowlRadiusRef.current * 0.7;
+          const r = PUNI_RADIUS * 2.3;
+          const body = Matter.Bodies.circle(dropX, dropY, r, {
+            restitution: 0.15,
+            friction: 0.08,
+            density: 0.01,
+            render: { fillStyle: cd.color }
+          });
+          (body as any).puniData = { charId: cd.id, size: 15, level: 1 };
+          Matter.Composite.add(engineRef.current.world, body);
+        }, 100 + i * 100);
+      }
+
+      const power = Math.round(cd.skill.power * (1 + (skillLv - 1) * 0.4));
+      const dmg = Math.floor(baseAtk * power * 8.0 * totalBoost);
+      applyDamage(dmg);
+
+      for (let i = 0; i < popped.length; i++) {
+        setTimeout(() => spawnPuniRef.current(), 250 + i * 25);
+      }
+
+      const id = Date.now() + Math.random();
+      setDamageTexts(p => [...p, { id, val: dmg, x: 150, y: 130, color: '#00ff88' }]);
+      setTimeout(() => setDamageTexts(p => p.filter(t => t.id !== id)), 1800);
+    } else if (cd.skill.type === 'zz_god_desgarron') {
+      // 2. グリムジョーZZ: タップ10連撃爪撃爆破 ＋ フィーバーゲージ蓄積（※フィーバー中は効果なし）
+      const popCount = Math.min(allPuniBodies.length, 20);
+      const targets = [...allPuniBodies].sort(() => Math.random() - 0.5).slice(0, popCount);
+      targets.forEach(b => Matter.Composite.remove(engine.world, b));
+
+      if (!isFeverRef.current) {
+        const feverCharge = Math.min(FEVER_MAX, FEVER_MAX * (0.4 + skillLv * 0.05));
+        setFeverGauge(prev => Math.min(FEVER_MAX, prev + feverCharge));
+      }
+
+      const power = Math.round(cd.skill.power * (1 + (skillLv - 1) * 0.4));
+      const totalDmg = Math.floor(baseAtk * power * 9.5 * totalBoost);
+      const hitDmg = Math.floor(totalDmg / 10);
+
+      for (let i = 0; i < 10; i++) {
+        setTimeout(() => {
+          applyDamage(hitDmg);
+          const hitId = Date.now() + Math.random();
+          const offsetX = (Math.random() - 0.5) * 120;
+          const offsetY = (Math.random() - 0.5) * 80;
+          setDamageTexts(p => [...p, { id: hitId, val: hitDmg, x: 150 + offsetX, y: 140 + offsetY, color: '#38bdf8' }]);
+          setTimeout(() => setDamageTexts(p => p.filter(t => t.id !== hitId)), 900);
+        }, i * 60);
+      }
+
+      for (let i = 0; i < targets.length; i++) {
+        setTimeout(() => spawnPuniRef.current(), i * 25);
+      }
+    } else if (cd.skill.type === 'zz_god_cero') {
+      // 3. スタークZZ: 全味方の技ゲージ上昇 ＋ 盤面ぷにをスターク色に変化
+      const chargePct = 25 + skillLv * 3;
+      setCharGauges(prev => {
+        const next = { ...prev };
+        team.forEach(id => {
+          next[id] = Math.min(100, (next[id] || 0) + chargePct);
+        });
+        return next;
+      });
+
+      allPuniBodies.forEach(b => {
+        const pd = (b as any).puniData as PuniData;
+        if (pd) {
+          pd.charId = cd.id;
+          b.render.fillStyle = cd.color;
+        }
+      });
+
+      const power = Math.round(cd.skill.power * (1 + (skillLv - 1) * 0.4));
+      const dmg = Math.floor(baseAtk * power * 7.5 * totalBoost);
+      applyDamage(dmg);
+
+      const id = Date.now() + Math.random();
+      setDamageTexts(p => [...p, { id, val: dmg, x: 150, y: 150, color: '#38bdf8' }]);
+      setTimeout(() => setDamageTexts(p => p.filter(t => t.id !== id)), 1500);
+    } else if (cd.skill.type === 'zz_god_respira') {
+      // 4. バラガンZZ: 敵攻撃10秒凍結 ＋ 全画面ぷに消滅
+      setEnemyFrozenSec(prev => prev + 10);
+      const popCount = allPuniBodies.length;
+      allPuniBodies.forEach(b => Matter.Composite.remove(engine.world, b));
+
+      const power = Math.round(cd.skill.power * (1 + (skillLv - 1) * 0.4));
+      const dmg = Math.floor(baseAtk * power * (popCount * 0.35 + 5.5) * totalBoost);
+      applyDamage(dmg);
+
+      for (let i = 0; i < Math.max(20, popCount); i++) {
+        setTimeout(() => spawnPuniRef.current(), i * 25);
+      }
+
+      const id = Date.now() + Math.random();
+      setDamageTexts(p => [...p, { id, val: dmg, x: 150, y: 150, color: '#a855f7' }]);
+      setTimeout(() => setDamageTexts(p => p.filter(t => t.id !== id)), 1800);
+    } else if (cd.skill.type === 'zz_god_caudal') {
+      // 5. ハリベルZZ: 下部60%水流消滅 ＋ HP特大回復
+      const bottomBodies = allPuniBodies.filter(b => b.position.y > bowlCenterRef.current.y * 0.6);
+      bottomBodies.forEach(b => Matter.Composite.remove(engine.world, b));
+
+      const healAmount = Math.round(100000 * (1 + (skillLv - 1) * 0.3));
+      setPlayerHp(prev => Math.min(maxPlayerHp, prev + healAmount));
+
+      const power = Math.round(cd.skill.power * (1 + (skillLv - 1) * 0.4));
+      const dmg = Math.floor(baseAtk * power * (Math.max(10, bottomBodies.length) * 0.4 + 4.5) * totalBoost);
+      applyDamage(dmg);
+
+      for (let i = 0; i < bottomBodies.length; i++) {
+        setTimeout(() => spawnPuniRef.current(), i * 25);
+      }
+
+      const id = Date.now() + Math.random();
+      setDamageTexts(p => [...p, { id, val: dmg, x: 150, y: 150, color: '#06b6d4' }]);
+      setTimeout(() => setDamageTexts(p => p.filter(t => t.id !== id)), 1500);
+    } else if (cd.skill.type === 'zz_god_santa_teresa') {
+      // 6. ノイトラZZ: 十字範囲6連撃 ＋ 被ダメ90%カット神鋼皮シールド展開
+      setHasShield(true);
+
+      const power = Math.round(cd.skill.power * (1 + (skillLv - 1) * 0.4));
+      const totalDmg = Math.floor(baseAtk * power * 10.0 * totalBoost);
+      const hitDmg = Math.floor(totalDmg / 6);
+
+      for (let i = 0; i < 6; i++) {
+        setTimeout(() => {
+          applyDamage(hitDmg);
+          const hitId = Date.now() + Math.random();
+          const offsetX = (Math.random() - 0.5) * 80;
+          const offsetY = (Math.random() - 0.5) * 60;
+          setDamageTexts(p => [...p, { id: hitId, val: hitDmg, x: 150 + offsetX, y: 130 + offsetY, color: '#ef4444' }]);
+          setTimeout(() => setDamageTexts(p => p.filter(t => t.id !== hitId)), 1000);
+        }, i * 80);
+      }
+    } else if (cd.skill.type === 'zz_god_gran_rey') {
+      // 7. ヤミーZZ: 特大でかぷに（サイズ25）生成 ＋ 盤面ぷに巨大化膨張
+      const cx = bowlCenterRef.current.x;
+      const dropY = bowlCenterRef.current.y - bowlRadiusRef.current * 0.6;
+      const megaR = PUNI_RADIUS * 2.8;
+      const megaBody = Matter.Bodies.circle(cx, dropY, megaR, {
+        restitution: 0.2,
+        friction: 0.1,
+        density: 0.03,
+        render: { fillStyle: cd.color }
+      });
+      (megaBody as any).puniData = { charId: cd.id, size: 25, level: 1 };
+      Matter.Composite.add(engine.world, megaBody);
+
+      // 全ぷにサイズアップ
+      allPuniBodies.forEach(b => {
+        const pd = (b as any).puniData as PuniData;
+        if (pd) {
+          pd.size = Math.min(15, pd.size + 3);
+          b.circleRadius = (b.circleRadius || PUNI_RADIUS) * 1.3;
+          Matter.Body.scale(b, 1.3, 1.3);
+        }
+      });
+
+      const power = Math.round(cd.skill.power * (1 + (skillLv - 1) * 0.4));
+      const dmg = Math.floor(baseAtk * power * 8.0 * totalBoost);
+      applyDamage(dmg);
+
+      const id = Date.now() + Math.random();
+      setDamageTexts(p => [...p, { id, val: dmg, x: 150, y: 150, color: '#f97316' }]);
+      setTimeout(() => setDamageTexts(p => p.filter(t => t.id !== id)), 1500);
+    } else if (cd.skill.type === 'zz_god_brujeria') {
+      // 8. ゾマリZZ: 盤面ぷに2種類整理 ＋ 全味方の技ゲージ上昇
+      allPuniBodies.forEach((b, idx) => {
+        const pd = (b as any).puniData as PuniData;
+        if (pd) {
+          pd.charId = idx % 2 === 0 ? cd.id : (team.find(id => id !== cd.id) || cd.id);
+          const targetChar = CHARACTERS.find(c => c.id === pd.charId);
+          if (targetChar) b.render.fillStyle = targetChar.color;
+        }
+      });
+
+      const chargePct = 25 + skillLv * 2;
+      setCharGauges(prev => {
+        const next = { ...prev };
+        team.forEach(id => {
+          next[id] = Math.min(100, (next[id] || 0) + chargePct);
+        });
+        return next;
+      });
+
+      const power = Math.round(cd.skill.power * (1 + (skillLv - 1) * 0.4));
+      const dmg = Math.floor(baseAtk * power * 6.5 * totalBoost);
+      applyDamage(dmg);
+
+      const id = Date.now() + Math.random();
+      setDamageTexts(p => [...p, { id, val: dmg, x: 150, y: 150, color: '#c084fc' }]);
+      setTimeout(() => setDamageTexts(p => p.filter(t => t.id !== id)), 1500);
+    } else if (cd.skill.type === 'zz_god_teatro') {
+      // 9. ザエルアポロZZ: 自動蘇生リレイズ保険付与 ＋ 特大でかぷに生成
+      setHasReraise(true);
+      const cx = bowlCenterRef.current.x;
+      const dropY = bowlCenterRef.current.y - bowlRadiusRef.current * 0.6;
+      const megaBody = Matter.Bodies.circle(cx, dropY, PUNI_RADIUS * 2.2, {
+        restitution: 0.2,
+        friction: 0.1,
+        density: 0.02,
+        render: { fillStyle: cd.color }
+      });
+      (megaBody as any).puniData = { charId: cd.id, size: 15, level: 1 };
+      Matter.Composite.add(engine.world, megaBody);
+
+      const power = Math.round(cd.skill.power * (1 + (skillLv - 1) * 0.4));
+      const dmg = Math.floor(baseAtk * power * 6.0 * totalBoost);
+      applyDamage(dmg);
+
+      const id = Date.now() + Math.random();
+      setDamageTexts(p => [...p, { id, val: dmg, x: 150, y: 150, color: '#ec4899' }]);
+      setTimeout(() => setDamageTexts(p => p.filter(t => t.id !== id)), 1500);
+    } else if (cd.skill.type === 'zz_god_glotoneria') {
+      // 10. アーロニーロZZ: 盤面ぷに自色統一変化 ＋ 敵からHP吸収回復
+      allPuniBodies.forEach(b => {
+        const pd = (b as any).puniData as PuniData;
+        if (pd) {
+          pd.charId = cd.id;
+          b.render.fillStyle = cd.color;
+        }
+      });
+
+      const drainAmount = Math.round(80000 * (1 + (skillLv - 1) * 0.3));
+      setPlayerHp(prev => Math.min(maxPlayerHp, prev + drainAmount));
+
+      const power = Math.round(cd.skill.power * (1 + (skillLv - 1) * 0.4));
+      const dmg = Math.floor(baseAtk * power * 7.0 * totalBoost);
+      applyDamage(dmg);
+
+      const id = Date.now() + Math.random();
+      setDamageTexts(p => [...p, { id, val: dmg, x: 150, y: 150, color: '#14b8a6' }]);
+      setTimeout(() => setDamageTexts(p => p.filter(t => t.id !== id)), 1500);
+    } else if (cd.skill.type === 'zz_god_kurohitsugi') {
+      // 11. 藍染惣右介ZZ: 全画面神黒棺消滅 ＋ フィーバーゲージ蓄積（※フィーバー中無効）
+      const popCount = allPuniBodies.length;
+      allPuniBodies.forEach(b => Matter.Composite.remove(engine.world, b));
+
+      if (!isFeverRef.current) {
+        const feverCharge = Math.min(FEVER_MAX, FEVER_MAX * (0.5 + skillLv * 0.05));
+        setFeverGauge(prev => Math.min(FEVER_MAX, prev + feverCharge));
+      }
+
+      const power = Math.round(cd.skill.power * (1 + (skillLv - 1) * 0.45));
+      const dmg = Math.floor(baseAtk * power * (popCount * 0.5 + 7.0) * totalBoost);
+      applyDamage(dmg);
+
+      for (let i = 0; i < Math.max(25, popCount); i++) {
+        setTimeout(() => spawnPuniRef.current(), i * 25);
+      }
+
+      const id = Date.now() + Math.random();
+      setDamageTexts(p => [...p, { id, val: dmg, x: 150, y: 120, color: '#facc15' }]);
+      setTimeout(() => setDamageTexts(p => p.filter(t => t.id !== id)), 2000);
+    } else if (cd.skill.type === 'zz_god_enma') {
+      // 12. 極エンマ神ZZ: なぞり神斬撃爆破 ＋ 全味方技ゲージ上昇
+      const targetCount = Math.min(allPuniBodies.length, 18);
+      const shuffled = [...allPuniBodies].sort(() => Math.random() - 0.5);
+      const popped = shuffled.slice(0, targetCount);
+      popped.forEach(b => Matter.Composite.remove(engine.world, b));
+
+      const chargePct = 25 + skillLv * 3;
+      setCharGauges(prev => {
+        const next = { ...prev };
+        team.forEach(id => {
+          next[id] = Math.min(100, (next[id] || 0) + chargePct);
+        });
+        return next;
+      });
+
+      const power = Math.round(cd.skill.power * (1 + (skillLv - 1) * 0.4));
+      const totalDmg = Math.floor(baseAtk * power * 8.5 * totalBoost);
+      const hitDmg = Math.floor(totalDmg / 5);
+
+      for (let i = 0; i < 5; i++) {
+        setTimeout(() => {
+          applyDamage(hitDmg);
+          const hitId = Date.now() + Math.random();
+          const offsetX = (Math.random() - 0.5) * 100;
+          const offsetY = (Math.random() - 0.5) * 70;
+          setDamageTexts(p => [...p, { id: hitId, val: hitDmg, x: 150 + offsetX, y: 130 + offsetY, color: '#f59e0b' }]);
+          setTimeout(() => setDamageTexts(p => p.filter(t => t.id !== hitId)), 900);
+        }, i * 70);
+      }
+
+      for (let i = 0; i < popped.length; i++) {
+        setTimeout(() => spawnPuniRef.current(), i * 25);
+      }
+    } else if (cd.skill.type === 'zz_god_jibanyan') {
+      // 13. 極ジバニャンZZ: 多段タップ爆破 ＋ 盤面ぷに2種整理
+      const popCount = Math.min(allPuniBodies.length, 16);
+      const targets = [...allPuniBodies].sort(() => Math.random() - 0.5).slice(0, popCount);
+      targets.forEach(b => Matter.Composite.remove(engine.world, b));
+
+      allPuniBodies.filter(b => !targets.includes(b)).forEach((b, idx) => {
+        const pd = (b as any).puniData as PuniData;
+        if (pd) {
+          pd.charId = idx % 2 === 0 ? cd.id : (team.find(id => id !== cd.id) || cd.id);
+          const targetChar = CHARACTERS.find(c => c.id === pd.charId);
+          if (targetChar) b.render.fillStyle = targetChar.color;
+        }
+      });
+
+      const power = Math.round(cd.skill.power * (1 + (skillLv - 1) * 0.4));
+      const totalDmg = Math.floor(baseAtk * power * 8.0 * totalBoost);
+      const hitDmg = Math.floor(totalDmg / 6);
+
+      for (let i = 0; i < 6; i++) {
+        setTimeout(() => {
+          applyDamage(hitDmg);
+          const hitId = Date.now() + Math.random();
+          const offsetX = (Math.random() - 0.5) * 100;
+          const offsetY = (Math.random() - 0.5) * 80;
+          setDamageTexts(p => [...p, { id: hitId, val: hitDmg, x: 150 + offsetX, y: 140 + offsetY, color: '#ec4899' }]);
+          setTimeout(() => setDamageTexts(p => p.filter(t => t.id !== hitId)), 900);
+        }, i * 70);
+      }
+
+      for (let i = 0; i < targets.length; i++) {
+        setTimeout(() => spawnPuniRef.current(), i * 25);
       }
     }
   };
@@ -913,8 +1764,16 @@ const GameScene = () => {
 
         // ── 繋いだ長さ (total) に応じてフィーバーゲージ＆技ゲージを即座に加算！ ──
         if (total >= 2) {
-          const feverAdd = Math.min(FEVER_MAX, Math.pow(total, 1.4) * 1.1);
-          const gaugeAdd = Math.min(100, Math.floor(Math.pow(total, 1.45) * 1.0));
+          let feverAdd = Math.min(FEVER_MAX, Math.pow(total, 1.4) * 1.1);
+          let gaugeAdd = Math.min(100, Math.floor(Math.pow(total, 1.45) * 1.0));
+
+          // パッシブスキル補正
+          if (teamPassiveEffects.feverBoostPct > 0) {
+            feverAdd = feverAdd * (1 + teamPassiveEffects.feverBoostPct / 100);
+          }
+          if (teamPassiveEffects.gaugeBoostPct > 0) {
+            gaugeAdd = gaugeAdd * (1 + teamPassiveEffects.gaugeBoostPct / 100);
+          }
 
           setFeverGauge(prev => Math.min(FEVER_MAX, prev + feverAdd));
           setCharGauges(prev => ({
@@ -936,7 +1795,7 @@ const GameScene = () => {
         const cd  = CHARACTERS.find(c => c.id === pd.charId)!;
         const charBoost = getCharBoostMultiplier(cd);
         const charTribeMult = getCharTribeMultiplier(cd);
-        const dmg = Math.floor(totalTeamAtk * Math.pow(pd.size, BIG_PUNI_MULT) * charBoost * charTribeMult);
+        const dmg = Math.floor(totalTeamAtk * Math.pow(pd.size, BIG_PUNI_MULT) * charBoost * charTribeMult * 0.25);
 
         // 消した時もぷにのサイズ（長かった連結ぷに）に応じてさらにボーナス加算
         let feverAdd = 0;
@@ -951,6 +1810,14 @@ const GameScene = () => {
         } else {
           feverAdd = Math.min(FEVER_MAX, Math.pow(pd.size, 1.2) * 0.8);
           gaugeAdd = Math.min(100, Math.floor(Math.pow(pd.size, 1.4) * 1.2));
+
+          // パッシブスキル補正
+          if (teamPassiveEffects.feverBoostPct > 0) {
+            feverAdd = feverAdd * (1 + teamPassiveEffects.feverBoostPct / 100);
+          }
+          if (teamPassiveEffects.gaugeBoostPct > 0) {
+            gaugeAdd = gaugeAdd * (1 + teamPassiveEffects.gaugeBoostPct / 100);
+          }
         }
 
         setFeverGauge(prev => Math.min(FEVER_MAX, prev + feverAdd));
@@ -1000,7 +1867,8 @@ const GameScene = () => {
           const fd    = (first as any).puniData as PuniData;
           const hd    = (b as any).puniData    as PuniData;
           if (fd.charId === hd.charId) {
-            const maxD = last.circleRadius! + b.circleRadius! + PUNI_RADIUS * 2.5;
+            const baseMaxD = last.circleRadius! + b.circleRadius! + PUNI_RADIUS * 2.5;
+            const maxD = baseMaxD * (teamPassiveEffects.connectRangeMult || 1.0);
             if (Vector.magnitude(Vector.sub(b.position, last.position)) < maxD) {
               selectedRef.current.push(b);
               b.render.lineWidth = 5;
@@ -1199,7 +2067,7 @@ const GameScene = () => {
       cleanup?.();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stage, team, characters, totalTeamAtk, isGameOver, isVictory, dealDamage]);
+  }, [stage, team, characters, totalTeamAtk, isGameOver, isVictory, dealDamage, teamPassiveEffects]);
 
   if (!stage || !team.length) return null;
 
@@ -1358,7 +2226,14 @@ const GameScene = () => {
         }}>
           {/* 敵HPゲージ */}
           <div style={{ width: '100%', height: 13, background: '#222', borderRadius: 7, overflow: 'hidden', border: '1.5px solid #666', boxShadow: '0 0 6px rgba(0,0,0,0.5)' }}>
-            <div style={{ height: '100%', background: 'linear-gradient(90deg,#ff3333,#ffaa00)', width: `${Math.min(100, Math.max(0, (enemyHp / stage.enemyHp) * 100))}%`, transition: 'width 0.25s' }} />
+            <div style={{
+              height: '100%',
+              background: isScoreAttack
+                ? 'linear-gradient(90deg, #ff3366, #ffaa00, #00ffff, #a855f7)'
+                : 'linear-gradient(90deg,#ff3333,#ffaa00)',
+              width: isScoreAttack ? '100%' : `${Math.min(100, Math.max(0, (enemyHp / stage.enemyHp) * 100))}%`,
+              transition: 'width 0.25s'
+            }} />
           </div>
 
           {/* 敵HP数値テキスト */}
@@ -1378,10 +2253,12 @@ const GameScene = () => {
                 lineHeight: 1.2
               }}>
                 <div>
-                  敵: <strong style={{ color: '#ffffff', fontSize: '0.9rem', letterSpacing: '0.5px' }}>{hpInfo.main}</strong>
+                  敵: <strong style={{ color: '#ffffff', fontSize: '0.9rem', letterSpacing: '0.5px' }}>
+                    {isScoreAttack ? '∞ (無限HP)' : hpInfo.main}
+                  </strong>
                 </div>
-                <div style={{ fontSize: '0.68rem', color: '#ffd0d0', opacity: 0.9 }}>
-                  {hpInfo.sub}
+                <div style={{ fontSize: '0.68rem', color: isScoreAttack ? '#00ffff' : '#ffd0d0', opacity: 0.9 }}>
+                  {isScoreAttack ? '※スコアタ限定 (削り無制限)' : hpInfo.sub}
                 </div>
               </div>
             );
@@ -1413,8 +2290,78 @@ const GameScene = () => {
             );
           })()}
 
-          {/* 種族シナジーボーナス表示 */}
+          {/* 種族シナジーボーナス表示 ＆ BLEACH 特殊スキル発動ステータス */}
           <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '4px', marginTop: '4px' }}>
+            {/* 特殊バフバッジ */}
+            {enemyFrozenSec > 0 && (
+              <div style={{
+                fontSize: '0.65rem',
+                padding: '2px 8px',
+                borderRadius: '10px',
+                background: 'rgba(168, 85, 247, 0.3)',
+                border: '1px solid #a855f7',
+                color: '#e9d5ff',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                fontWeight: 900,
+                boxShadow: '0 0 8px #a855f7'
+              }}>
+                <span>⏳ 敵行動停止: {enemyFrozenSec}s</span>
+              </div>
+            )}
+            {hasShield && (
+              <div style={{
+                fontSize: '0.65rem',
+                padding: '2px 8px',
+                borderRadius: '10px',
+                background: 'rgba(56, 189, 248, 0.3)',
+                border: '1px solid #38bdf8',
+                color: '#bae6fd',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                fontWeight: 900,
+                boxShadow: '0 0 8px #38bdf8'
+              }}>
+                <span>🛡️ 鋼皮(被ダメ90%カット)</span>
+              </div>
+            )}
+            {hasReraise && (
+              <div style={{
+                fontSize: '0.65rem',
+                padding: '2px 8px',
+                borderRadius: '10px',
+                background: 'rgba(236, 72, 153, 0.3)',
+                border: '1px solid #ec4899',
+                color: '#fbcfe8',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                fontWeight: 900,
+                boxShadow: '0 0 8px #ec4899'
+              }}>
+                <span>💖 受胎告知(完全蘇生待機)</span>
+              </div>
+            )}
+            {permanentAtkBonusPct > 0 && (
+              <div style={{
+                fontSize: '0.65rem',
+                padding: '2px 8px',
+                borderRadius: '10px',
+                background: 'rgba(234, 179, 8, 0.3)',
+                border: '1px solid #eab308',
+                color: '#fef08a',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                fontWeight: 900,
+                boxShadow: '0 0 8px #eab308'
+              }}>
+                <span>⚡ 永続攻撃力+{permanentAtkBonusPct}%</span>
+              </div>
+            )}
+
             {Object.entries(tribeCounts).map(([tribeName, count]) => {
               const mult = getTribeMultiplier(count);
               const tribeObj = TRIBES.find(t => t.name === tribeName);
@@ -1643,6 +2590,17 @@ const GameScene = () => {
                   {skillCutIn.skillType === 'inflate_puni' && '✨ ぷにをでかぷに化！'}
                   {skillCutIn.skillType === 'heal' && '💖 HPを大幅回復！'}
                   {skillCutIn.skillType === 'damage' && '🗡️ 強烈な一撃必殺！'}
+                  {skillCutIn.skillType === 'bleach_lansa' && '🦇 緑の雷霆の槍で全画面消去＆超特大回復！'}
+                  {skillCutIn.skillType === 'bleach_desgarron' && '🐆 豹王の爪デスガロンで連続強烈斬撃！'}
+                  {skillCutIn.skillType === 'bleach_cero_metralleta' && '🐺 無限装弾虚閃で味方全員の技ゲージ全満タン！'}
+                  {skillCutIn.skillType === 'bleach_respira' && '💀 死の吐息レスピラでぷに全自色化＆完全腐朽！'}
+                  {skillCutIn.skillType === 'bleach_caudal' && '🦈 皇鮫後・滝天霞で中央一網打尽＆極大HP回復！'}
+                  {skillCutIn.skillType === 'bleach_santa_teresa' && '🌙 聖哭螳螂の六臂十字斬で連続大爆発！'}
+                  {skillCutIn.skillType === 'bleach_gran_rey_cero' && '👹 巨獣のグラン・レイ・セロで特大でかぷに生成！'}
+                  {skillCutIn.skillType === 'bleach_brujeria' && '👁️ 守呪眼で盤面支配＆チームゲージ超チャージ！'}
+                  {skillCutIn.skillType === 'bleach_teatro' && '🔬 人形芝居の呪術医学でHP完全全快！'}
+                  {skillCutIn.skillType === 'bleach_glotoneria' && '🌊 喰虚の海蒼双蓮華ででかぷに爆誕連鎖！'}
+                  {skillCutIn.skillType === 'bleach_kurohitsugi' && '🌌 破道の九十「黒棺」・鏡花水月で全宇宙崩壊神撃！'}
                 </div>
               </div>
             </div>
@@ -1738,7 +2696,7 @@ const GameScene = () => {
 
               <button
                 className="btn btn-danger"
-                onClick={() => navigate(stageId?.startsWith('event_snow_') ? '/event/map' : '/stages')}
+                onClick={() => navigate((isScoreAttack || stageId === 'score_attack') ? '/score_attack' : stageId?.startsWith('bleach_st_') ? '/event/bleach' : stageId?.startsWith('event_snow_') ? '/event/map' : '/stages')}
                 style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '10px', fontSize: '0.9rem', marginTop: '4px' }}
               >
                 <ArrowLeft size={18} /> ステージ選択に戻る
@@ -1753,7 +2711,7 @@ const GameScene = () => {
           <h1 style={{ fontSize: '3.5rem', color: '#ff3333', textShadow: '0 0 20px #f00' }}>GAME OVER</h1>
           <div style={{ display: 'flex', gap: '12px', marginTop: 20 }}>
             <button className="btn btn-secondary" onClick={restartStage}>もう一度挑戦</button>
-            <button className="btn btn-primary" onClick={() => navigate(stageId?.startsWith('event_snow_') ? '/event/map' : '/stages')}>ステージ選択</button>
+            <button className="btn btn-primary" onClick={() => navigate((isScoreAttack || stageId === 'score_attack') ? '/score_attack' : stageId?.startsWith('bleach_st_') ? '/event/bleach' : stageId?.startsWith('event_snow_') ? '/event/map' : '/stages')}>ステージ選択</button>
           </div>
         </div>
       )}
@@ -1843,7 +2801,7 @@ const GameScene = () => {
           isEventStage={Boolean(stageId?.startsWith('event_snow_'))}
           drops={dropResult}
           onRetry={restartStage}
-          onNext={() => navigate(stageId?.startsWith('event_snow_') ? '/event/map' : '/stages')}
+          onNext={() => navigate((isScoreAttack || stageId === 'score_attack') ? '/score_attack' : stageId?.startsWith('bleach_st_') ? '/event/bleach' : stageId?.startsWith('event_snow_') ? '/event/map' : '/stages')}
         />
       )}
     </div>

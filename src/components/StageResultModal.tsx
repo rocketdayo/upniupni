@@ -410,6 +410,107 @@ export const StageResultModal: React.FC<StageResultModalProps> = ({
             flexDirection: 'column',
             gap: '8px'
           }}>
+            {/* 神昇の秘石 (虚圏ボス初クリア特別報酬) */}
+            {drops && drops.godAscensionStoneCount && drops.godAscensionStoneCount > 0 && (
+              <div style={{
+                background: 'linear-gradient(135deg, rgba(234, 179, 8, 0.3) 0%, rgba(147, 51, 234, 0.35) 100%)',
+                border: '2px solid #ffd700',
+                boxShadow: '0 0 20px rgba(255, 215, 0, 0.6)',
+                borderRadius: '12px',
+                padding: '10px 12px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                animation: 'popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div style={{
+                    fontSize: '1.4rem',
+                    background: '#7e22ce',
+                    width: '36px',
+                    height: '36px',
+                    borderRadius: '10px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.4)',
+                    border: '1px solid #ffd700'
+                  }}>
+                    💎
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '0.85rem', fontWeight: 900, color: '#fef08a' }}>
+                      神昇の秘石 (初クリア特別報酬！)
+                    </div>
+                    <div style={{ fontSize: '0.68rem', color: '#e9d5ff', fontWeight: 700 }}>
+                      👑 Z&apos;キャラを神ランク『ZZ』へ神昇進化させる秘石
+                    </div>
+                  </div>
+                </div>
+                <div style={{
+                  background: 'linear-gradient(135deg, #eab308 0%, #ca8a04 100%)',
+                  color: '#000000',
+                  padding: '3px 10px',
+                  borderRadius: '12px',
+                  fontWeight: 900,
+                  fontSize: '0.85rem',
+                  boxShadow: '0 2px 6px rgba(0,0,0,0.3)'
+                }}>
+                  + {drops.godAscensionStoneCount} 個
+                </div>
+              </div>
+            )}
+
+            {/* ブリーチリング獲得報酬 */}
+            {drops && drops.bleachRingCount && drops.bleachRingCount > 0 && (
+              <div style={{
+                background: 'linear-gradient(135deg, rgba(217, 70, 239, 0.25) 0%, rgba(59, 7, 100, 0.3) 100%)',
+                border: '2px solid #d946ef',
+                boxShadow: '0 0 15px rgba(217, 70, 239, 0.4)',
+                borderRadius: '12px',
+                padding: '10px 12px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                animation: 'popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div style={{
+                    fontSize: '1.4rem',
+                    background: '#581c87',
+                    width: '36px',
+                    height: '36px',
+                    borderRadius: '10px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.4)',
+                    border: '1px solid #d946ef'
+                  }}>
+                    💍
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '0.85rem', fontWeight: 900, color: '#ffffff' }}>
+                      ブリーチリング (BLEACH RING)
+                    </div>
+                    <div style={{ fontSize: '0.68rem', color: '#f0abfc', fontWeight: 700 }}>
+                      ⚔️ 虚圏イベント特設アイテム報酬
+                    </div>
+                  </div>
+                </div>
+                <div style={{
+                  background: '#d946ef',
+                  color: '#ffffff',
+                  padding: '2px 8px',
+                  borderRadius: '12px',
+                  fontWeight: 900,
+                  fontSize: '0.8rem'
+                }}>
+                  + {drops.bleachRingCount} 個
+                </div>
+              </div>
+            )}
+
             {/* 秘伝書 (超低確率ドロップ) */}
             {drops && drops.skillBookCount > 0 && (
               <div style={{

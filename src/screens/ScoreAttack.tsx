@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useGame } from '../store/GameContext';
+import { useGame, getWeeklyRewardWeekKey } from '../store/GameContext';
 import { ArrowLeft, Trophy, Play, Award, ShieldAlert, Sparkles, ChevronDown, ChevronUp, Gift, X } from 'lucide-react';
 
 interface LeaderboardEntry {
@@ -27,19 +27,19 @@ const RANK_REWARDS: RewardInfo[] = [
     rankRange: '1位',
     tierName: '神覇者 (ZZZ級)',
     badgeColor: '#f59e0b',
-    rewards: ['Yポイント x10,000', '神ひっさつの秘伝書 x5', '超限界突破の書 x3', '特別称号「神覇者」']
+    rewards: ['💎 神昇の秘石 x2', 'Yポイント x10,000', '神ひっさつの秘伝書 x5', '超限界突破の書 x3', '特別称号「神覇者」']
   },
   {
     rankRange: '2位 ～ 3位',
     tierName: '超神エリート (ZZ級)',
     badgeColor: '#ef4444',
-    rewards: ['Yポイント x5,000', '神ひっさつの秘伝書 x3', '超限界突破の書 x1']
+    rewards: ['💎 神昇の秘石 x1', 'Yポイント x5,000', '神ひっさつの秘伝書 x3', '超限界突破の書 x1']
   },
   {
     rankRange: '4位 ～ 5位',
     tierName: '超マスター (Z級)',
     badgeColor: '#a855f7',
-    rewards: ['Yポイント x3,000', 'ひっさつの秘伝書 x3', '大けいけんちだま x10']
+    rewards: ['💎 神昇の秘石 x1', 'Yポイント x3,000', 'ひっさつの秘伝書 x3', '大けいけんちだま x10']
   },
   {
     rankRange: '6位 ～ 8位',
@@ -66,8 +66,8 @@ const SCORE_MILESTONE_REWARDS: ScoreRewardInfo[] = [
   { scoreReq: '100万 pt', rewards: ['Yポイント x300', '小けいけんちだま x1'] },
   { scoreReq: '1億 pt', rewards: ['Yポイント x500', 'ひっさつの秘伝書 x1'] },
   { scoreReq: '1000億 pt', rewards: ['Yポイント x1,000', '神ひっさつの秘伝書 x1'] },
-  { scoreReq: '10兆 pt', rewards: ['Yポイント x3,000', '神ひっさつの秘伝書 x2'] },
-  { scoreReq: '1000兆 pt', rewards: ['Yポイント x5,000', '超限界突破の書 x1'] },
+  { scoreReq: '10兆 pt', rewards: ['💎 神昇の秘石 x1', 'Yポイント x3,000', '神ひっさつの秘伝書 x2'] },
+  { scoreReq: '1000兆 pt', rewards: ['💎 神昇の秘石 x2', 'Yポイント x5,000', '超限界突破の書 x1'] },
 ];
 
 const formatLargeScore = (score: number) => {
@@ -93,24 +93,39 @@ const formatLargeScore = (score: number) => {
 
 const ScoreAttack: React.FC = () => {
   const navigate = useNavigate();
-  const { scoreAttackHighScore, selectedTitle = '新米妖怪レーサー' } = useGame();
+  const {
+    scoreAttackHighScore,
+    selectedTitle = '新米妖怪レーサー',
+    addYPoints,
+    addItem,
+    unlockTitle,
+    lastClaimedWeeklyRewardWeek,
+    claimWeeklyReward,
+    scoreAttackClaimedMilestones = [],
+    claimScoreMilestone,
+  } = useGame();
+
+  const currentWeekKey = getWeeklyRewardWeekKey();
+  const hasClaimedThisWeek = lastClaimedWeeklyRewardWeek === currentWeekKey;
+
   const playerHighScore = scoreAttackHighScore || 0;
   const [showRules, setShowRules] = useState(false);
   const [showRewardsModal, setShowRewardsModal] = useState(false);
   const [rewardTab, setRewardTab] = useState<'rank' | 'score'>('rank');
+  const [claimedRewardMessage, setClaimedRewardMessage] = useState<string | null>(null);
 
-  // Top tier Yokai themed rivals with trillion+ scores
+  // Top tier Yokai themed rivals with trillion+ realistic detailed scores
   const baseRivals: LeaderboardEntry[] = [
-    { name: '👑 暴走エンマ様ガチ勢', score: 5000000000000000, title: 'ZZZ級', isPlayer: false }, // 5000兆
-    { name: '⚔️ 創世神極み', score: 2500000000000000, title: 'ZZZ級', isPlayer: false }, // 2500兆
-    { name: '🐉 覇邪の邪龍神推し', score: 1200000000000000, title: 'ZZ級', isPlayer: false }, // 1200兆
-    { name: '🌌 冥王神ハデス乱舞', score: 800000000000000, title: 'ZZ級', isPlayer: false }, // 800兆
-    { name: '❄️ 極ふぶき姫極限カンスト', score: 350000000000000, title: 'Z級', isPlayer: false }, // 350兆
-    { name: '⚡ アルティメット龍神', score: 100000000000000, title: 'Z級', isPlayer: false }, // 100兆
-    { name: '🔥 阿修羅王連撃', score: 10000000000000, title: 'Z級', isPlayer: false }, // 10兆
-    { name: '🍫 ジバニャン神伝承', score: 1000000000000, title: 'SSS級', isPlayer: false }, // 1兆
-    { name: '🐍 覚醒オロチ一門', score: 100000000000, title: 'SSS級', isPlayer: false }, // 1000億
-    { name: '👻 ウィスパー奇跡の一撃', score: 1000000000, title: 'SS級', isPlayer: false }, // 10億
+    { name: '👑 暴走エンマ様ガチ勢', score: 5084792301654829, title: 'ZZZ級', isPlayer: false }, // 5084.7兆 (5000兆オーバー)
+    { name: '⚔️ 創世神極み', score: 2714839205178392, title: 'ZZZ級', isPlayer: false }, // 2714.8兆
+    { name: '🐉 覇邪の邪龍神推し', score: 1492083741592016, title: 'ZZ級', isPlayer: false }, // 1492.0兆
+    { name: '🌌 冥王神ハデス乱舞', score: 847912603485920, title: 'ZZ級', isPlayer: false }, // 847.9兆
+    { name: '❄️ 極ふぶき姫極限カンスト', score: 381940274815693, title: 'Z級', isPlayer: false }, // 381.9兆
+    { name: '⚡ アルティメット龍神', score: 114893027561402, title: 'Z級', isPlayer: false }, // 114.8兆
+    { name: '🔥 阿修羅王連撃', score: 12849301756294, title: 'Z級', isPlayer: false }, // 12.8兆
+    { name: '🍫 ジバニャン神伝承', score: 1394820174930, title: 'SSS級', isPlayer: false }, // 1.39兆
+    { name: '🐍 覚醒オロチ一門', score: 148930271840, title: 'SSS級', isPlayer: false }, // 1489億
+    { name: '👻 ウィスパー奇跡の一撃', score: 1849302751, title: 'SS級', isPlayer: false }, // 18.4億
   ];
 
   // Merge player score and sort
@@ -131,15 +146,15 @@ const ScoreAttack: React.FC = () => {
     if (playerRank === 1) {
       tierName = '神覇者 (Tier ZZZ)';
       tierColor = '#f59e0b';
-      rewardText = '毎週 Yポイントx10,000、神ひっさつの秘伝書x5、超限界突破の書x3';
+      rewardText = '毎週 💎神昇の秘石x2、Yポイントx10,000、神ひっさつの秘伝書x5、超限界突破x3';
     } else if (playerRank <= 3) {
       tierName = '超神エリート (Tier ZZ)';
       tierColor = '#ef4444';
-      rewardText = '毎週 Yポイントx5,000、神ひっさつの秘伝書x3';
+      rewardText = '毎週 💎神昇の秘石x1、Yポイントx5,000、神ひっさつの秘伝書x3、超限界突破x1';
     } else if (playerRank <= 5) {
       tierName = '超マスター (Tier Z)';
       tierColor = '#a855f7';
-      rewardText = '毎週 Yポイントx3,000、ひっさつの秘伝書x3';
+      rewardText = '毎週 💎神昇の秘石x1、Yポイントx3,000、ひっさつの秘伝書x3';
     } else if (playerRank <= 8) {
       tierName = 'エキスパート (Tier SSS)';
       tierColor = '#3b82f6';
@@ -150,6 +165,59 @@ const ScoreAttack: React.FC = () => {
       rewardText = '毎週 Yポイントx800、ひっさつの秘伝書x1';
     }
   }
+
+  const handleClaimSundayWeeklyRewards = () => {
+    if (playerHighScore <= 0) return;
+    if (hasClaimedThisWeek) return;
+
+    if (claimWeeklyReward) {
+      claimWeeklyReward(currentWeekKey);
+    }
+
+    if (playerRank === 1) {
+      addYPoints(10000);
+      if (addItem) {
+        addItem('godAscensionStone', 2);
+        addItem('godSkillBook', 5);
+        addItem('superLimitBreakBook', 3);
+      }
+      if (unlockTitle) {
+        unlockTitle('神覇者');
+      }
+      setClaimedRewardMessage('👑【第1位 確定！】神覇者報酬を獲得！\n・💎 神昇の秘石 x2\n・Yポイント x10,000\n・神ひっさつの秘伝書 x5\n・超限界突破の書 x3\n・【LEGEND称号】「神覇者」解放！(攻撃力+100%, HP+100%, Ypt+100%)\n※今週の報酬受取を完了しました！');
+    } else if (playerRank <= 3) {
+      addYPoints(5000);
+      if (addItem) {
+        addItem('godAscensionStone', 1);
+        addItem('godSkillBook', 3);
+        addItem('superLimitBreakBook', 1);
+      }
+      setClaimedRewardMessage(`🥇【第${playerRank}位 確定！】上位入賞報酬を獲得！\n・💎 神昇の秘石 x1\n・Yポイント x5,000\n・神ひっさつの秘伝書 x3\n・超限界突破の書 x1\n※今週の報酬受取を完了しました！`);
+    } else if (playerRank <= 5) {
+      addYPoints(3000);
+      if (addItem) {
+        addItem('godAscensionStone', 1);
+        addItem('skillBook', 3);
+      }
+      setClaimedRewardMessage(`🏅【第${playerRank}位 確定！】上位入賞報酬を獲得！\n・💎 神昇の秘石 x1\n・Yポイント x3,000\n・ひっさつの秘伝書 x3\n※今週の報酬受取を完了しました！`);
+    } else if (playerRank <= 8) {
+      addYPoints(1500);
+      if (addItem) addItem('skillBook', 2);
+      setClaimedRewardMessage(`🏅【第${playerRank}位 確定！】ランキング入賞報酬を獲得！\n・Yポイント x1,500\n・ひっさつの秘伝書 x2\n※今週の報酬受取を完了しました！`);
+    } else {
+      addYPoints(800);
+      if (addItem) addItem('skillBook', 1);
+      setClaimedRewardMessage(`🏅【第${playerRank}位 確定！】参加報酬を獲得！\n・Yポイント x800\n・ひっさつの秘伝書 x1\n※今週の報酬受取を完了しました！`);
+    }
+  };
+
+  const handleClaimMilestone = (scoreReq: string) => {
+    if (!claimScoreMilestone) return;
+    const res = claimScoreMilestone(scoreReq);
+    if (res.success) {
+      setClaimedRewardMessage(res.message);
+    }
+  };
 
   return (
     <div className="view-container" style={{
@@ -165,7 +233,7 @@ const ScoreAttack: React.FC = () => {
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <button
-            onClick={() => navigate('/')}
+            onClick={() => { if (window.history.length > 2) { navigate(-1); } else { navigate('/event'); } }}
             style={{
               background: 'rgba(255,255,255,0.08)',
               border: 'none',
@@ -246,25 +314,58 @@ const ScoreAttack: React.FC = () => {
         )}
       </div>
 
-      {/* Tier rewards description */}
-      {playerHighScore > 0 && (
-        <div style={{
-          background: 'rgba(124, 58, 237, 0.15)',
-          border: '1px solid rgba(124, 58, 237, 0.3)',
-          borderRadius: '12px',
-          padding: '10px 14px',
-          marginBottom: '14px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '10px'
-        }}>
+      {/* Tier rewards description & Weekly Sunday claim button */}
+      <div style={{
+        background: 'rgba(124, 58, 237, 0.15)',
+        border: '1px solid rgba(124, 58, 237, 0.3)',
+        borderRadius: '12px',
+        padding: '12px 14px',
+        marginBottom: '14px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '8px'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <Sparkles size={20} color="#a855f7" style={{ flexShrink: 0 }} />
           <div>
-            <div style={{ fontSize: '0.7rem', color: '#a78bfa', fontWeight: 'bold' }}>今期の予想報酬:</div>
+            <div style={{ fontSize: '0.7rem', color: '#a78bfa', fontWeight: 'bold' }}>今期の予想報酬 (毎週日曜日集計):</div>
             <div style={{ fontSize: '0.8rem', color: '#fff', fontWeight: 800 }}>{rewardText}</div>
           </div>
         </div>
-      )}
+        <button
+          onClick={handleClaimSundayWeeklyRewards}
+          disabled={hasClaimedThisWeek || playerHighScore <= 0}
+          style={{
+            width: '100%',
+            marginTop: '4px',
+            padding: '10px 12px',
+            borderRadius: '12px',
+            border: hasClaimedThisWeek ? '1px solid #475569' : '1.5px solid #ffd700',
+            background: hasClaimedThisWeek 
+              ? 'linear-gradient(135deg, #334155 0%, #1e293b 100%)' 
+              : playerHighScore <= 0 
+                ? '#475569' 
+                : 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+            color: hasClaimedThisWeek ? '#94a3b8' : '#ffffff',
+            fontWeight: 900,
+            fontSize: '0.8rem',
+            cursor: (hasClaimedThisWeek || playerHighScore <= 0) ? 'not-allowed' : 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '6px',
+            boxShadow: hasClaimedThisWeek ? 'none' : '0 4px 12px rgba(245, 158, 11, 0.4)',
+            opacity: (hasClaimedThisWeek || playerHighScore <= 0) ? 0.8 : 1
+          }}
+        >
+          <Gift size={16} /> 
+          {hasClaimedThisWeek 
+            ? '✅ 今週のランキング報酬は受取済みです' 
+            : playerHighScore <= 0 
+              ? '※スコアタ未プレイ (プレイ後に受取可)' 
+              : '☀️ 毎週日曜日！ランキング集計＆報酬を受け取る！(週1回)'}
+        </button>
+      </div>
 
       {/* Leaderboard Section Header */}
       <h2 style={{ fontSize: '0.95rem', fontWeight: 900, color: '#f3f4f6', margin: '0 0 8px 4px', display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -559,44 +660,99 @@ const ScoreAttack: React.FC = () => {
                   </div>
                 ))
               ) : (
-                SCORE_MILESTONE_REWARDS.map((info, index) => (
-                  <div
-                    key={index}
-                    style={{
-                      background: 'rgba(255,255,255,0.04)',
-                      border: '1px solid rgba(255,255,255,0.08)',
-                      borderRadius: '12px',
-                      padding: '10px 12px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between'
-                    }}
-                  >
-                    <div>
-                      <div style={{ fontSize: '0.85rem', fontWeight: 900, color: '#fde047' }}>
-                        {info.scoreReq} 達成
+                SCORE_MILESTONE_REWARDS.map((info, index) => {
+                  const reqValues: Record<string, number> = {
+                    '10万 pt': 100000,
+                    '100万 pt': 1000000,
+                    '1億 pt': 100000000,
+                    '1000億 pt': 100000000000,
+                    '10兆 pt': 10000000000000,
+                    '1000兆 pt': 1000000000000000,
+                  };
+                  const targetScore = reqValues[info.scoreReq] || 0;
+                  const isReached = playerHighScore >= targetScore;
+                  const isClaimed = scoreAttackClaimedMilestones.includes(info.scoreReq);
+
+                  return (
+                    <div
+                      key={index}
+                      style={{
+                        background: isClaimed
+                          ? 'rgba(255,255,255,0.02)'
+                          : isReached
+                          ? 'linear-gradient(135deg, rgba(234, 179, 8, 0.12) 0%, rgba(147, 51, 234, 0.15) 100%)'
+                          : 'rgba(255,255,255,0.04)',
+                        border: isReached && !isClaimed ? '1.5px solid #ffd700' : '1px solid rgba(255,255,255,0.08)',
+                        borderRadius: '12px',
+                        padding: '10px 12px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: '8px'
+                      }}
+                    >
+                      <div style={{ flex: 1 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span style={{ fontSize: '0.85rem', fontWeight: 900, color: isReached ? '#fde047' : '#94a3b8' }}>
+                            {info.scoreReq} 達成
+                          </span>
+                          {isReached && !isClaimed && (
+                            <span style={{ fontSize: '0.65rem', background: '#ffd700', color: '#000', padding: '1px 6px', borderRadius: '4px', fontWeight: 900 }}>
+                              達成済！
+                            </span>
+                          )}
+                        </div>
+                        <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginTop: '4px' }}>
+                          {info.rewards.map((r, rIdx) => (
+                            <span
+                              key={rIdx}
+                              style={{
+                                fontSize: '0.72rem',
+                                color: r.includes('神昇の秘石') ? '#fef08a' : '#e2e8f0',
+                                background: r.includes('神昇の秘石') ? 'rgba(234, 179, 8, 0.25)' : 'rgba(59,130,246,0.15)',
+                                border: r.includes('神昇の秘石') ? '1px solid #ffd700' : '1px solid rgba(59,130,246,0.3)',
+                                padding: '2px 6px',
+                                borderRadius: '6px',
+                                fontWeight: 600
+                              }}
+                            >
+                              {r.includes('神昇の秘石') ? '💎 ' : '✨ '}{r}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div>
+                        {isClaimed ? (
+                          <span style={{ fontSize: '0.75rem', color: '#94a3b8', background: 'rgba(255,255,255,0.06)', padding: '6px 12px', borderRadius: '8px', fontWeight: 700 }}>
+                            受取済
+                          </span>
+                        ) : isReached ? (
+                          <button
+                            onClick={() => handleClaimMilestone(info.scoreReq)}
+                            style={{
+                              padding: '6px 14px',
+                              borderRadius: '8px',
+                              background: 'linear-gradient(135deg, #eab308 0%, #ca8a04 100%)',
+                              border: 'none',
+                              color: '#000000',
+                              fontWeight: 900,
+                              fontSize: '0.8rem',
+                              cursor: 'pointer',
+                              boxShadow: '0 2px 8px rgba(234, 179, 8, 0.4)'
+                            }}
+                          >
+                            受取！
+                          </button>
+                        ) : (
+                          <span style={{ fontSize: '0.72rem', color: '#64748b', background: 'rgba(255,255,255,0.03)', padding: '6px 10px', borderRadius: '8px' }}>
+                            未達成
+                          </span>
+                        )}
                       </div>
                     </div>
-                    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                      {info.rewards.map((r, rIdx) => (
-                        <span
-                          key={rIdx}
-                          style={{
-                            fontSize: '0.75rem',
-                            color: '#e2e8f0',
-                            background: 'rgba(59,130,246,0.15)',
-                            border: '1px solid rgba(59,130,246,0.3)',
-                            padding: '3px 8px',
-                            borderRadius: '6px',
-                            fontWeight: 600
-                          }}
-                        >
-                          ✨ {r}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
 
@@ -619,6 +775,67 @@ const ScoreAttack: React.FC = () => {
                 閉じる
               </button>
             </div>
+          </div>
+        </div>
+      )}
+      {/* Claimed Reward Result Modal */}
+      {claimedRewardMessage && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.85)',
+          backdropFilter: 'blur(8px)',
+          zIndex: 2000,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '20px'
+        }}>
+          <div style={{
+            background: 'linear-gradient(135deg, #1e1b4b 0%, #0f172a 100%)',
+            border: '2px solid #ffd700',
+            borderRadius: '24px',
+            padding: '24px',
+            maxWidth: '380px',
+            width: '100%',
+            textAlign: 'center',
+            boxShadow: '0 0 30px rgba(255, 215, 0, 0.5)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '16px'
+          }}>
+            <div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#ffd700' }}>
+              🎉 週間ランキング結果確定！
+            </div>
+            <div style={{
+              fontSize: '0.9rem',
+              color: '#ffffff',
+              whiteSpace: 'pre-line',
+              textAlign: 'left',
+              background: 'rgba(255, 255, 255, 0.05)',
+              padding: '14px',
+              borderRadius: '14px',
+              border: '1px solid rgba(255, 215, 0, 0.3)',
+              lineHeight: 1.6
+            }}>
+              {claimedRewardMessage}
+            </div>
+            <button
+              onClick={() => setClaimedRewardMessage(null)}
+              style={{
+                padding: '12px',
+                borderRadius: '14px',
+                border: 'none',
+                background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                color: '#ffffff',
+                fontWeight: 900,
+                fontSize: '0.95rem',
+                cursor: 'pointer',
+                boxShadow: '0 4px 15px rgba(245, 158, 11, 0.4)'
+              }}
+            >
+              受け取りを完了する
+            </button>
           </div>
         </div>
       )}

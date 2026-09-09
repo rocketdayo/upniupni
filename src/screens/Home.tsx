@@ -1,21 +1,38 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Play, Users, Sparkles, BookOpen, CalendarDays, Bell, Gift, X, HelpCircle, Trophy, ClipboardList, Award } from 'lucide-react';
+import { Play, Users, Sparkles, BookOpen, CalendarDays, Bell, Gift, X, HelpCircle, Trophy, ClipboardList, Award, Newspaper, Settings, Crown } from 'lucide-react';
 import { useGame } from '../store/GameContext';
 import { CHARACTERS } from '../data/characters';
 import { STAGES } from '../data/stages';
 import { TutorialModal } from '../components/TutorialModal';
+import { NewsModal } from '../components/NewsModal';
+import { SettingsModal } from '../components/SettingsModal';
+import { TitleUnlockedModal } from '../components/TitleUnlockedModal';
 
 const NEWS_ITEMS = [
+  "👑【神昇解禁】最高峰「ZZランク」神昇の祭壇オープン！Z'キャラと神昇の秘石で降臨！",
+  "💎【神昇の秘石】虚圏特別ボス初クリア・スコアタ報酬・BLEACHリング交換所で獲得可能！",
+  "⚔️【BLEACHコラボ】Z'ランク十刃＆崩玉藍染登場！虚圏特別マップ2面も大解放！！",
+  "✨【新機能】称号獲得でホーム画面に特大「GET!!」演出追加！その場装着＆能力バフも発動！",
   "🎁【新機能】ステージクリアで経験値玉・キャラ、超低確率で「秘伝書」がドロップ！",
-  "🎉【新機能】ワールドマップ追加！ウラステージも探してみてね！",
-  "🌟 ガシャで新SSキャラが確率アップ中！",
-  "🎁 毎日ログインして豪華ボーナスをもらおう！",
 ];
 
 const Home = () => {
   const navigate = useNavigate();
-  const { characters, clearedStages, team, minRequiredTeamSize = 5, addYPoints, addMoney } = useGame();
+  const {
+    characters,
+    clearedStages,
+    team,
+    minRequiredTeamSize = 5,
+    addYPoints,
+    addMoney,
+    unlockedTitles = [],
+    notifiedUnlockedTitles = [],
+    acknowledgeTitle,
+    setSelectedTitle
+  } = useGame();
+
+  const unnotifiedTitles = unlockedTitles.filter(t => !notifiedUnlockedTitles.includes(t));
 
   const ownedCount   = Object.keys(characters).length;
   const totalCount   = CHARACTERS.length;
@@ -27,6 +44,8 @@ const Home = () => {
   const [newsIndex, setNewsIndex] = useState(0);
   const [showDaily, setShowDaily] = useState(false);
   const [showTutorial, setShowTutorial] = useState(false);
+  const [showNewsModal, setShowNewsModal] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showTeamWarning, setShowTeamWarning] = useState(false);
 
   useEffect(() => {
@@ -67,9 +86,17 @@ const Home = () => {
   return (
     <div className="view-container" style={{ gap: '15px', padding: '20px 20px', position: 'relative' }}>
       
-      {/* ── News Banner & Tutorial Button ── */}
-      <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-        <div style={{ flex: 1, background: 'rgba(0, 0, 0, 0.4)', borderRadius: '10px', padding: '8px 12px', display: 'flex', alignItems: 'center', gap: '10px', overflow: 'hidden' }}>
+      {/* ── News Banner & Action Buttons ── */}
+      <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+        <div
+          onClick={() => setShowNewsModal(true)}
+          style={{
+            flex: 1, background: 'rgba(0, 0, 0, 0.4)', borderRadius: '10px',
+            padding: '8px 12px', display: 'flex', alignItems: 'center', gap: '8px',
+            overflow: 'hidden', cursor: 'pointer', border: '1px solid rgba(255, 255, 255, 0.1)'
+          }}
+          title="お知らせ一覧を見る"
+        >
           <Bell size={18} color="#ffcc00" style={{ flexShrink: 0 }} />
           <div style={{ flex: 1, fontSize: '0.85rem', color: 'white', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {NEWS_ITEMS[newsIndex]}
@@ -78,11 +105,32 @@ const Home = () => {
         <button
           className="btn btn-secondary"
           onClick={() => setShowTutorial(true)}
-          style={{ padding: '8px 12px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0, height: '100%' }}
+          style={{ padding: '8px 10px', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0, height: '100%' }}
           title="遊び方を見る"
         >
-          <HelpCircle size={18} color="#ffcc00" />
+          <HelpCircle size={16} color="#ffcc00" />
           <span>遊び方</span>
+        </button>
+        <button
+          onClick={() => setShowNewsModal(true)}
+          style={{
+            padding: '8px 10px', fontSize: '0.78rem', display: 'flex', alignItems: 'center', gap: '4px',
+            flexShrink: 0, height: '100%', borderRadius: '10px',
+            background: 'linear-gradient(135deg, #ff007f 0%, #7928ca 100%)',
+            border: '1px solid #ff77aa', color: '#ffffff', fontWeight: 900,
+            cursor: 'pointer', boxShadow: '0 2px 8px rgba(255,0,127,0.4)', position: 'relative'
+          }}
+          title="ニュース・アップデート情報を見る"
+        >
+          <Newspaper size={16} color="#ffd700" />
+          <span>ニュース</span>
+          <span style={{
+            position: 'absolute', top: '-4px', right: '-4px', background: '#ff0055',
+            color: '#fff', fontSize: '0.55rem', fontWeight: 900, padding: '1px 4px',
+            borderRadius: '6px', border: '1px solid #fff', lineHeight: 1
+          }}>
+            NEW
+          </span>
         </button>
       </div>
 
@@ -227,6 +275,137 @@ const Home = () => {
         </div>
       </div>
 
+      {/* ── ⚔️ BLEACH 十刃（エスパーダ）特設コラボステージバナー（常夏ビーチの直下） ── */}
+      <div
+        onClick={() => navigate('/event/bleach')}
+        style={{
+          background: 'linear-gradient(135deg, #09090b 0%, #1e1b4b 50%, #312e81 100%)',
+          border: '3px solid #d946ef',
+          borderRadius: '18px',
+          padding: '14px 18px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          cursor: 'pointer',
+          boxShadow: '0 8px 24px rgba(217, 70, 239, 0.4), 0 0 15px rgba(0, 255, 255, 0.3)',
+          position: 'relative',
+          overflow: 'hidden',
+          transition: 'transform 0.15s',
+          marginTop: '10px'
+        }}
+        onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
+        onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', zIndex: 2 }}>
+          <div style={{
+            fontSize: '2.4rem',
+            background: 'rgba(0,0,0,0.5)',
+            borderRadius: '50%',
+            width: '52px',
+            height: '52px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            border: '2px solid #d946ef',
+            flexShrink: 0
+          }}>
+            ⚔️
+          </div>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span style={{ background: '#d946ef', color: '#fff', fontSize: '0.65rem', fontWeight: 900, padding: '2px 8px', borderRadius: '10px' }}>
+                コラボ解禁！
+              </span>
+              <span style={{ color: '#00ffff', fontSize: '0.75rem', fontWeight: 800 }}>降臨: 刀剣解放第二階層ウルキオラ 🦇</span>
+            </div>
+            <div style={{ fontSize: '1.15rem', fontWeight: 900, color: '#ffffff', textShadow: '0 2px 4px rgba(0,0,0,0.9)', marginTop: '2px' }}>
+              虚圏（ウェコムンド）特設ステージ！
+            </div>
+          </div>
+        </div>
+        <div style={{
+          background: 'linear-gradient(135deg, #d946ef, #a855f7)',
+          color: '#ffffff',
+          fontWeight: 900,
+          fontSize: '0.9rem',
+          padding: '8px 14px',
+          borderRadius: '12px',
+          border: '2px solid #00ffff',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.6)',
+          whiteSpace: 'nowrap',
+          zIndex: 2
+        }}>
+          出撃 ➔
+        </div>
+      </div>
+
+      {/* ── 👑 神昇の祭壇（Z' ➔ ZZ神昇進化）特設バナー ── */}
+      <div
+        onClick={() => navigate('/ascension')}
+        style={{
+          background: 'linear-gradient(135deg, #713f12 0%, #b45309 40%, #ea580c 100%)',
+          border: '3px solid #ffd700',
+          borderRadius: '18px',
+          padding: '14px 18px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          cursor: 'pointer',
+          boxShadow: '0 8px 24px rgba(234, 179, 8, 0.4), 0 0 20px rgba(255, 215, 0, 0.3)',
+          position: 'relative',
+          overflow: 'hidden',
+          transition: 'transform 0.15s',
+          marginTop: '10px'
+        }}
+        onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
+        onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', zIndex: 2 }}>
+          <div style={{
+            fontSize: '2.4rem',
+            background: 'rgba(0,0,0,0.4)',
+            borderRadius: '50%',
+            width: '52px',
+            height: '52px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            border: '2px solid #ffd700',
+            flexShrink: 0
+          }}>
+            👑
+          </div>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span style={{ background: '#ffd700', color: '#000', fontSize: '0.65rem', fontWeight: 950, padding: '2px 8px', borderRadius: '10px' }}>
+                最高峰覚醒！
+              </span>
+              <span style={{ color: '#fef08a', fontSize: '0.75rem', fontWeight: 800 }}>秘石で全13体のZZへランダム神昇！</span>
+            </div>
+            <div style={{ fontSize: '1.2rem', fontWeight: 950, color: '#ffffff', textShadow: '0 2px 4px rgba(0,0,0,0.9)', marginTop: '2px' }}>
+              神昇の祭壇（Z' ➔ ZZ）
+            </div>
+          </div>
+        </div>
+        <div style={{
+          background: 'linear-gradient(135deg, #ffd700, #f59e0b)',
+          color: '#000000',
+          fontWeight: 950,
+          fontSize: '0.9rem',
+          padding: '8px 14px',
+          borderRadius: '12px',
+          border: '2px solid #ffffff',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.6)',
+          whiteSpace: 'nowrap',
+          zIndex: 2,
+          display: 'flex',
+          alignItems: 'center',
+          gap: '4px'
+        }}>
+          <span>神昇へ</span> ➔
+        </div>
+      </div>
+
       {/* ── Main play button ── */}
       <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <button
@@ -252,6 +431,39 @@ const Home = () => {
           )}
         </button>
       </div>
+
+      {/* ── Dedicated God Ascension Button ── */}
+      <button
+        onClick={() => navigate('/ascension')}
+        style={{
+          background: 'linear-gradient(135deg, #b45309 0%, #d97706 50%, #f59e0b 100%)',
+          border: '2px solid #ffd700',
+          borderRadius: '16px',
+          padding: '12px 16px',
+          color: '#ffffff',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          boxShadow: '0 6px 16px rgba(245, 158, 11, 0.4)',
+          cursor: 'pointer',
+          marginBottom: '6px'
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <Crown size={28} color="#ffd700" />
+          <div style={{ textAlign: 'left' }}>
+            <div style={{ fontSize: '1rem', fontWeight: 950, color: '#fef08a' }}>
+              👑 神昇の祭壇（Z' ➔ ZZ神昇進化）
+            </div>
+            <div style={{ fontSize: '0.7rem', color: '#fff', opacity: 0.9 }}>
+              秘石を捧げて最高峰ZZキャラをランダム神昇召喚！
+            </div>
+          </div>
+        </div>
+        <span style={{ fontSize: '0.85rem', fontWeight: 900, background: '#000', color: '#ffd700', padding: '4px 10px', borderRadius: '8px', border: '1px solid #ffd700' }}>
+          祭壇へ ➔
+        </span>
+      </button>
 
       {/* ── Secondary buttons ── */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '10px' }}>
@@ -311,6 +523,59 @@ const Home = () => {
         </button>
       </div>
 
+      {/* ── Settings & Data Transfer Bottom Action Bar ── */}
+      <button
+        onClick={() => setShowSettingsModal(true)}
+        style={{
+          width: '100%',
+          background: 'linear-gradient(135deg, rgba(30, 27, 75, 0.9), rgba(15, 23, 42, 0.95))',
+          border: '2px solid #6366f1',
+          borderRadius: '16px',
+          padding: '12px 18px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          cursor: 'pointer',
+          boxShadow: '0 4px 12px rgba(99, 102, 241, 0.3)',
+          transition: 'transform 0.1s',
+          marginBottom: '10px'
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{
+            background: 'linear-gradient(135deg, #6366f1, #4f46e5)',
+            borderRadius: '10px',
+            width: '36px',
+            height: '36px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: '#fff'
+          }}>
+            <Settings size={20} />
+          </div>
+          <div style={{ textAlign: 'left' }}>
+            <div style={{ fontSize: '0.95rem', fontWeight: 900, color: '#e0e7ff' }}>
+              設定・データ引き継ぎ
+            </div>
+            <div style={{ fontSize: '0.7rem', color: '#a5b4fc' }}>
+              シリアルコード入力・データ移行・遊び方
+            </div>
+          </div>
+        </div>
+        <div style={{
+          background: '#4f46e5',
+          color: '#ffffff',
+          fontSize: '0.78rem',
+          fontWeight: 800,
+          padding: '4px 12px',
+          borderRadius: '10px',
+          border: '1px solid #818cf8'
+        }}>
+          開く
+        </div>
+      </button>
+
       {/* ── Daily Login Modal ── */}
       {showDaily && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -343,6 +608,11 @@ const Home = () => {
         <TutorialModal onClose={() => setShowTutorial(false)} />
       )}
 
+      {/* ── News Modal ── */}
+      {showNewsModal && (
+        <NewsModal onClose={() => setShowNewsModal(false)} />
+      )}
+
       {/* ── Team Warning Modal ── */}
       {showTeamWarning && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
@@ -365,6 +635,21 @@ const Home = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* ── Settings Modal ── */}
+      <SettingsModal isOpen={showSettingsModal} onClose={() => setShowSettingsModal(false)} />
+
+      {/* ── Title Unlocked GET Modal ── */}
+      {unnotifiedTitles.length > 0 && (
+        <TitleUnlockedModal
+          titleName={unnotifiedTitles[0]}
+          onAcknowledge={(name) => acknowledgeTitle(name)}
+          onEquipAndAcknowledge={(name) => {
+            setSelectedTitle(name);
+            acknowledgeTitle(name);
+          }}
+        />
       )}
 
     </div>

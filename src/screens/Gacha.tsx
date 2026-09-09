@@ -11,23 +11,25 @@ const GACHA_COST_10 = 500;
 const GACHA_COST_100 = 5000;
 const GACHA_COST_500 = 25000;
 
-const RANK_ORDER: Record<Rank, number> = { Z: -2, SSS: -1, SS: 0, S: 1, A: 2, B: 3, C: 4, D: 5, E: 6 };
+const RANK_ORDER: Record<Rank, number> = { ZZ: -4, "Z'": -3, Z: -2, SSS: -1, SS: 0, S: 1, A: 2, B: 3, C: 4, D: 5, E: 6 };
 const RANK_COLORS: Record<Rank, string> = {
-  Z: '#00ffff', SSS: '#ffd700', SS: '#ff22ff', S: '#ff2222', A: '#ffaa00', B: '#ff88bb', C: '#cc6666', D: '#55bb55', E: '#88cc88'
+  ZZ: '#ffd700', "Z'": '#ff3399', Z: '#00ffff', SSS: '#ffd700', SS: '#ff22ff', S: '#ff2222', A: '#ffaa00', B: '#ff88bb', C: '#cc6666', D: '#55bb55', E: '#88cc88'
 };
 
 // 恒常ガシャ (Permanent)
 const normalRankWeights: Record<Rank, number> = {
-  'Z': 0, 'SSS': 0, 'SS': 0, 'S': 2, 'A': 8, 'B': 20, 'C': 30, 'D': 25, 'E': 15
+  ZZ: 0, "Z'": 0, 'Z': 0, 'SSS': 0, 'SS': 0, 'S': 2, 'A': 8, 'B': 20, 'C': 30, 'D': 25, 'E': 15
 };
 
 // イベントガシャ (Event)
 const eventRankWeights: Record<Rank, number> = {
-  'Z': 0, 'SSS': 0, 'SS': 1, 'S': 5, 'A': 10, 'B': 20, 'C': 24, 'D': 25, 'E': 15
+  ZZ: 0, "Z'": 0, 'Z': 0, 'SSS': 0, 'SS': 1, 'S': 5, 'A': 10, 'B': 20, 'C': 24, 'D': 25, 'E': 15
 };
 
 // 超高級ガシャ (Ultra Luxury): 100連固定 / 天井なし / 0.2%で新キャラSSS1体
 const ultraLuxuryRankWeights: Record<Rank, number> = {
+  ZZ: 0,
+  "Z'": 0,
   'Z': 0,
   'SSS': 0.2,  // 0.2%
   'SS': 2.0,   // 2.0%
@@ -41,6 +43,8 @@ const ultraLuxuryRankWeights: Record<Rank, number> = {
 
 // 超ウルトラガシャ (Ultra Super): 100連固定 / 天井なし / 0.2%で新キャラZ
 const ultraSuperRankWeights: Record<Rank, number> = {
+  ZZ: 0,
+  "Z'": 0,
   'Z': 0.2,    // 0.2% (新キャラZ)
   'SSS': 1.0,  // 1.0% (User specified SSS as 1%)
   'SS': 8.0,   // 8.0%
@@ -52,7 +56,19 @@ const ultraSuperRankWeights: Record<Rank, number> = {
   'E': 0.0     // 0.0%
 };
 
-type GachaType = 'normal' | 'event' | 'ultra_luxury' | 'ultra_super';
+// ブリーチコラボガシャ (BLEACH Espada Gacha): 高価値ブリーチリング用 (Z: 1.0%, Z': 0.1%, SSS: 18.9%, SS: 39.5%, S: 40.5%)
+const bleachRankWeights: Record<Rank, number> = {
+  ZZ: 0,
+  "Z'": 0.1,   // 0.1% (十刃 & 崩玉藍染)
+  'Z': 1.0,    // 1.0% (新キャラZ)
+  'SSS': 18.9, // 18.9%
+  'SS': 39.5,  // 39.5%
+  'S': 40.5,   // 40.5%
+  'A': 0, 'B': 0, 'C': 0, 'D': 0, 'E': 0
+};
+
+type GachaType = 'normal' | 'event' | 'ultra_luxury' | 'ultra_super' | 'bleach';
+const GACHA_TYPES: GachaType[] = ['bleach', 'normal', 'event', 'ultra_luxury', 'ultra_super'];
 
 interface GachaCapsuleItem {
   id: number;
@@ -77,22 +93,27 @@ const CAPSULE_POSITIONS_10 = [
 ];
 
 const Gacha = () => {
-  const { yPoints, addYPoints, summerMedals, addSummerMedals, convertYPointsToSummerMedals, unlockCharacter, trackMission, pityCount, stepUpCount, gachaHistory, recordGachaResult } = useGame();
+  const { yPoints, addYPoints, summerMedals, addSummerMedals, bleachRings, addBleachRings, convertYPointsToSummerMedals, convertYPointsToBleachRings, unlockCharacter, trackMission, pityCount, stepUpCount, gachaHistory, recordGachaResult } = useGame();
   const navigate = useNavigate();
   const [results, setResults] = useState<Character[] | null>(null);
   const [capsuleStageItems, setCapsuleStageItems] = useState<GachaCapsuleItem[] | null>(null);
   const [selectedCutInChar, setSelectedCutInChar] = useState<Character | null>(null);
   const [isPulling, setIsPulling] = useState(false);
-  const [currentGacha, setCurrentGacha] = useState<GachaType>('normal');
+  const [currentGacha, setCurrentGacha] = useState<GachaType>('bleach');
   const [showRates, setShowRates] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
 
   const pullGacha = (timesInput: number) => {
     let times = timesInput;
     let cost = GACHA_COST_1;
+    const isBleach = currentGacha === 'bleach';
     const isSummerCurrency = currentGacha === 'ultra_luxury' || currentGacha === 'ultra_super';
 
-    if (currentGacha === 'ultra_super') {
+    if (isBleach) {
+      if (times === 1) cost = 5;
+      else if (times === 10) cost = 50;
+      else cost = 500;
+    } else if (currentGacha === 'ultra_super') {
       times = 100; // 100連固定
       cost = 3000; // 3,000 サマーコイン
     } else if (currentGacha === 'ultra_luxury') {
@@ -104,11 +125,13 @@ const Gacha = () => {
       if (times === 500) cost = GACHA_COST_500;
     }
 
-    const availableCurrency = isSummerCurrency ? (summerMedals || 0) : yPoints;
+    const availableCurrency = isBleach ? (bleachRings || 0) : isSummerCurrency ? (summerMedals || 0) : yPoints;
     if (availableCurrency < cost || isPulling) return;
     
     setIsPulling(true);
-    if (isSummerCurrency) {
+    if (isBleach) {
+      addBleachRings(-cost);
+    } else if (isSummerCurrency) {
       addSummerMedals(-cost);
     } else {
       addYPoints(-cost);
@@ -117,33 +140,39 @@ const Gacha = () => {
     
     setTimeout(() => {
       const pulledChars: Character[] = [];
-      const weights = currentGacha === 'ultra_super'
+      const weights = isBleach
+        ? { ...bleachRankWeights }
+        : currentGacha === 'ultra_super'
         ? { ...ultraSuperRankWeights }
         : currentGacha === 'ultra_luxury'
         ? { ...ultraLuxuryRankWeights }
         : { ...(currentGacha === 'event' ? eventRankWeights : normalRankWeights) };
       
       // Step Up Logic (恒常・イベントガシャ用)
-      if (currentGacha !== 'ultra_luxury' && currentGacha !== 'ultra_super') {
+      if (currentGacha !== 'ultra_luxury' && currentGacha !== 'ultra_super' && !isBleach) {
         const stepUpBonus = Math.floor((stepUpCount || 0) / 10);
         if (weights['SS'] !== undefined) weights['SS'] += stepUpBonus * 0.5;
         if (weights['S'] !== undefined) weights['S'] += stepUpBonus * 1.5;
       }
 
       let newPityCount = pityCount ?? 100;
-      let newStepUpCount = (stepUpCount ?? 0) + (currentGacha !== 'ultra_luxury' && currentGacha !== 'ultra_super' ? times : 0);
+      let newStepUpCount = (stepUpCount ?? 0) + (!isSummerCurrency && !isBleach ? times : 0);
+
+      const isBleachCharacter = (c: { id?: string; name: string }) => 
+        (c.id && c.id.includes('bleach')) || 
+        /ウルキオラ|グリムジョー|スターク|バラガン|ハリベル|ノイトラ|ヤミー|ゾマリ|ザエルアポロ|アーロニーロ|藍染|崩玉|十刃|一護|白哉|冬獅郎|ルキア|恋次|雨竜|茶渡|織姫/i.test(c.name);
 
       for (let i = 0; i < times; i++) {
         let pulledRank: Rank = 'E';
 
-        if (currentGacha === 'ultra_luxury' || currentGacha === 'ultra_super') {
+        if (isBleach || isSummerCurrency) {
           // 天井なし。確率計算
-          let totalWeight = 0;
-          for (const w of Object.values(weights)) totalWeight += w;
-          let rand = Math.random() * totalWeight;
-          for (const [r, w] of Object.entries(weights)) {
+          let rand = Math.random() * 100;
+          const ranks: Rank[] = ["Z'", 'Z', 'SSS', 'SS', 'S', 'A', 'B', 'C', 'D', 'E'];
+          for (const r of ranks) {
+            const w = weights[r] || 0;
             if (rand < w) {
-              pulledRank = r as Rank;
+              pulledRank = r;
               break;
             }
             rand -= w;
@@ -154,12 +183,12 @@ const Gacha = () => {
           if (newPityCount <= 0) {
             pulledRank = 'SS'; // PITY GUARANTEE
           } else {
-            let totalWeight = 0;
-            for (const w of Object.values(weights)) totalWeight += w;
-            let rand = Math.random() * totalWeight;
-            for (const [r, w] of Object.entries(weights)) {
+            let rand = Math.random() * 100;
+            const ranks: Rank[] = ["Z'", 'Z', 'SSS', 'SS', 'S', 'A', 'B', 'C', 'D', 'E'];
+            for (const r of ranks) {
+              const w = weights[r] || 0;
               if (rand < w) {
-                pulledRank = r as Rank;
+                pulledRank = r;
                 break;
               }
               rand -= w;
@@ -174,10 +203,26 @@ const Gacha = () => {
           }
         }
         
-        const rankChars = CHARACTERS.filter(c => c.rank === pulledRank);
-        const pulledChar = rankChars.length > 0
-          ? rankChars[Math.floor(Math.random() * rankChars.length)]
-          : CHARACTERS[Math.floor(Math.random() * CHARACTERS.length)];
+        const rankChars = CHARACTERS.filter(c => {
+          const isBleachChar = isBleachCharacter(c);
+          if (isBleach) {
+            return isBleachChar && c.rank === pulledRank;
+          } else {
+            return !isBleachChar && c.rank === pulledRank;
+          }
+        });
+        let pulledChar: any;
+        if (rankChars.length > 0) {
+          pulledChar = rankChars[Math.floor(Math.random() * rankChars.length)];
+        } else if (isBleach) {
+          const bleachChars = CHARACTERS.filter(c => isBleachCharacter(c));
+          const bleachCharsByRank = bleachChars.filter(c => c.rank === pulledRank);
+          pulledChar = bleachCharsByRank.length > 0
+            ? bleachCharsByRank[Math.floor(Math.random() * bleachCharsByRank.length)]
+            : (bleachChars.length > 0 ? bleachChars[Math.floor(Math.random() * bleachChars.length)] : CHARACTERS[0]);
+        } else {
+          pulledChar = CHARACTERS[Math.floor(Math.random() * CHARACTERS.length)];
+        }
 
         pulledChars.push(pulledChar);
         unlockCharacter(pulledChar.id);
@@ -189,7 +234,7 @@ const Gacha = () => {
       if (times === 1 || times === 10) {
         const caps: GachaCapsuleItem[] = pulledChars.map((char, i) => {
           let color: 'rainbow' | 'gold' | 'red' = 'red';
-          if (['Z', 'SSS', 'SS'].includes(char.rank)) {
+          if (["Z'", 'Z', 'SSS', 'SS'].includes(char.rank)) {
             color = 'rainbow';
           } else if (['S', 'A'].includes(char.rank)) {
             color = 'gold';
@@ -247,22 +292,25 @@ const Gacha = () => {
     if (touchStartX.current === null) return;
     const diff = touchStartX.current - e.changedTouches[0].clientX;
     if (diff > 40) {
-      if (currentGacha === 'normal') setCurrentGacha('event');
+      if (currentGacha === 'bleach') setCurrentGacha('normal');
+      else if (currentGacha === 'normal') setCurrentGacha('event');
       else if (currentGacha === 'event') setCurrentGacha('ultra_luxury');
       else if (currentGacha === 'ultra_luxury') setCurrentGacha('ultra_super');
     } else if (diff < -40) {
       if (currentGacha === 'ultra_super') setCurrentGacha('ultra_luxury');
       else if (currentGacha === 'ultra_luxury') setCurrentGacha('event');
       else if (currentGacha === 'event') setCurrentGacha('normal');
+      else if (currentGacha === 'normal') setCurrentGacha('bleach');
     }
     touchStartX.current = null;
   };
 
   const GachaButton = ({ times, cost, color }: { times: number, cost: number, color?: string }) => {
+    const isBleach = currentGacha === 'bleach';
     const isSummerCurrency = currentGacha === 'ultra_luxury' || currentGacha === 'ultra_super';
-    const currencyLabel = isSummerCurrency ? '枚' : ' Ypt';
-    const currencyIcon = isSummerCurrency ? '🏝️' : <div className="currency-icon y-point-icon" style={{width: 14, height: 14, fontSize: '0.6rem'}}>y</div>;
-    const canAfford = isSummerCurrency ? (summerMedals || 0) >= cost : yPoints >= cost;
+    const currencyLabel = isBleach ? '個' : isSummerCurrency ? '枚' : ' Ypt';
+    const currencyIcon = isBleach ? '💍' : isSummerCurrency ? '🏝️' : <div className="currency-icon y-point-icon" style={{width: 14, height: 14, fontSize: '0.6rem'}}>y</div>;
+    const canAfford = isBleach ? (bleachRings || 0) >= cost : isSummerCurrency ? (summerMedals || 0) >= cost : yPoints >= cost;
 
     return (
       <button 
@@ -286,7 +334,9 @@ const Gacha = () => {
     );
   };
 
-  const activeWeights = currentGacha === 'ultra_super'
+  const activeWeights = currentGacha === 'bleach'
+    ? bleachRankWeights
+    : currentGacha === 'ultra_super'
     ? ultraSuperRankWeights
     : currentGacha === 'ultra_luxury'
     ? ultraLuxuryRankWeights
@@ -301,8 +351,8 @@ const Gacha = () => {
             <button onClick={() => setShowRates(false)} style={{ position: 'absolute', top: 10, right: 10, background: 'none', border: 'none', color: 'white', cursor: 'pointer', fontSize: '1.2rem' }}>
               ✕
             </button>
-            <h3 style={{ margin: '0 0 15px', textAlign: 'center', color: currentGacha === 'ultra_super' ? '#00ffff' : '#ffd700' }}>
-              {currentGacha === 'ultra_super' ? '🌌 超ウルトラガシャ' : currentGacha === 'ultra_luxury' ? '👑 超高級ガシャ' : currentGacha === 'event' ? 'イベントガシャ' : '恒常ガシャ'} 提供割合
+            <h3 style={{ margin: '0 0 15px', textAlign: 'center', color: currentGacha === 'ultra_super' ? '#00ffff' : currentGacha === 'bleach' ? '#ff3399' : '#ffd700' }}>
+              {currentGacha === 'ultra_super' ? '🌌 超ウルトラガシャ' : currentGacha === 'ultra_luxury' ? '👑 超高級ガシャ' : currentGacha === 'event' ? 'イベントガシャ' : currentGacha === 'bleach' ? '⚔️ ブリーチコラボガシャ' : '恒常ガシャ'} 提供割合
             </h3>
             <div style={{ display: 'grid', gap: '8px' }}>
               {Object.entries(activeWeights)
@@ -316,8 +366,9 @@ const Gacha = () => {
                   if (rank === 'S' && !isNoPity) finalWeight += stepUpBonus * 1.5;
                   
                   const isZ = rank === 'Z';
+                  const isZPrime = rank === "Z'";
                   const isSSS = rank === 'SSS';
-                  const pct = ((finalWeight / total) * 100).toFixed(isZ || isSSS ? 2 : 1);
+                  const pct = ((finalWeight / total) * 100).toFixed(isZ || isSSS || isZPrime ? 2 : 1);
                   if (finalWeight === 0) return null;
                   return (
                     <div key={rank} style={{ 
@@ -327,15 +378,17 @@ const Gacha = () => {
                       padding: '8px 12px', 
                       background: isZ 
                         ? 'linear-gradient(90deg, rgba(0,255,255,0.3), rgba(13,148,136,0.3))' 
+                        : isZPrime
+                        ? 'linear-gradient(90deg, rgba(255,51,153,0.3), rgba(136,19,55,0.3))'
                         : isSSS 
                         ? 'linear-gradient(90deg, rgba(255,215,0,0.3), rgba(255,0,128,0.3))' 
                         : 'rgba(0,0,0,0.3)', 
                       borderRadius: '8px', 
-                      border: isZ ? '1px solid #00ffff' : isSSS ? '1px solid #ffd700' : 'none' 
+                      border: isZ ? '1px solid #00ffff' : isZPrime ? '1px solid #ff3399' : isSSS ? '1px solid #ffd700' : 'none' 
                     }}>
                       <span className="rank-badge" style={{ backgroundColor: RANK_COLORS[rank as Rank], minWidth: '36px', textAlign: 'center', fontWeight: 'bold' }}>{rank}</span>
-                      <span style={{ fontWeight: 'bold', color: isZ ? '#00ffff' : isSSS ? '#ffd700' : '#fff' }}>
-                        {pct}% {isZ ? '(超越新キャラZ降臨！)' : isSSS ? '(新キャラSSS降臨！)' : ''}
+                      <span style={{ fontWeight: 'bold', color: isZ ? '#00ffff' : isZPrime ? '#ff3399' : isSSS ? '#ffd700' : '#fff' }}>
+                        {pct}% {isZ ? '(超越新キャラZ降臨！)' : isZPrime ? '(十刃＆藍染 Z\'降臨！)' : isSSS ? '(新キャラSSS降臨！)' : ''}
                       </span>
                     </div>
                   );
@@ -406,45 +459,130 @@ const Gacha = () => {
       {/* Main Container */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', position: 'relative' }}>
         {isPulling ? (
-          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <div className="animate-shake" style={{
-              width: '240px',
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+            {/* ガラガラ演出中のきらめきバックライト */}
+            <div style={{
+              position: 'absolute',
+              width: '300px',
               height: '300px',
-              background: currentGacha === 'ultra_luxury'
-                ? 'linear-gradient(180deg, #ffd700 0%, #b91c1c 50%, #4c0519 100%)'
-                : 'linear-gradient(180deg, #557755 0%, #224422 100%)',
-              borderRadius: '20px 20px 10px 10px',
-              border: currentGacha === 'ultra_luxury' ? '8px solid #ffd700' : '8px solid #112211',
-              boxShadow: currentGacha === 'ultra_luxury' ? '0 0 30px #ffd700, 0 20px 0 rgba(0,0,0,0.5)' : '0 20px 0 rgba(0,0,0,0.4)',
-              position: 'relative'
+              borderRadius: '50%',
+              background: currentGacha === 'ultra_luxury' || currentGacha === 'bleach'
+                ? 'radial-gradient(circle, rgba(255, 51, 153, 0.4) 0%, rgba(0,0,0,0) 70%)'
+                : 'radial-gradient(circle, rgba(255, 170, 0, 0.4) 0%, rgba(0,0,0,0) 70%)',
+              animation: 'pulse 0.8s ease-in-out infinite'
+            }} />
+
+            {/* ガシャ本体 */}
+            <div className="animate-shake" style={{
+              width: '260px',
+              height: '330px',
+              background: currentGacha === 'ultra_luxury' || currentGacha === 'bleach'
+                ? 'linear-gradient(180deg, #ff3399 0%, #881337 50%, #1e1b4b 100%)'
+                : 'linear-gradient(180deg, #ffaa00 0%, #bb4400 50%, #224422 100%)',
+              borderRadius: '24px 24px 16px 16px',
+              border: '6px solid #ffffff',
+              boxShadow: '0 12px 32px rgba(0,0,0,0.6)',
+              position: 'relative',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              zIndex: 2
             }}>
-              <div style={{ position: 'absolute', top: 30, left: 20, right: 20, height: 120, background: 'rgba(255,255,255,0.2)', borderRadius: 10, border: '4px solid #112211', overflow: 'hidden' }}>
-                {/* Spinning capsules */}
-                {[...Array(8)].map((_, i) => (
-                  <div key={i} className="animate-pulse" style={{
-                    position: 'absolute',
-                    width: 40,
-                    height: 40,
-                    borderRadius: '50%',
-                    background: currentGacha === 'ultra_luxury'
-                      ? (i % 2 === 0 ? '#ffd700' : '#ff007f')
-                      : (i % 2 === 0 ? '#333' : '#aa0000'),
-                    border: '2px solid #000',
-                    top: Math.random() * 80,
-                    left: Math.random() * 120,
-                    animationDuration: `${0.2 + Math.random() * 0.3}s`
-                  }}>
-                    <div style={{ width: '100%', height: '50%', background: 'rgba(255,255,255,0.3)', borderRadius: '20px 20px 0 0' }}></div>
+              {/* ドーム透明ケース */}
+              <div style={{
+                position: 'absolute',
+                top: 25,
+                width: '210px',
+                height: '140px',
+                background: 'rgba(255,255,255,0.25)',
+                borderRadius: '16px',
+                border: '4px solid #ffffff',
+                overflow: 'hidden',
+                boxShadow: 'inset 0 0 20px rgba(255,255,255,0.5)'
+              }}>
+                {/* 激しく跳ね回るカプセル群 */}
+                {[
+                  { color: '#ff0055', top: '20%', left: '15%', size: 38 },
+                  { color: '#ffd700', top: '50%', left: '55%', size: 40 },
+                  { color: '#00ffff', top: '15%', left: '60%', size: 36 },
+                  { color: '#ff3399', top: '60%', left: '20%', size: 42 },
+                  { color: '#00ff88', top: '35%', left: '38%', size: 38 },
+                  { color: '#aa00ff', top: '25%', left: '75%', size: 36 },
+                ].map((cap, i) => (
+                  <div
+                    key={i}
+                    className="animate-pulse"
+                    style={{
+                      position: 'absolute',
+                      width: cap.size,
+                      height: cap.size,
+                      borderRadius: '50%',
+                      background: cap.color,
+                      border: '2px solid #ffffff',
+                      top: cap.top,
+                      left: cap.left,
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                      animationDelay: `${i * 0.1}s`,
+                      transform: `rotate(${i * 45}deg)`
+                    }}
+                  >
+                    <div style={{ width: '100%', height: '50%', background: 'rgba(255,255,255,0.4)', borderRadius: '20px 20px 0 0' }} />
                   </div>
                 ))}
               </div>
-              <div style={{ position: 'absolute', bottom: 30, left: '50%', transform: 'translateX(-50%)', width: 60, height: 60, background: '#112211', borderRadius: '50%', border: '4px solid #333' }}></div>
+
+              {/* 回転ハンドル */}
+              <div style={{
+                position: 'absolute',
+                bottom: 50,
+                width: '70px',
+                height: '70px',
+                borderRadius: '50%',
+                background: 'linear-gradient(135deg, #ffffff 0%, #cccccc 100%)',
+                border: '4px solid #333333',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: '0 4px 8px rgba(0,0,0,0.4)'
+              }}>
+                <div style={{
+                  width: '50px',
+                  height: '14px',
+                  background: '#ff0055',
+                  borderRadius: '7px',
+                  transform: 'rotate(45deg)',
+                  border: '1px solid #000'
+                }} />
+              </div>
+
+              {/* 取り出し口 */}
+              <div style={{
+                position: 'absolute',
+                bottom: 12,
+                width: '80px',
+                height: '24px',
+                background: '#1a1a1a',
+                borderRadius: '12px 12px 0 0',
+                border: '2px solid #555'
+              }} />
+            </div>
+
+            <div style={{
+              marginTop: '24px',
+              fontSize: '1.4rem',
+              fontWeight: 900,
+              color: '#ffffff',
+              textShadow: '0 2px 8px rgba(0,0,0,0.8), 0 0 10px #ff0055',
+              letterSpacing: '2px',
+              zIndex: 2
+            }}>
+              ガチャ回転中……！ 💥
             </div>
           </div>
         ) : capsuleStageItems ? (
           <div style={{
             position: 'absolute', inset: 0, zIndex: 50,
-            background: 'radial-gradient(circle at 50% 40%, #4a0d2e 0%, #1a0011 70%, #000000 100%)',
+            background: '#1a0011',
             display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
             padding: '10px', overflow: 'hidden'
           }}>
@@ -453,37 +591,20 @@ const Gacha = () => {
               <button
                 onClick={handleOpenAllCapsules}
                 style={{
-                  background: 'linear-gradient(180deg, #fff275 0%, #ffaa00 100%)',
+                  background: '#ffaa00',
                   color: '#3d1a00',
                   fontWeight: 900,
                   fontSize: '0.95rem',
                   padding: '8px 18px',
                   borderRadius: '25px',
-                  border: '3px solid #ffffff',
-                  boxShadow: '0 4px 15px rgba(255, 170, 0, 0.8), 0 2px 0 #000',
+                  border: '2px solid #ffffff',
+                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.4)',
                   cursor: 'pointer',
-                  letterSpacing: '1px',
-                  textShadow: '0 1px 0 #fff'
+                  letterSpacing: '1px'
                 }}
               >
                 すべてあける
               </button>
-            </div>
-
-            {/* ガシャマシン背景イラスト */}
-            <div style={{
-              position: 'absolute',
-              width: '260px',
-              height: '320px',
-              background: 'linear-gradient(180deg, #8b0032 0%, #3a0015 100%)',
-              border: '6px solid #ff0055',
-              borderRadius: '20px',
-              boxShadow: '0 0 50px rgba(255,0,85,0.4)',
-              opacity: 0.35,
-              pointerEvents: 'none'
-            }}>
-              <div style={{ position: 'absolute', top: 20, left: 20, right: 20, height: 140, border: '4px solid #ff0055', borderRadius: 10 }}></div>
-              <div style={{ position: 'absolute', bottom: 30, left: '50%', transform: 'translateX(-50%)', width: 60, height: 60, borderRadius: '50%', border: '4px solid #ff0055' }}></div>
             </div>
 
             {/* カプセル群表示エリア */}
@@ -527,13 +648,11 @@ const Gacha = () => {
                           display: 'flex',
                           flexDirection: 'column',
                           alignItems: 'center',
-                          animation: 'capsuleOpenPop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards',
-                          background: 'rgba(0,0,0,0.7)',
-                          padding: '6px',
-                          borderRadius: '16px',
+                          background: 'rgba(0,0,0,0.8)',
+                          padding: '4px',
+                          borderRadius: '12px',
                           border: `2px solid ${RANK_COLORS[item.character.rank]}`,
-                          boxShadow: `0 0 15px ${RANK_COLORS[item.character.rank]}`,
-                          backdropFilter: 'blur(4px)'
+                          boxShadow: '0 2px 6px rgba(0,0,0,0.4)'
                         }}
                       >
                         <CharacterAvatar character={item.character} size={size > 80 ? 90 : 56} />
@@ -541,8 +660,7 @@ const Gacha = () => {
                           fontSize: '0.65rem',
                           fontWeight: 900,
                           color: RANK_COLORS[item.character.rank],
-                          marginTop: '2px',
-                          textShadow: '0 1px 3px #000'
+                          marginTop: '2px'
                         }}>
                           {item.character.rank}
                         </div>
@@ -553,7 +671,7 @@ const Gacha = () => {
               })}
             </div>
 
-            {/* 結果画面へ遷移するボタン（全カプセル開封済み、または即進行用） */}
+            {/* 結果画面へ遷移するボタン */}
             {capsuleStageItems.every(c => c.isOpen) && (
               <button
                 onClick={() => setCapsuleStageItems(null)}
@@ -561,62 +679,56 @@ const Gacha = () => {
                   position: 'absolute',
                   bottom: '25px',
                   zIndex: 60,
-                  background: 'linear-gradient(135deg, #00ff88 0%, #009955 100%)',
-                  color: '#003311',
+                  background: '#00cc66',
+                  color: '#ffffff',
                   fontWeight: 900,
                   fontSize: '1.2rem',
                   padding: '12px 36px',
                   borderRadius: '30px',
-                  border: '3px solid #ffffff',
-                  boxShadow: '0 0 25px rgba(0, 255, 136, 0.8), 0 4px 0 #000',
-                  cursor: 'pointer',
-                  animation: 'capsulePulse 1.5s ease-in-out infinite'
+                  border: '2px solid #ffffff',
+                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.4)',
+                  cursor: 'pointer'
                 }}
               >
                 結果一覧へ ➔
               </button>
             )}
 
-            {/* カットインモーダル (タップしたキャラの豪華出現演出) */}
+            {/* カットインモーダル (タップしたキャラの出現演出) */}
             {selectedCutInChar && (
               <div
                 onClick={() => setSelectedCutInChar(null)}
                 style={{
                   position: 'fixed', inset: 0, zIndex: 100,
-                  background: 'rgba(0,0,0,0.85)',
+                  background: 'rgba(0,0,0,0.8)',
                   display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
                   padding: '20px'
                 }}
               >
                 <div
                   style={{
-                    background: selectedCutInChar.rank === 'Z'
-                      ? 'linear-gradient(135deg, #0d9488 0%, #111827 100%)'
-                      : selectedCutInChar.rank === 'SSS'
-                      ? 'linear-gradient(135deg, #b45309 0%, #111827 100%)'
-                      : 'linear-gradient(135deg, #1f2937 0%, #111827 100%)',
-                    border: `4px solid ${RANK_COLORS[selectedCutInChar.rank]}`,
-                    borderRadius: '24px',
-                    padding: '24px 20px',
+                    background: '#111827',
+                    border: `3px solid ${RANK_COLORS[selectedCutInChar.rank]}`,
+                    borderRadius: '16px',
+                    padding: '20px 16px',
                     textAlign: 'center',
-                    maxWidth: '320px',
+                    maxWidth: '300px',
                     width: '100%',
-                    boxShadow: `0 0 40px ${RANK_COLORS[selectedCutInChar.rank]}`,
-                    animation: 'capsuleOpenPop 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards',
+                    boxShadow: '0 4px 16px rgba(0,0,0,0.6)',
                     position: 'relative'
                   }}
                   onClick={(e) => e.stopPropagation()}
                 >
                   <div style={{
                     fontSize: '0.85rem', fontWeight: 900, color: RANK_COLORS[selectedCutInChar.rank],
-                    marginBottom: '8px', textShadow: '0 0 10px rgba(255,255,255,0.5)'
+                    marginBottom: '8px'
                   }}>
                     ✨ RANK {selectedCutInChar.rank} GET!! ✨
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'center', margin: '10px 0' }}>
                     <CharacterAvatar character={selectedCutInChar} size={110} />
                   </div>
-                  <div style={{ fontSize: '1.3rem', fontWeight: 900, color: '#ffffff', marginBottom: '16px' }}>
+                  <div style={{ fontSize: '1.2rem', fontWeight: 900, color: '#ffffff', marginBottom: '16px' }}>
                     {selectedCutInChar.name}
                   </div>
                   <button
@@ -637,9 +749,155 @@ const Gacha = () => {
           </div>
         ) : results ? (
           <div style={{ flex: 1, overflowY: 'auto', textAlign: 'center', width: '100%', padding: '30px 0 40px' }}>
-            <h2 className="text-outline" style={{ marginBottom: '16px', fontSize: '2rem', color: results.some(r => r.rank === 'Z') ? '#00ffff' : results.some(r => r.rank === 'SSS') ? '#ffd700' : '#fff' }}>
-              {results.some(r => r.rank === 'Z') ? '✨ 超越神 Z 降臨！！！ ✨' : results.some(r => r.rank === 'SSS') ? '✨ SSS降臨！！！ ✨' : 'ガシャ結果！'}
+            <h2 className="text-outline" style={{ marginBottom: '16px', fontSize: '2rem', color: results.some(r => r.rank === "Z'") ? '#ff3399' : results.some(r => r.rank === 'Z') ? '#00ffff' : results.some(r => r.rank === 'SSS') ? '#ffd700' : '#fff' }}>
+              {results.some(r => r.rank === "Z'") ? '⚔️ 虚圏十刃 Z\' 降臨！！！ ⚔️' : results.some(r => r.rank === 'Z') ? '✨ 超越神 Z 降臨！！！ ✨' : results.some(r => r.rank === 'SSS') ? '✨ SSS降臨！！！ ✨' : 'ガシャ結果！'}
             </h2>
+            
+            {/* Z'が出た場合の十刃降臨超豪華巨大ピックアップ表示 */}
+            {results.filter(r => r.rank === "Z'").length > 0 && (
+              <div style={{
+                width: '92%',
+                maxWidth: '420px',
+                margin: '0 auto 24px',
+                background: '#1e1b4b',
+                border: '3px solid #ff3399',
+                borderRadius: '16px',
+                padding: '16px 12px',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                position: 'relative'
+              }}>
+                <div style={{
+                  background: 'linear-gradient(135deg, #ff3399, #d946ef)',
+                  color: '#ffffff',
+                  fontSize: '0.9rem',
+                  fontWeight: 900,
+                  padding: '4px 18px',
+                  borderRadius: '20px',
+                  border: '1px solid #fff',
+                  marginBottom: '12px'
+                }}>
+                  ⚔️ 究極神ランク Z' 十刃（エスパーダ）降臨！ ⚔️
+                </div>
+
+                <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', justifyContent: 'center' }}>
+                  {Array.from(new Set(results.filter(r => r.rank === "Z'").map(c => c.id))).map(zId => {
+                    const zChar = results.find(c => c.id === zId)!;
+                    const count = results.filter(c => c.id === zId).length;
+                    return (
+                      <div key={zId} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                        <div style={{
+                          position: 'relative',
+                          padding: '4px',
+                          borderRadius: '50%',
+                          background: '#312e81',
+                          border: '2px solid #ff3399'
+                        }}>
+                          <CharacterAvatar character={zChar} size={120} />
+                          {count > 1 && (
+                            <div style={{
+                              position: 'absolute',
+                              bottom: '2px',
+                              right: '2px',
+                              background: '#9333ea',
+                              color: '#fff',
+                              fontSize: '0.85rem',
+                              fontWeight: 900,
+                              padding: '2px 8px',
+                              borderRadius: '10px',
+                              border: '1px solid #fff'
+                            }}>
+                              x{count}
+                            </div>
+                          )}
+                        </div>
+                        <div style={{ fontSize: '1.2rem', fontWeight: 900, color: '#f0abfc', marginTop: '8px' }}>
+                          {zChar.name}
+                        </div>
+                        <div style={{ fontSize: '0.75rem', fontWeight: 900, color: '#00ffff', background: 'rgba(0,0,0,0.8)', padding: '3px 10px', borderRadius: '10px', marginTop: '4px', border: '1px solid #d946ef' }}>
+                          ⚡ HP・ATK Zの2倍 ＆ イベント攻撃力50倍超特効！
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Z'が出た場合の十刃降臨超豪華巨大ピックアップ表示 */}
+            {results.filter(r => r.rank === "Z'").length > 0 && (
+              <div style={{
+                width: '92%',
+                maxWidth: '420px',
+                margin: '0 auto 24px',
+                background: '#881337',
+                border: '3px solid #ff3399',
+                borderRadius: '16px',
+                padding: '16px 12px',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                position: 'relative'
+              }}>
+                <div style={{
+                  background: '#ff3399',
+                  color: '#ffffff',
+                  fontSize: '0.9rem',
+                  fontWeight: 900,
+                  padding: '4px 18px',
+                  borderRadius: '20px',
+                  border: '1px solid #fff',
+                  marginBottom: '12px'
+                }}>
+                  ⚔️ 虚圏十刃・崩玉藍染 Z' 降臨！ ⚔️
+                </div>
+
+                <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', justifyContent: 'center' }}>
+                  {Array.from(new Set(results.filter(r => r.rank === "Z'").map(c => c.id))).map(zPrimeId => {
+                    const zPrimeChar = results.find(c => c.id === zPrimeId)!;
+                    const count = results.filter(c => c.id === zPrimeId).length;
+                    return (
+                      <div key={zPrimeId} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                        <div style={{
+                          position: 'relative',
+                          padding: '4px',
+                          borderRadius: '50%',
+                          background: '#4c0519',
+                          border: '2px solid #ff3399'
+                        }}>
+                          <CharacterAvatar character={zPrimeChar} size={120} />
+                          {count > 1 && (
+                            <div style={{
+                              position: 'absolute',
+                              bottom: '2px',
+                              right: '2px',
+                              background: '#db2777',
+                              color: '#fff',
+                              fontSize: '0.85rem',
+                              fontWeight: 900,
+                              padding: '2px 8px',
+                              borderRadius: '10px',
+                              border: '1px solid #fff'
+                            }}>
+                              x{count}
+                            </div>
+                          )}
+                        </div>
+                        <div style={{ fontSize: '1.2rem', fontWeight: 900, color: '#fbcfe8', marginTop: '8px' }}>
+                          {zPrimeChar.name}
+                        </div>
+                        <div style={{ fontSize: '0.75rem', fontWeight: 900, color: '#ff3399', background: 'rgba(0,0,0,0.8)', padding: '3px 10px', borderRadius: '10px', marginTop: '4px', border: '1px solid #ff3399' }}>
+                          ⚡ 虚圏イベント特効 ＆ 圧倒的超強力必殺技！
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
             
             {/* Zが出た場合の超々々豪華巨大ピックアップ表示 */}
             {results.filter(r => r.rank === 'Z').length > 0 && (
@@ -647,32 +905,30 @@ const Gacha = () => {
                 width: '92%',
                 maxWidth: '420px',
                 margin: '0 auto 24px',
-                background: 'linear-gradient(135deg, rgba(17,24,39,0.95) 0%, rgba(13,148,136,0.95) 50%, rgba(0,255,255,0.9) 100%)',
-                border: '4px solid #00ffff',
-                borderRadius: '24px',
-                padding: '20px 16px',
-                boxShadow: '0 0 50px rgba(0,255,255,0.9), inset 0 0 30px rgba(0,255,255,0.5)',
+                background: '#111827',
+                border: '3px solid #00ffff',
+                borderRadius: '16px',
+                padding: '16px 12px',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
                 position: 'relative'
               }}>
                 <div style={{
-                  background: 'linear-gradient(90deg, #00ffff, #0d9488, #00ffff)',
+                  background: '#00ffff',
                   color: '#000',
                   fontSize: '0.9rem',
                   fontWeight: 900,
                   padding: '4px 18px',
                   borderRadius: '20px',
-                  border: '2px solid #fff',
-                  boxShadow: '0 0 15px #00ffff',
-                  marginBottom: '14px',
-                  textShadow: '0 0 5px #fff'
+                  border: '1px solid #fff',
+                  marginBottom: '12px'
                 }}>
                   🌀 超越神化 Z 降臨！ 🌀
                 </div>
 
-                <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', justifyContent: 'center' }}>
+                <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', justifyContent: 'center' }}>
                   {Array.from(new Set(results.filter(r => r.rank === 'Z').map(c => c.id))).map(zId => {
                     const zChar = results.find(c => c.id === zId)!;
                     const count = results.filter(c => c.id === zId).length;
@@ -680,12 +936,12 @@ const Gacha = () => {
                       <div key={zId} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                         <div style={{
                           position: 'relative',
-                          padding: '6px',
+                          padding: '4px',
                           borderRadius: '50%',
-                          background: 'radial-gradient(circle, #00ffff 0%, #0d9488 70%, #111827 100%)',
-                          boxShadow: '0 0 40px #00ffff, inset 0 0 20px #fff'
+                          background: '#042f2e',
+                          border: '2px solid #00ffff'
                         }}>
-                          <CharacterAvatar character={zChar} size={140} />
+                          <CharacterAvatar character={zChar} size={120} />
                           {count > 1 && (
                             <div style={{
                               position: 'absolute',
@@ -693,21 +949,20 @@ const Gacha = () => {
                               right: '2px',
                               background: '#0d9488',
                               color: '#fff',
-                              fontSize: '0.9rem',
+                              fontSize: '0.85rem',
                               fontWeight: 900,
-                              padding: '2px 10px',
-                              borderRadius: '12px',
-                              border: '2px solid #fff',
-                              boxShadow: '0 2px 6px #000'
+                              padding: '2px 8px',
+                              borderRadius: '10px',
+                              border: '1px solid #fff'
                             }}>
                               x{count}
                             </div>
                           )}
                         </div>
-                        <div style={{ fontSize: '1.35rem', fontWeight: 900, color: '#00ffff', textShadow: '0 2px 8px #000, 0 0 12px #0d9488', marginTop: '10px' }}>
+                        <div style={{ fontSize: '1.2rem', fontWeight: 900, color: '#00ffff', marginTop: '8px' }}>
                           {zChar.name}
                         </div>
-                        <div style={{ fontSize: '0.8rem', fontWeight: 900, color: '#a5f3fc', background: 'rgba(0,0,0,0.65)', padding: '3px 12px', borderRadius: '12px', marginTop: '6px', border: '1px solid #00ffff', boxShadow: '0 0 10px rgba(0,255,255,0.5)' }}>
+                        <div style={{ fontSize: '0.75rem', fontWeight: 900, color: '#a5f3fc', background: 'rgba(0,0,0,0.8)', padding: '3px 10px', borderRadius: '10px', marginTop: '4px', border: '1px solid #00ffff' }}>
                           ⚡ HP・ATK SSSの10倍 ＆ 攻撃力30倍超特効！
                         </div>
                       </div>
@@ -717,38 +972,36 @@ const Gacha = () => {
               </div>
             )}
 
-            {/* SSSが出た場合の超豪華巨大ピックアップ表示 */}
-            {results.filter(r => r.rank === 'SSS').length > 0 && results.filter(r => r.rank === 'Z').length === 0 && currentGacha !== 'ultra_super' && (
+            {/* SSSが出た場合の超豪華巨大ピックアップ表示（ブリーチコラボガチャ以外） */}
+            {currentGacha !== 'bleach' && results.filter(r => r.rank === 'SSS').length > 0 && results.filter(r => r.rank === 'Z').length === 0 && currentGacha !== 'ultra_super' && (
               <div style={{
                 width: '92%',
                 maxWidth: '420px',
                 margin: '0 auto 24px',
-                background: 'linear-gradient(135deg, rgba(20,0,40,0.95) 0%, rgba(88,28,135,0.95) 50%, rgba(255,0,128,0.9) 100%)',
-                border: '4px solid #ffd700',
-                borderRadius: '24px',
-                padding: '20px 16px',
-                boxShadow: '0 0 50px rgba(255,215,0,0.9), inset 0 0 30px rgba(255,215,0,0.5)',
+                background: '#3b0764',
+                border: '3px solid #ffd700',
+                borderRadius: '16px',
+                padding: '16px 12px',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
                 position: 'relative'
               }}>
                 <div style={{
-                  background: 'linear-gradient(90deg, #ffd700, #ff007f, #ffd700)',
+                  background: '#ffd700',
                   color: '#000',
                   fontSize: '0.9rem',
                   fontWeight: 900,
                   padding: '4px 18px',
                   borderRadius: '20px',
-                  border: '2px solid #fff',
-                  boxShadow: '0 0 15px #ffd700',
-                  marginBottom: '14px',
-                  textShadow: '0 0 5px #fff'
+                  border: '1px solid #fff',
+                  marginBottom: '12px'
                 }}>
                   👑 究極超激レア SSS 降臨！ 👑
                 </div>
 
-                <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', justifyContent: 'center' }}>
+                <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', justifyContent: 'center' }}>
                   {Array.from(new Set(results.filter(r => r.rank === 'SSS').map(c => c.id))).map(sssId => {
                     const sssChar = results.find(c => c.id === sssId)!;
                     const count = results.filter(c => c.id === sssId).length;
@@ -756,12 +1009,12 @@ const Gacha = () => {
                       <div key={sssId} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                         <div style={{
                           position: 'relative',
-                          padding: '6px',
+                          padding: '4px',
                           borderRadius: '50%',
-                          background: 'radial-gradient(circle, #ffd700 0%, #ff007f 70%, #1e1b4b 100%)',
-                          boxShadow: '0 0 40px #ffd700, inset 0 0 20px #fff'
+                          background: '#581c87',
+                          border: '2px solid #ffd700'
                         }}>
-                          <CharacterAvatar character={sssChar} size={140} />
+                          <CharacterAvatar character={sssChar} size={120} />
                           {count > 1 && (
                             <div style={{
                               position: 'absolute',
@@ -769,21 +1022,20 @@ const Gacha = () => {
                               right: '2px',
                               background: '#ff007f',
                               color: '#fff',
-                              fontSize: '0.9rem',
+                              fontSize: '0.85rem',
                               fontWeight: 900,
-                              padding: '2px 10px',
-                              borderRadius: '12px',
-                              border: '2px solid #fff',
-                              boxShadow: '0 2px 6px #000'
+                              padding: '2px 8px',
+                              borderRadius: '10px',
+                              border: '1px solid #fff'
                             }}>
                               x{count}
                             </div>
                           )}
                         </div>
-                        <div style={{ fontSize: '1.35rem', fontWeight: 900, color: '#ffd700', textShadow: '0 2px 8px #000, 0 0 12px #ff007f', marginTop: '10px' }}>
+                        <div style={{ fontSize: '1.2rem', fontWeight: 900, color: '#ffd700', marginTop: '8px' }}>
                           {sssChar.name}
                         </div>
-                        <div style={{ fontSize: '0.8rem', fontWeight: 900, color: '#fef08a', background: 'rgba(0,0,0,0.65)', padding: '3px 12px', borderRadius: '12px', marginTop: '6px', border: '1px solid #ffd700', boxShadow: '0 0 10px rgba(255,215,0,0.5)' }}>
+                        <div style={{ fontSize: '0.75rem', fontWeight: 900, color: '#fef08a', background: 'rgba(0,0,0,0.8)', padding: '3px 10px', borderRadius: '10px', marginTop: '4px', border: '1px solid #ffd700' }}>
                           ⚡ 攻撃力10倍 イベント爆発特効！
                         </div>
                       </div>
@@ -794,26 +1046,26 @@ const Gacha = () => {
             )}
 
             <div style={{ 
-              display: 'flex', flexWrap: 'wrap', gap: results.length > 50 ? '3px' : results.length > 10 ? '4px' : '10px', justifyContent: 'center', marginBottom: '30px', padding: '0 10px'
+              display: 'flex', flexWrap: 'wrap', gap: results.length > 50 ? '3px' : results.length > 10 ? '4px' : '8px', justifyContent: 'center', marginBottom: '24px', padding: '0 8px'
             }}>
               {results.map((result, idx) => {
                 const isZ = result.rank === 'Z';
                 const isSSS = result.rank === 'SSS';
-                const iconSize = results.length > 50 ? 40 : results.length > 10 ? 60 : results.length > 1 ? 80 : 140;
+                const isZPrime = result.rank === "Z'";
+                const iconSize = results.length > 50 ? 40 : results.length > 10 ? 56 : results.length > 1 ? 76 : 130;
                 return (
                   <div key={idx} style={{ 
                     position: 'relative',
                     display: 'flex',
                     flexDirection: 'column',
                     alignItems: 'center',
-                    background: isZ ? 'linear-gradient(135deg, #fff 0%, #e0ffff 100%)' : isSSS ? 'linear-gradient(135deg, #fff 0%, #fff7d0 100%)' : 'rgba(255,255,255,0.9)',
-                    padding: results.length > 50 ? '3px' : '8px',
-                    borderRadius: '14px',
-                    border: `3px solid ${RANK_COLORS[result.rank]}`,
-                    width: `${iconSize + (results.length > 50 ? 6 : 16)}px`,
-                    boxShadow: isZ ? '0 0 25px #00ffff, 0 0 10px #0d9488' : isSSS ? '0 0 25px #ffd700, 0 0 10px #ff007f' : (result.rank === 'S' || result.rank === 'SS' ? `0 0 15px ${RANK_COLORS[result.rank]}` : 'none'),
-                    transform: isZ ? 'scale(1.12)' : isSSS ? 'scale(1.08)' : 'none',
-                    zIndex: isZ ? 15 : isSSS ? 10 : 1
+                    background: '#ffffff',
+                    padding: results.length > 50 ? '2px' : '6px',
+                    borderRadius: '10px',
+                    border: `2px solid ${RANK_COLORS[result.rank]}`,
+                    width: `${iconSize + (results.length > 50 ? 4 : 12)}px`,
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+                    zIndex: (isZPrime || isZ) ? 10 : isSSS ? 5 : 1
                   }}>
                     <CharacterAvatar character={result} size={iconSize} />
                     <div style={{
@@ -821,15 +1073,11 @@ const Gacha = () => {
                       top: '-4px',
                       right: '-4px',
                       background: RANK_COLORS[result.rank],
-                      color: isZ || isSSS ? '#000' : 'white',
+                      color: '#fff',
+                      fontSize: '0.6rem',
                       fontWeight: 900,
-                      fontSize: results.length > 50 ? '0.55rem' : '0.7rem',
-                      padding: results.length > 50 ? '1px 3px' : '2px 5px',
-                      borderRadius: '8px',
-                      border: '2px solid white',
-                      boxShadow: '0 1px 3px rgba(0,0,0,0.4)',
-                      lineHeight: 1.2,
-                      zIndex: 20
+                      padding: '1px 4px',
+                      borderRadius: '6px'
                     }}>
                       {result.rank}
                     </div>
@@ -838,183 +1086,162 @@ const Gacha = () => {
               })}
             </div>
 
-            <div style={{ display: 'flex', gap: '15px', justifyContent: 'center' }}>
-              <button className="btn btn-secondary" style={{ padding: '15px 30px' }} onClick={() => setResults(null)}>
-                OK
-              </button>
-            </div>
+            <button
+              className="btn btn-primary"
+              onClick={() => setResults(null)}
+              style={{ padding: '12px 36px', fontSize: '1.1rem', fontWeight: 900, borderRadius: '25px', boxShadow: '0 4px 15px rgba(0,0,0,0.5)', marginTop: '10px', marginBottom: '20px' }}
+            >
+              OK (ガシャ画面へ戻る)
+            </button>
           </div>
         ) : (
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-            {/* Swipable Banners */}
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', overflow: 'hidden', position: 'relative' }}>
+
+            {/* Navigation Arrows */}
             <div 
-              onTouchStart={handleTouchStart}
-              onTouchEnd={handleTouchEnd}
-              style={{ position: 'relative', marginTop: '20px', flex: 1, overflow: 'hidden' }}
+              onClick={() => {
+                const idx = GACHA_TYPES.indexOf(currentGacha);
+                const prevIdx = (idx - 1 + GACHA_TYPES.length) % GACHA_TYPES.length;
+                setCurrentGacha(GACHA_TYPES[prevIdx]);
+              }} 
+              style={{ position: 'absolute', left: 8, top: '42%', zIndex: 20, cursor: 'pointer', background: 'rgba(0,0,0,0.6)', borderRadius: '50%', padding: '6px', border: '1px solid rgba(255,255,255,0.4)' }}
             >
-              {/* Navigation Arrows */}
-              {currentGacha !== 'normal' && (
-                <div 
-                  onClick={() => {
-                    if (currentGacha === 'ultra_super') setCurrentGacha('ultra_luxury');
-                    else if (currentGacha === 'ultra_luxury') setCurrentGacha('event');
-                    else if (currentGacha === 'event') setCurrentGacha('normal');
-                  }} 
-                  style={{ position: 'absolute', left: 8, top: '42%', zIndex: 20, animation: 'pulse 2s infinite', cursor: 'pointer', background: 'rgba(0,0,0,0.4)', borderRadius: '50%', padding: '4px' }}
-                >
-                  <ChevronLeft size={36} color="white" />
-                </div>
-              )}
-              {currentGacha !== 'ultra_super' && (
-                <div 
-                  onClick={() => {
-                    if (currentGacha === 'normal') setCurrentGacha('event');
-                    else if (currentGacha === 'event') setCurrentGacha('ultra_luxury');
-                    else if (currentGacha === 'ultra_luxury') setCurrentGacha('ultra_super');
-                  }} 
-                  style={{ position: 'absolute', right: 8, top: '42%', zIndex: 20, animation: 'pulse 2s infinite', cursor: 'pointer', background: 'rgba(0,0,0,0.4)', borderRadius: '50%', padding: '4px' }}
-                >
-                  <ChevronRight size={36} color="white" />
-                </div>
-              )}
+              <ChevronLeft size={36} color="white" />
+            </div>
+            <div 
+              onClick={() => {
+                const idx = GACHA_TYPES.indexOf(currentGacha);
+                const nextIdx = (idx + 1) % GACHA_TYPES.length;
+                setCurrentGacha(GACHA_TYPES[nextIdx]);
+              }} 
+              style={{ position: 'absolute', right: 8, top: '42%', zIndex: 20, cursor: 'pointer', background: 'rgba(0,0,0,0.6)', borderRadius: '50%', padding: '6px', border: '1px solid rgba(255,255,255,0.4)' }}
+            >
+              <ChevronRight size={36} color="white" />
+            </div>
               
-              <div 
-                style={{ 
-                  display: 'flex', 
-                  width: '400%', 
-                  height: '100%', 
-                  transform: `translateX(${
-                    currentGacha === 'ultra_super' ? '-75%' : 
-                    currentGacha === 'ultra_luxury' ? '-50%' : 
-                    currentGacha === 'event' ? '-25%' : '0%'
-                  })`,
-                  transition: 'transform 0.35s cubic-bezier(0.25, 1, 0.5, 1)'
-                }}
-              >
-                {/* 1. Normal Gacha Page */}
-                <div style={{ width: '25%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+            {/* Single Gacha Display */}
+            <div 
+              onTouchStart={handleTouchStart} 
+              onTouchEnd={handleTouchEnd}
+              style={{ width: '100%', overflow: 'hidden', position: 'relative', minHeight: '270px', display: 'flex', alignItems: 'center', justifyContent: 'center', touchAction: 'pan-y' }}
+            >
+              {currentGacha === 'bleach' && (
+                <div className="animate-pulse" style={{ 
+                  width: '240px', height: '260px', background: 'linear-gradient(180deg, #881337 0%, #4c0519 50%, #0f172a 100%)', borderRadius: '20px 20px 10px 10px', border: '6px solid #e11d48', boxShadow: '0 15px 0 rgba(0,0,0,0.4), 0 0 35px rgba(225,29,72,0.8)', position: 'relative', marginTop: '10px'
+                }}>
+                  <div style={{ position: 'absolute', top: '-25px', left: '50%', transform: 'translateX(-50%)', background: 'linear-gradient(135deg, #e11d48, #9333ea)', border: '3px solid #00ffff', padding: '5px 16px', borderRadius: '20px', color: 'white', fontWeight: 900, whiteSpace: 'nowrap', boxShadow: '0 4px 10px rgba(0,0,0,0.6)' }}>
+                    ⚔️ ブリーチコラボガシャ
+                  </div>
+                  <div style={{ position: 'absolute', top: 30, left: 15, right: 15, height: 110, background: 'rgba(0,0,0,0.5)', borderRadius: 10, border: '3px solid #e11d48', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ fontSize: '2.5rem', lineHeight: 1 }}>🔮⚔️👑</div>
+                    <div style={{ fontSize: '0.75rem', color: '#00ffff', fontWeight: 'bold', marginTop: '4px' }}>【ランクZ\'】崩玉藍染 確率0.1%！</div>
+                    <div style={{ fontSize: '0.7rem', color: '#fca5a5', fontWeight: '900' }}>十刃（エスパーダ）限定降臨！</div>
+                  </div>
+                  <div style={{ position: 'absolute', bottom: 25, left: '50%', transform: 'translateX(-50%)', width: 50, height: 50, background: '#0f172a', borderRadius: '50%', border: '4px solid #00ffff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <span style={{ fontSize: '1.2rem' }}>💍</span>
+                  </div>
+                </div>
+              )}
+
+              {currentGacha === 'normal' && (
+                <div style={{ 
+                  width: '230px', height: '250px', background: 'linear-gradient(180deg, #336633 0%, #113311 100%)', borderRadius: '20px 20px 10px 10px', border: '6px solid #112211', boxShadow: '0 15px 0 rgba(0,0,0,0.3)', position: 'relative', marginTop: '10px'
+                }}>
+                  <div style={{ position: 'absolute', top: '-25px', left: '50%', transform: 'translateX(-50%)', background: '#331155', border: '3px solid #ffcc00', padding: '5px 20px', borderRadius: '20px', color: 'white', fontWeight: 900, whiteSpace: 'nowrap', boxShadow: '0 4px 0 rgba(0,0,0,0.5)' }}>
+                    妖怪ガシャ
+                  </div>
+                  <div style={{ position: 'absolute', top: 30, left: 20, right: 20, height: 100, background: 'rgba(255,255,255,0.2)', borderRadius: 10, border: '4px solid #112211' }}>
+                    <div style={{ fontSize: '3rem', marginTop: 10, textAlign: 'center' }}>🔮</div>
+                  </div>
+                  <div style={{ position: 'absolute', bottom: 30, left: '50%', transform: 'translateX(-50%)', width: 50, height: 50, background: '#112211', borderRadius: '50%', border: '4px solid #333' }}></div>
+                </div>
+              )}
+
+              {currentGacha === 'event' && (
+                <div className="animate-float" style={{ 
+                  width: '230px', height: '250px', background: 'linear-gradient(180deg, #ff3366 0%, #990033 100%)', borderRadius: '20px 20px 10px 10px', border: '6px solid #550011', boxShadow: '0 15px 0 rgba(0,0,0,0.3), 0 0 30px rgba(255,50,100,0.5)', position: 'relative', marginTop: '10px'
+                }}>
+                  <div style={{ position: 'absolute', top: '-25px', left: '50%', transform: 'translateX(-50%)', background: '#ffcc00', border: '3px solid #ff3300', padding: '5px 20px', borderRadius: '20px', color: '#ff0000', fontWeight: 900, whiteSpace: 'nowrap', boxShadow: '0 4px 0 rgba(0,0,0,0.5)' }}>
+                    イベントガシャ
+                  </div>
+                  <div style={{ position: 'absolute', top: 30, left: 20, right: 20, height: 100, background: 'rgba(255,255,255,0.2)', borderRadius: 10, border: '4px solid #550011' }}>
+                    <div style={{ fontSize: '3rem', marginTop: 10, textAlign: 'center', filter: 'hue-rotate(180deg)' }}>🔮</div>
+                  </div>
+                  <div style={{ position: 'absolute', bottom: 30, left: '50%', transform: 'translateX(-50%)', width: 50, height: 50, background: '#550011', borderRadius: '50%', border: '4px solid #333' }}></div>
+                </div>
+              )}
+
+              {currentGacha === 'ultra_luxury' && (
+                <div className="animate-pulse" style={{ 
+                  width: '240px', height: '260px', background: 'linear-gradient(180deg, #ffd700 0%, #d97706 40%, #7f1d1d 100%)', borderRadius: '20px 20px 10px 10px', border: '6px solid #ffd700', boxShadow: '0 15px 0 rgba(0,0,0,0.4), 0 0 35px rgba(255,215,0,0.8)', position: 'relative', marginTop: '10px'
+                }}>
                   <div style={{ 
-                    width: '210px', height: '240px', background: 'linear-gradient(180deg, #336633 0%, #113311 100%)', borderRadius: '20px 20px 10px 10px', border: '6px solid #112211', boxShadow: '0 15px 0 rgba(0,0,0,0.3)', position: 'relative', marginTop: '10px'
+                    position: 'absolute', top: '-25px', left: '50%', transform: 'translateX(-50%)',
+                    background: 'linear-gradient(135deg, #ffd700, #ff007f)', border: '3px solid #ffffff',
+                    padding: '5px 16px', borderRadius: '20px', color: '#000', fontWeight: 900, whiteSpace: 'nowrap',
+                    boxShadow: '0 4px 10px rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', gap: '4px'
                   }}>
-                    <div style={{ position: 'absolute', top: '-25px', left: '50%', transform: 'translateX(-50%)', background: '#331155', border: '3px solid #ffcc00', padding: '5px 20px', borderRadius: '20px', color: 'white', fontWeight: 900, whiteSpace: 'nowrap', boxShadow: '0 4px 0 rgba(0,0,0,0.5)' }}>
-                      妖怪ガシャ
-                    </div>
-                    <div style={{ position: 'absolute', top: 30, left: 20, right: 20, height: 100, background: 'rgba(255,255,255,0.2)', borderRadius: 10, border: '4px solid #112211' }}>
-                      <div style={{ fontSize: '3rem', marginTop: 10, textAlign: 'center' }}>🔮</div>
-                    </div>
-                    <div style={{ position: 'absolute', bottom: 30, left: '50%', transform: 'translateX(-50%)', width: 50, height: 50, background: '#112211', borderRadius: '50%', border: '4px solid #333' }}></div>
+                    <Crown size={18} fill="#000" color="#000" />
+                    超高級ガシャ
+                  </div>
+                  <div style={{ position: 'absolute', top: 30, left: 15, right: 15, height: 110, background: 'rgba(0,0,0,0.3)', borderRadius: 10, border: '3px solid #ffd700', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ fontSize: '2.8rem', lineHeight: 1 }}>👑✨</div>
+                    <div style={{ fontSize: '0.75rem', color: '#ffd700', fontWeight: 'bold', marginTop: '4px' }}>【100連固定】500 サマーコイン</div>
+                    <div style={{ fontSize: '0.7rem', color: '#fff', fontWeight: '900' }}>0.2%で新キャラSSS降臨！</div>
+                  </div>
+                  <div style={{ position: 'absolute', bottom: 25, left: '50%', transform: 'translateX(-50%)', width: 50, height: 50, background: '#4c0519', borderRadius: '50%', border: '4px solid #ffd700', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <span style={{ fontSize: '1.2rem' }}>💎</span>
                   </div>
                 </div>
+              )}
 
-                {/* 2. Event Gacha Page */}
-                <div style={{ width: '25%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                  <div className="animate-float" style={{ 
-                    width: '210px', height: '240px', background: 'linear-gradient(180deg, #ff3366 0%, #990033 100%)', borderRadius: '20px 20px 10px 10px', border: '6px solid #550011', boxShadow: '0 15px 0 rgba(0,0,0,0.3), 0 0 30px rgba(255,50,100,0.5)', position: 'relative', marginTop: '10px'
+              {currentGacha === 'ultra_super' && (
+                <div className="animate-pulse" style={{ 
+                  width: '240px', height: '260px', background: 'linear-gradient(180deg, #00ffff 0%, #0d9488 40%, #111827 100%)', borderRadius: '20px 20px 10px 10px', border: '6px solid #00ffff', boxShadow: '0 15px 0 rgba(0,0,0,0.4), 0 0 35px rgba(0,255,255,0.8)', position: 'relative', marginTop: '10px'
+                }}>
+                  <div style={{ 
+                    position: 'absolute', top: '-25px', left: '50%', transform: 'translateX(-50%)',
+                    background: 'linear-gradient(135deg, #00ffff, #0d9488)', border: '3px solid #ffffff',
+                    padding: '5px 16px', borderRadius: '20px', color: '#000', fontWeight: 900, whiteSpace: 'nowrap',
+                    boxShadow: '0 4px 10px rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', gap: '4px'
                   }}>
-                    <div style={{ position: 'absolute', top: '-25px', left: '50%', transform: 'translateX(-50%)', background: '#ffcc00', border: '3px solid #ff3300', padding: '5px 20px', borderRadius: '20px', color: '#ff0000', fontWeight: 900, whiteSpace: 'nowrap', boxShadow: '0 4px 0 rgba(0,0,0,0.5)' }}>
-                      イベントガシャ
-                    </div>
-                    <div style={{ position: 'absolute', top: 30, left: 20, right: 20, height: 100, background: 'rgba(255,255,255,0.2)', borderRadius: 10, border: '4px solid #550011' }}>
-                      <div style={{ fontSize: '3rem', marginTop: 10, textAlign: 'center', filter: 'hue-rotate(180deg)' }}>🔮</div>
-                    </div>
-                    <div style={{ position: 'absolute', bottom: 30, left: '50%', transform: 'translateX(-50%)', width: 50, height: 50, background: '#550011', borderRadius: '50%', border: '4px solid #333' }}></div>
+                    <Sparkles size={18} fill="#000" color="#000" />
+                    超ウルトラガシャ
+                  </div>
+                  <div style={{ position: 'absolute', top: 30, left: 15, right: 15, height: 110, background: 'rgba(0,0,0,0.4)', borderRadius: 10, border: '3px solid #00ffff', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ fontSize: '2.8rem', lineHeight: 1 }}>🌀🌌⚡</div>
+                    <div style={{ fontSize: '0.72rem', color: '#00ffff', fontWeight: 'bold', marginTop: '4px' }}>【100連固定】3,000 サマーコイン</div>
+                    <div style={{ fontSize: '0.7rem', color: '#fff', fontWeight: '900' }}>0.2%で超越新キャラZ降臨！</div>
+                  </div>
+                  <div style={{ position: 'absolute', bottom: 25, left: '50%', transform: 'translateX(-50%)', width: 50, height: 50, background: '#111827', borderRadius: '50%', border: '4px solid #00ffff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <span style={{ fontSize: '1.2rem' }}>🌀</span>
                   </div>
                 </div>
-
-                {/* 3. Ultra Luxury Gacha Page (超高級ガシャ) */}
-                <div style={{ width: '25%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                  <div className="animate-pulse" style={{ 
-                    width: '220px',
-                    height: '250px',
-                    background: 'linear-gradient(180deg, #ffd700 0%, #d97706 40%, #7f1d1d 100%)',
-                    borderRadius: '20px 20px 10px 10px',
-                    border: '6px solid #ffd700',
-                    boxShadow: '0 15px 0 rgba(0,0,0,0.4), 0 0 35px rgba(255,215,0,0.8)',
-                    position: 'relative',
-                    marginTop: '10px'
-                  }}>
-                    <div style={{ 
-                      position: 'absolute', top: '-25px', left: '50%', transform: 'translateX(-50%)',
-                      background: 'linear-gradient(135deg, #ffd700, #ff007f)',
-                      border: '3px solid #ffffff',
-                      padding: '5px 16px', borderRadius: '20px', color: '#000', fontWeight: 900, whiteSpace: 'nowrap',
-                      boxShadow: '0 4px 10px rgba(0,0,0,0.6)',
-                      display: 'flex', alignItems: 'center', gap: '4px'
-                    }}>
-                      <Crown size={18} fill="#000" color="#000" />
-                      超高級ガシャ
-                    </div>
-                    <div style={{ position: 'absolute', top: 30, left: 15, right: 15, height: 110, background: 'rgba(0,0,0,0.3)', borderRadius: 10, border: '3px solid #ffd700', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                      <div style={{ fontSize: '2.8rem', lineHeight: 1 }}>👑✨</div>
-                      <div style={{ fontSize: '0.75rem', color: '#ffd700', fontWeight: 'bold', marginTop: '4px' }}>【100連固定】500 サマーコイン</div>
-                      <div style={{ fontSize: '0.7rem', color: '#fff', fontWeight: '900' }}>0.2%で新キャラSSS降臨！</div>
-                    </div>
-                    <div style={{ position: 'absolute', bottom: 25, left: '50%', transform: 'translateX(-50%)', width: 50, height: 50, background: '#4c0519', borderRadius: '50%', border: '4px solid #ffd700', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <span style={{ fontSize: '1.2rem' }}>💎</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* 4. Ultra Super Gacha Page (超ウルトラガシャ) */}
-                <div style={{ width: '25%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                  <div className="animate-pulse" style={{ 
-                    width: '220px',
-                    height: '250px',
-                    background: 'linear-gradient(180deg, #00ffff 0%, #0d9488 40%, #111827 100%)',
-                    borderRadius: '20px 20px 10px 10px',
-                    border: '6px solid #00ffff',
-                    boxShadow: '0 15px 0 rgba(0,0,0,0.4), 0 0 35px rgba(0,255,255,0.8)',
-                    position: 'relative',
-                    marginTop: '10px'
-                  }}>
-                    <div style={{ 
-                      position: 'absolute', top: '-25px', left: '50%', transform: 'translateX(-50%)',
-                      background: 'linear-gradient(135deg, #00ffff, #0d9488)',
-                      border: '3px solid #ffffff',
-                      padding: '5px 16px', borderRadius: '20px', color: '#000', fontWeight: 900, whiteSpace: 'nowrap',
-                      boxShadow: '0 4px 10px rgba(0,0,0,0.6)',
-                      display: 'flex', alignItems: 'center', gap: '4px'
-                    }}>
-                      <Sparkles size={18} fill="#000" color="#000" />
-                      超ウルトラガシャ
-                    </div>
-                    <div style={{ position: 'absolute', top: 30, left: 15, right: 15, height: 110, background: 'rgba(0,0,0,0.4)', borderRadius: 10, border: '3px solid #00ffff', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                      <div style={{ fontSize: '2.8rem', lineHeight: 1 }}>🌀🌌⚡</div>
-                      <div style={{ fontSize: '0.72rem', color: '#00ffff', fontWeight: 'bold', marginTop: '4px' }}>【100連固定】3,000 サマーコイン</div>
-                      <div style={{ fontSize: '0.7rem', color: '#fff', fontWeight: '900' }}>0.2%で超越新キャラZ降臨！</div>
-                    </div>
-                    <div style={{ position: 'absolute', bottom: 25, left: '50%', transform: 'translateX(-50%)', width: 50, height: 50, background: '#111827', borderRadius: '50%', border: '4px solid #00ffff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <span style={{ fontSize: '1.2rem' }}>🌀</span>
-                    </div>
-                  </div>
-                </div>
-
-              </div>
+              )}
             </div>
 
             {/* Pagination dots */}
             <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginBottom: '10px' }}>
-              <div 
-                onClick={() => setCurrentGacha('normal')} 
-                style={{ width: 12, height: 12, borderRadius: '50%', background: currentGacha === 'normal' ? 'white' : 'rgba(255,255,255,0.3)', border: '2px solid rgba(0,0,0,0.3)', cursor: 'pointer' }} 
-              />
-              <div 
-                onClick={() => setCurrentGacha('event')} 
-                style={{ width: 12, height: 12, borderRadius: '50%', background: currentGacha === 'event' ? 'white' : 'rgba(255,255,255,0.3)', border: '2px solid rgba(0,0,0,0.3)', cursor: 'pointer' }} 
-              />
-              <div 
-                onClick={() => setCurrentGacha('ultra_luxury')} 
-                style={{ width: 12, height: 12, borderRadius: '50%', background: currentGacha === 'ultra_luxury' ? '#ffd700' : 'rgba(255,255,255,0.3)', border: '2px solid rgba(0,0,0,0.3)', cursor: 'pointer' }} 
-              />
-              <div 
-                onClick={() => setCurrentGacha('ultra_super')} 
-                style={{ width: 12, height: 12, borderRadius: '50%', background: currentGacha === 'ultra_super' ? '#00ffff' : 'rgba(255,255,255,0.3)', border: '2px solid rgba(0,0,0,0.3)', cursor: 'pointer' }} 
-              />
+              {GACHA_TYPES.map(type => (
+                <div 
+                  key={type}
+                  onClick={() => setCurrentGacha(type)} 
+                  style={{ 
+                    width: 12, height: 12, borderRadius: '50%', 
+                    background: currentGacha === type ? (type === 'bleach' ? '#e11d48' : type === 'ultra_luxury' ? '#ffd700' : type === 'ultra_super' ? '#00ffff' : '#fff') : 'rgba(255,255,255,0.3)', 
+                    border: '2px solid rgba(0,0,0,0.3)', cursor: 'pointer' 
+                  }} 
+                />
+              ))}
             </div>
 
             {/* Pity / Info area */}
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px', marginBottom: '15px' }}>
-              {currentGacha === 'ultra_super' ? (
+              {currentGacha === 'bleach' ? (
+                <div style={{ background: 'linear-gradient(90deg, rgba(225,29,72,0.9), rgba(147,51,234,0.9))', padding: '6px 16px', borderRadius: '20px', fontSize: '0.82rem', color: '#fff', fontWeight: '900', border: '1px solid #00ffff', boxShadow: '0 0 10px rgba(225,29,72,0.5)' }}>
+                  ⚔️ ブリーチガシャ: ランクZ【崩玉藍染】&【十刃】全降臨！(1連=💍5個)
+                </div>
+              ) : currentGacha === 'ultra_super' ? (
                 <div style={{ background: 'linear-gradient(90deg, rgba(0,255,255,0.9), rgba(13,148,136,0.9))', padding: '6px 16px', borderRadius: '20px', fontSize: '0.82rem', color: '#000', fontWeight: '900', border: '1px solid #fff', boxShadow: '0 0 10px rgba(0,255,255,0.5)' }}>
                   🌀 超ウルトラガシャ: 天井なし（100連3,000 サマーコイン / 0.2%で超越新キャラZ！）
                 </div>
@@ -1038,7 +1265,21 @@ const Gacha = () => {
             
             {/* Buttons Area */}
             <div className="glass-panel" style={{ padding: '20px', borderRadius: '30px 30px 0 0', display: 'flex', flexDirection: 'column', gap: '15px' }}>
-              {currentGacha === 'ultra_super' ? (
+              {currentGacha === 'bleach' ? (
+                /* ブリーチガシャ用: 1連=5個, 10連=50個, 100連=500個 */
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
+                    <GachaButton times={1} cost={5} color="btn-primary" />
+                    <GachaButton times={10} cost={50} color="btn-secondary" />
+                    <GachaButton times={100} cost={500} color="btn-green" />
+                  </div>
+                  {(bleachRings || 0) < 5 && (
+                    <p className="text-outline" style={{ color: '#ff2255', textAlign: 'center', margin: 0, fontSize: '0.9rem', fontWeight: 'bold' }}>
+                      ブリーチリングが足りません！（5個〜500個必要）
+                    </p>
+                  )}
+                </div>
+              ) : currentGacha === 'ultra_super' ? (
                 /* 超ウルトラガシャ用: 100連3000サマーコイン固定ボタン */
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                   <button 
@@ -1119,29 +1360,38 @@ const Gacha = () => {
                   )}
                 </>
               )}
-              
+
               {/* Exchange Section */}
               <div style={{ 
-                marginTop: '24px', 
-                padding: '20px', 
-                background: 'linear-gradient(135deg, rgba(56, 189, 248, 0.2), rgba(253, 224, 71, 0.2))', 
+                marginTop: '16px', 
+                padding: '16px', 
+                background: 'linear-gradient(135deg, rgba(225,29,72,0.2), rgba(147,51,234,0.2))', 
                 borderRadius: '24px', 
-                border: '2px solid #38bdf8',
+                border: '2px solid #e11d48',
                 boxShadow: '0 4px 15px rgba(0,0,0,0.2)'
               }}>
-                <h4 style={{ color: '#fff', textAlign: 'center', marginBottom: '12px', fontSize: '1.1rem', fontWeight: 'bold', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }}>
-                  🏝️ ビーチ両替所
+                <h4 style={{ color: '#fff', textAlign: 'center', marginBottom: '8px', fontSize: '1rem', fontWeight: 'bold', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px' }}>
+                  💍 ブリーチリング両替所
                 </h4>
-                <p style={{ color: '#e2e8f0', textAlign: 'center', fontSize: '0.85rem', marginBottom: '16px', lineHeight: 1.4 }}>
-                  Yポイントをサマーコインに両替します。<br />
-                  <span style={{ color: '#fde047', fontWeight: 'bold' }}>10,000 YP → 3枚</span>
+                <p style={{ color: '#e2e8f0', textAlign: 'center', fontSize: '0.8rem', marginBottom: '12px', lineHeight: 1.4 }}>
+                  5,000 Ypt → 💍 1個（1連分） / 50,000 Ypt → 💍 10個
                 </p>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
-                  <button onClick={() => { const res = convertYPointsToSummerMedals(10000); if(res.message) alert(res.message); }} style={{ background: '#0c4a6e', color: 'white', padding: '10px 4px', borderRadius: '12px', border: '1px solid #38bdf8', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 'bold' }}>1万 (3枚)</button>
-                  <button onClick={() => { const res = convertYPointsToSummerMedals(100000); if(res.message) alert(res.message); }} style={{ background: '#0c4a6e', color: 'white', padding: '10px 4px', borderRadius: '12px', border: '1px solid #38bdf8', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 'bold' }}>10万 (30枚)</button>
-                  <button onClick={() => { const res = convertYPointsToSummerMedals(1000000); if(res.message) alert(res.message); }} style={{ background: '#0c4a6e', color: 'white', padding: '10px 4px', borderRadius: '12px', border: '1px solid #38bdf8', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 'bold' }}>100万 (300枚)</button>
-                  <button onClick={() => { const res = convertYPointsToSummerMedals(10000000); if(res.message) alert(res.message); }} style={{ background: '#0c4a6e', color: 'white', padding: '10px 4px', borderRadius: '12px', border: '1px solid #38bdf8', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 'bold' }}>1000万 (3000枚)</button>
-                  <button onClick={() => { const res = convertYPointsToSummerMedals(100000000); if(res.message) alert(res.message); }} style={{ background: '#0c4a6e', color: 'white', padding: '10px 4px', borderRadius: '12px', border: '1px solid #38bdf8', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 'bold' }}>1億 (3万枚)</button>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '16px' }}>
+                  <button onClick={() => { const res = convertYPointsToBleachRings(5000); if(res.message) alert(res.message); }} style={{ background: '#881337', color: 'white', padding: '10px 4px', borderRadius: '12px', border: '1px solid #00ffff', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 'bold' }}>5,000 Yp (💍1個)</button>
+                  <button onClick={() => { const res = convertYPointsToBleachRings(50000); if(res.message) alert(res.message); }} style={{ background: '#881337', color: 'white', padding: '10px 4px', borderRadius: '12px', border: '1px solid #00ffff', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 'bold' }}>5万 Yp (💍10個)</button>
+                  <button onClick={() => { const res = convertYPointsToBleachRings(500000); if(res.message) alert(res.message); }} style={{ background: '#881337', color: 'white', padding: '10px 4px', borderRadius: '12px', border: '1px solid #00ffff', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 'bold' }}>50万 Yp (💍100個)</button>
+                  <button onClick={() => { const res = convertYPointsToBleachRings(5000000); if(res.message) alert(res.message); }} style={{ background: '#881337', color: 'white', padding: '10px 4px', borderRadius: '12px', border: '1px solid #00ffff', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 'bold' }}>500万 Yp (💍1000個)</button>
+                </div>
+
+                <div style={{ borderTop: '1px dashed rgba(255,255,255,0.2)', paddingTop: '12px' }}>
+                  <h4 style={{ color: '#fff', textAlign: 'center', marginBottom: '8px', fontSize: '0.95rem', fontWeight: 'bold' }}>
+                    🏝️ ビーチ両替所
+                  </h4>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px' }}>
+                    <button onClick={() => { const res = convertYPointsToSummerMedals(10000); if(res.message) alert(res.message); }} style={{ background: '#0c4a6e', color: 'white', padding: '8px 4px', borderRadius: '10px', border: '1px solid #38bdf8', cursor: 'pointer', fontSize: '0.72rem', fontWeight: 'bold' }}>1万 (3枚)</button>
+                    <button onClick={() => { const res = convertYPointsToSummerMedals(100000); if(res.message) alert(res.message); }} style={{ background: '#0c4a6e', color: 'white', padding: '8px 4px', borderRadius: '10px', border: '1px solid #38bdf8', cursor: 'pointer', fontSize: '0.72rem', fontWeight: 'bold' }}>10万 (30枚)</button>
+                    <button onClick={() => { const res = convertYPointsToSummerMedals(1000000); if(res.message) alert(res.message); }} style={{ background: '#0c4a6e', color: 'white', padding: '8px 4px', borderRadius: '10px', border: '1px solid #38bdf8', cursor: 'pointer', fontSize: '0.72rem', fontWeight: 'bold' }}>100万 (300枚)</button>
+                  </div>
                 </div>
               </div>
             </div>

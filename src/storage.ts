@@ -17,6 +17,7 @@ export interface PlayerData {
   money: number;
   yPoints: number;
   summerMedals: number;
+  bleachRings?: number; // ブリーチ特設通貨「ブリーチリング 💍」
   characters: Record<string, CharacterSaveData>;
   team: string[];
   savedTeams?: SavedTeam[];
@@ -30,9 +31,11 @@ export interface PlayerData {
     skillBook: number;  // ひっさつの秘伝書 (+1 わざレベル)
     godSkillBook?: number; // 神ひっさつの秘伝書 (+2 わざレベルまたはMAX)
     superLimitBreakBook?: number; // 超限界突破の書 (+1 限界突破)
+    godAscensionStone?: number; // 神昇の秘石 (Z' → ZZ 神昇進化アイテム)
   };
   selectedTitle?: string;
   unlockedTitles?: string[];
+  notifiedUnlockedTitles?: string[];
   missionProgress: Record<string, number>;  // missionId -> progress count
   completedMissions: string[];              // claimed mission IDs
   pityCount?: number;
@@ -41,6 +44,9 @@ export interface PlayerData {
   gachaHistory?: { timestamp: number; charId: string }[];
   usedSerialCodes?: string[];
   scoreAttackHighScore?: number;
+  lastClaimedWeeklyRewardWeek?: string;
+  scoreAttackClaimedMilestones?: string[]; // スコアタ到達報酬受取済みリスト
+  bleachRingExchanges?: Record<string, number>; // BLEACHリング交換所 購入済み回数
   dailyMissionsProgress?: Record<string, number>;
   dailyMissionsCompleted?: string[];
   lastDailyResetTime?: number;
@@ -50,6 +56,7 @@ const DEFAULT_DATA: PlayerData = {
   money: 0,
   yPoints: 50,
   summerMedals: 0,
+  bleachRings: 10,
   characters: {
     'char_e_1': { level: 1, skillLevel: 1, limitBreak: 0, duplicates: 0 },
     'char_e_2': { level: 1, skillLevel: 1, limitBreak: 0, duplicates: 0 },
@@ -66,9 +73,10 @@ const DEFAULT_DATA: PlayerData = {
   activeTeamIndex: 0,
   maxClearedStageId: '',
   clearedStages: [],
-  items: { expSmall: 3, expLarge: 1, skillBook: 0, godSkillBook: 0, superLimitBreakBook: 0 },
+  items: { expSmall: 3, expLarge: 1, skillBook: 0, godSkillBook: 0, superLimitBreakBook: 0, godAscensionStone: 1 },
   selectedTitle: '新米妖怪レーサー',
   unlockedTitles: ['新米妖怪レーサー', 'ぷにぷにマスター'],
+  notifiedUnlockedTitles: ['新米妖怪レーサー', 'ぷにぷにマスター'],
   missionProgress: {},
   completedMissions: [],
   pityCount: 100,

@@ -8,10 +8,10 @@ import { CharacterAvatar } from '../components/CharacterAvatar';
 import { ALL_TITLES } from '../data/titles';
 
 const rankCostMultipliers: Record<Rank, number> = {
-  'Z': 10000, 'SSS': 1000, 'SS': 500, 'S': 300, 'A': 200, 'B': 150, 'C': 100, 'D': 80, 'E': 50
+  'ZZ': 50000, "Z'": 30000, 'Z': 10000, 'SSS': 1000, 'SS': 500, 'S': 300, 'A': 200, 'B': 150, 'C': 100, 'D': 80, 'E': 50
 };
 const RANK_COLORS: Record<Rank, string> = {
-  Z: '#00ffff', SSS: '#ffd700', SS: '#ff22ff', S: '#ff2222', A: '#ffaa00', B: '#ff88bb', C: '#cc6666', D: '#55bb55', E: '#88cc88'
+  'ZZ': '#ffd700', "Z'": '#ff3399', Z: '#00ffff', SSS: '#ffd700', SS: '#ff22ff', S: '#ff2222', A: '#ffaa00', B: '#ff88bb', C: '#cc6666', D: '#55bb55', E: '#88cc88'
 };
 const CHARS_PER_PAGE = 12;
 
@@ -652,15 +652,15 @@ const TeamBuilder = () => {
           >
             ランク:全
           </button>
-          {(['Z', 'SSS', 'SS', 'S', 'A', 'B', 'C', 'D', 'E'] as Rank[]).map(r => (
+          {(['ZZ', "Z'", 'Z', 'SSS', 'SS', 'S', 'A', 'B', 'C', 'D', 'E'] as Rank[]).map(r => (
             <button
               key={r}
               onClick={() => { setSelectedRank(r); setCurrentPage(0); }}
               style={{
                 padding: '2px 8px', borderRadius: '10px', border: 'none', cursor: 'pointer',
                 fontSize: '0.7rem', fontWeight: 800, whiteSpace: 'nowrap',
-                background: selectedRank === r ? RANK_COLORS[r] : 'rgba(255,255,255,0.1)',
-                color: '#fff'
+                background: selectedRank === r ? (RANK_COLORS[r] || '#ffd700') : 'rgba(255,255,255,0.1)',
+                color: selectedRank === r && (r === 'ZZ' || r === 'SSS' || r === 'Z') ? '#000' : '#fff'
               }}
             >
               {r}
@@ -841,7 +841,31 @@ const TeamBuilder = () => {
               )}
             </div>
 
-            {/* 特性 (Trait) + イベント特効情報 */}
+              {/* パッシブスキル (SSS以上 / ZZ) */}
+              {selectedCharDef.passiveSkills && selectedCharDef.passiveSkills.length > 0 && (
+                <div style={{
+                  background: 'linear-gradient(135deg, rgba(0, 255, 204, 0.15) 0%, rgba(56, 189, 248, 0.12) 100%)',
+                  borderRadius: '12px',
+                  padding: '8px 12px',
+                  border: '1.5px solid rgba(0, 255, 204, 0.5)',
+                  marginBottom: '10px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '4px'
+                }}>
+                  <div style={{ fontSize: '0.75rem', fontWeight: 900, color: '#00ffcc', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <Sparkles size={14} color="#00ffcc" />
+                    <span>常時発動スキル ({selectedCharDef.passiveSkills.length}種)</span>
+                  </div>
+                  {selectedCharDef.passiveSkills.map((ps, idx) => (
+                    <div key={idx} style={{ fontSize: '0.72rem', background: 'rgba(0,0,0,0.4)', padding: '4px 8px', borderRadius: '6px', color: '#fff' }}>
+                      <strong style={{ color: '#ffd700' }}>⚡ スキル{idx + 1}【{ps.name}】:</strong> {ps.description}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* 特性 (Trait) + イベント特効情報 */}
             {(selectedCharDef.trait || selectedCharDef.eventBoost) && (
               <div style={{ marginBottom: '10px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
                 {selectedCharDef.trait && (
@@ -1053,22 +1077,27 @@ const TeamBuilder = () => {
                       transition: 'all 0.2s ease'
                     }}
                   >
-                    <div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <span style={{
-                          fontSize: '0.65rem', padding: '1px 5px', borderRadius: '4px', fontWeight: 900,
-                          backgroundColor: titleObj.color, color: '#000'
-                        }}>
-                          {titleObj.rarity}
-                        </span>
-                        <span style={{ fontWeight: 900, fontSize: '0.95rem', color: isUnlocked ? '#fff' : '#888' }}>
-                          【{titleObj.name}】
-                        </span>
+                      <div style={{ flex: 1, overflow: 'hidden' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span style={{
+                            fontSize: '0.65rem', padding: '1px 5px', borderRadius: '4px', fontWeight: 900,
+                            backgroundColor: titleObj.color, color: '#000'
+                          }}>
+                            {titleObj.rarity}
+                          </span>
+                          <span style={{ fontWeight: 900, fontSize: '0.95rem', color: isUnlocked ? '#fff' : '#888' }}>
+                            【{titleObj.name}】
+                          </span>
+                        </div>
+                        {/* アビリティ効果 */}
+                        <div style={{ fontSize: '0.73rem', color: '#00ffcc', fontWeight: 800, marginTop: '3px' }}>
+                          ⚡ {titleObj.effect.specialDescription}
+                        </div>
+                        {/* 入手条件 */}
+                        <div style={{ fontSize: '0.68rem', color: isUnlocked ? '#aaa' : '#f59e0b', marginTop: '2px' }}>
+                          🔑 条件: {titleObj.howToGet}
+                        </div>
                       </div>
-                      <div style={{ fontSize: '0.72rem', color: '#aaa', marginTop: '3px' }}>
-                        {titleObj.description}
-                      </div>
-                    </div>
 
                     <div>
                       {isSelected ? (

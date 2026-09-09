@@ -1,4 +1,4 @@
-export type Rank = 'E' | 'D' | 'C' | 'B' | 'A' | 'S' | 'SS' | 'SSS' | 'Z';
+export type Rank = 'E' | 'D' | 'C' | 'B' | 'A' | 'S' | 'SS' | 'SSS' | 'Z' | "Z'" | 'ZZ';
 
 export type Tribe = 'イサマシ' | 'フシギ' | 'ゴーケツ' | 'プリチー' | 'ポカポカ' | 'ウスラカゲ' | 'ブキミー' | 'ニョロロン' | 'エンマ' | 'ハグレ';
 
@@ -24,6 +24,8 @@ export const getTribeMultiplier = (sameTribeCount: number): number => {
 };
 
 export const RANK_BASE_MAX_LEVEL: Record<Rank, number> = {
+  'ZZ': 170,
+  "Z'": 150,
   'Z': 120,
   'SSS': 100,
   'SS': 60,
@@ -58,10 +60,10 @@ export const getPublicUrl = (path: string): string => {
 
 // Legacy ID migration map to ensure user save data is preserved without corruption
 const OLD_TO_NEW_CHAR_ID: Record<string, string> = {};
-const allRanks: Rank[] = ['E', 'D', 'C', 'B', 'A', 'S', 'SS', 'SSS', 'Z'];
+const allRanks: Rank[] = ['E', 'D', 'C', 'B', 'A', 'S', 'SS', 'SSS', 'Z', "Z'", 'ZZ'];
 let legacyCounter = 1;
 allRanks.forEach(r => {
-  for (let idx = 1; idx <= 10; idx++) {
+  for (let idx = 1; idx <= 15; idx++) {
     const oldId = `char_${r.toLowerCase()}_${legacyCounter++}`;
     const newId = `char_${r.toLowerCase()}_${idx}`;
     OLD_TO_NEW_CHAR_ID[oldId] = newId;
@@ -106,6 +108,19 @@ export const getCharacterDistinctColor = (name: string, _defaultColor: string): 
   if (/カイチ闇夜神/i.test(name)) return { bg: '#09090b', accent: '#c084fc', textBg: '#18181b', hair: '#a855f7' };
   if (/覚醒ブシニャン闇/i.test(name)) return { bg: '#18181b', accent: '#fbbf24', textBg: '#09090b', hair: '#22d3ee' };
   if (/オロチ影極/i.test(name)) return { bg: '#2e1065', accent: '#c084fc', textBg: '#1e1b4b', hair: '#a855f7' };
+
+  // BLEACH 十刃 (Espada) Characters & Aizen Colors
+  if (/ウルキオラ/i.test(name)) return { bg: '#030712', accent: '#22c55e', textBg: '#022c22', hair: '#f8fafc' };
+  if (/グリムジョー/i.test(name)) return { bg: '#0284c7', accent: '#38bdf8', textBg: '#0369a1', hair: '#00ffff' };
+  if (/スターク/i.test(name)) return { bg: '#1e293b', accent: '#94a3b8', textBg: '#0f172a', hair: '#e2e8f0' };
+  if (/バラガン/i.test(name)) return { bg: '#450a0a', accent: '#f59e0b', textBg: '#1c1917', hair: '#fbbf24' };
+  if (/ハリベル/i.test(name)) return { bg: '#0284c7', accent: '#f59e0b', textBg: '#075985', hair: '#fef08a' };
+  if (/ノイトラ/i.test(name)) return { bg: '#18181b', accent: '#e2e8f0', textBg: '#09090b', hair: '#ffffff' };
+  if (/ヤミー/i.test(name)) return { bg: '#991b1b', accent: '#ef4444', textBg: '#450a0a', hair: '#dc2626' };
+  if (/ゾマリ/i.test(name)) return { bg: '#3b0764', accent: '#c084fc', textBg: '#1e1b4b', hair: '#e9d5ff' };
+  if (/ザエルアポロ/i.test(name)) return { bg: '#831843', accent: '#f472b6', textBg: '#500724', hair: '#fbcfe8' };
+  if (/アーロニーロ/i.test(name)) return { bg: '#065f46', accent: '#34d399', textBg: '#022c22', hair: '#6ee7b7' };
+  if (/藍染惣右介|崩玉/i.test(name)) return { bg: '#312e81', accent: '#a855f7', textBg: '#1e1b4b', hair: '#e0e7ff' };
 
   // Direct character color overrides for instant recognition
   if (/めぐみん/i.test(name)) return { bg: '#2d132c', accent: '#ffaa00', textBg: '#990022', hair: '#1a0818' };
@@ -165,6 +180,7 @@ export const createPuniSvgDataUrl = (
   const { bg: bodyColor, accent: accentColor, textBg, hair: hairColor } = getCharacterDistinctColor(name, defaultColor);
 
   const rankBorderColors: Record<string, string> = {
+    "Z'": '#ff3399',
     'Z': '#00ffff',
     'SSS': '#ffd700',
     'SS': '#ff00ee',
@@ -1179,7 +1195,50 @@ export const createPuniSvgDataUrl = (
 
   // Forehead Emblem / Badge Differentiation - Moved to the Top-Left Corner as an elegant medal to avoid face clutter
   let foreheadBadge = '';
-  if (rank === 'Z') {
+  if (rank === 'ZZ') {
+    foreheadBadge = `
+      <!-- ZZ Rank Ultimate God Ascension Corner Medal -->
+      <g transform="translate(24, 24)" filter="url(#puniShadow)">
+        <defs>
+          <linearGradient id="zzMedalGrad" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#ffd700" />
+            <stop offset="35%" stop-color="#ff007f" />
+            <stop offset="70%" stop-color="#7928ca" />
+            <stop offset="100%" stop-color="#00ffff" />
+          </linearGradient>
+        </defs>
+        <!-- Octagon God Crown Medal Shape -->
+        <polygon points="0,-17 12,-12 17,0 12,12 0,17 -12,12 -17,0 -12,-12" fill="url(#zzMedalGrad)" stroke="#ffffff" stroke-width="2.6" />
+        <!-- Shiny Gloss effect -->
+        <path d="M -17 0 L 0 -17 L 0 0 Z" fill="#ffffff" opacity="0.55" />
+        <text x="0" y="1" font-size="11" font-weight="950" font-family="'Impact', 'Arial Black', sans-serif" letter-spacing="-0.5" text-anchor="middle" dominant-baseline="central" fill="#ffffff" stroke="#1e1b4b" stroke-width="2.2" paint-order="stroke fill">ZZ</text>
+        <!-- Radiant Star Sparkles -->
+        <circle cx="13" cy="-13" r="2.6" fill="#ffff00" />
+        <circle cx="-13" cy="13" r="2.2" fill="#00ffff" />
+        <circle cx="0" cy="-15" r="1.6" fill="#ffffff" />
+      </g>
+    `;
+  } else if (rank === "Z'") {
+    foreheadBadge = `
+      <!-- Z' Rank Supreme Espada Corner Medal -->
+      <g transform="translate(24, 24)" filter="url(#puniShadow)">
+        <defs>
+          <linearGradient id="zPrimeMedalGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#ff3399" />
+            <stop offset="100%" stop-color="#9333ea" />
+          </linearGradient>
+        </defs>
+        <!-- Octagon Medal Shape -->
+        <polygon points="0,-16 11,-11 16,0 11,11 0,16 -11,11 -16,0 -11,-11" fill="url(#zPrimeMedalGrad)" stroke="#ffffff" stroke-width="2.2" />
+        <!-- Shiny Gloss effect -->
+        <path d="M -16 0 L 0 -16 L 0 0 Z" fill="#ffffff" opacity="0.45" />
+        <text x="0" y="1" font-size="12" font-weight="950" font-family="'Impact', 'Arial Black', sans-serif" text-anchor="middle" dominant-baseline="central" fill="#ffffff" stroke="#3b0764" stroke-width="1.8" paint-order="stroke fill">Z'</text>
+        <!-- Mini sparkles -->
+        <circle cx="12" cy="-12" r="2.2" fill="#00ffff" />
+        <circle cx="-12" cy="12" r="1.8" fill="#ffffff" />
+      </g>
+    `;
+  } else if (rank === 'Z') {
     foreheadBadge = `
       <!-- Z Rank Premium Corner Medal -->
       <g transform="translate(24, 24)" filter="url(#puniShadow)">
@@ -1246,8 +1305,35 @@ export const createPuniSvgDataUrl = (
     `;
   }
 
-  // Rank Aura for High Ranks (Z, SSS, SS, S, A)
-  const auraSvg = rank === 'Z' ? `
+  // Rank Aura for High Ranks (ZZ, Z', Z, SSS, SS, S, A)
+  const auraSvg = rank === 'ZZ' ? `
+    <!-- Ultra Supreme Divine God ZZ Aura (Triple Celestial Ring & Gold Pulsar) -->
+    <circle cx="64" cy="64" r="63" fill="none" stroke="#ffd700" stroke-width="9" opacity="0.95" stroke-dasharray="20,8">
+      <animateTransform attributeName="transform" type="rotate" from="0 64 64" to="360 64 64" dur="1.5s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="64" cy="64" r="61" fill="none" stroke="#ff007f" stroke-width="5.5" opacity="0.9" stroke-dasharray="12,6">
+      <animateTransform attributeName="transform" type="rotate" from="360 64 64" to="0 64 64" dur="1.0s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="64" cy="64" r="58" fill="none" stroke="#00ffff" stroke-width="3" opacity="0.85" stroke-dasharray="6,4">
+      <animateTransform attributeName="transform" type="rotate" from="0 64 64" to="360 64 64" dur="2.2s" repeatCount="indefinite"/>
+    </circle>
+    <!-- Geometric Cosmic Octagon + Diamond Frame for ZZ -->
+    <polygon points="64,0 86,12 128,64 86,116 64,128 42,116 0,64 42,12" fill="none" stroke="#fde047" stroke-width="2.5" stroke-dasharray="10,6" opacity="0.9">
+      <animateTransform attributeName="transform" type="rotate" from="0 64 64" to="-360 64 64" dur="2.5s" repeatCount="indefinite"/>
+    </polygon>
+  ` : rank === "Z'" ? `
+    <!-- Ultra Supreme Transcendent Z' Aura (Magenta & Cyan Twin Pulsar) -->
+    <circle cx="64" cy="64" r="63" fill="none" stroke="#ff3399" stroke-width="8" opacity="0.95" stroke-dasharray="18,8">
+      <animateTransform attributeName="transform" type="rotate" from="0 64 64" to="360 64 64" dur="1.8s" repeatCount="indefinite"/>
+    </circle>
+    <circle cx="64" cy="64" r="60" fill="none" stroke="#00ffff" stroke-width="4.5" opacity="0.9" stroke-dasharray="10,6">
+      <animateTransform attributeName="transform" type="rotate" from="360 64 64" to="0 64 64" dur="1.2s" repeatCount="indefinite"/>
+    </circle>
+    <!-- Geometric Cosmic Octagon Frame for Z' -->
+    <polygon points="64,2 84,14 126,64 84,114 64,126 44,114 2,64 44,14" fill="none" stroke="#f0abfc" stroke-width="2" stroke-dasharray="8,6" opacity="0.85">
+      <animateTransform attributeName="transform" type="rotate" from="0 64 64" to="-360 64 64" dur="3s" repeatCount="indefinite"/>
+    </polygon>
+  ` : rank === 'Z' ? `
     <!-- Ultra Cosmic Transcendent Z Aura -->
     <circle cx="64" cy="64" r="63" fill="none" stroke="#00ffff" stroke-width="7.5" opacity="0.95" stroke-dasharray="16,8">
       <animateTransform attributeName="transform" type="rotate" from="0 64 64" to="360 64 64" dur="2s" repeatCount="indefinite"/>
@@ -1336,9 +1422,36 @@ export const createRankBadgeSvgDataUrl = (rank: string): string => {
     'S': '#ff00aa',
     'SS': '#e500ff',
     'SSS': '#ffd700',
-    'Z': '#00ffff'
+    'Z': '#00ffff',
+    "Z'": '#ff3399',
+    'ZZ': '#ffd700'
   };
   const col = colors[rank] || '#ff4488';
+
+  if (rank === 'ZZ') {
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+      <defs>
+        <linearGradient id="zzBadgeGrad" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#ffd700" />
+          <stop offset="35%" stop-color="#ff007f" />
+          <stop offset="70%" stop-color="#7928ca" />
+          <stop offset="100%" stop-color="#00ffff" />
+        </linearGradient>
+      </defs>
+      <!-- Dual Ring Outer Glow -->
+      <polygon points="32,1 59,15 59,49 32,63 5,49 5,15" fill="none" stroke="#ffd700" stroke-width="4.5" />
+      <polygon points="32,3 57,16 57,48 32,61 7,48 7,16" fill="url(#zzBadgeGrad)" stroke="#ffffff" stroke-width="2"/>
+      <text x="32" y="38" font-size="22" font-weight="950" fill="#ffffff" stroke="#1e1b4b" stroke-width="3" paint-order="stroke fill" text-anchor="middle" dominant-baseline="middle" font-family="'Impact', 'Arial Black', sans-serif">ZZ</text>
+      <!-- Mini Sparkles -->
+      <circle cx="50" cy="18" r="2.5" fill="#ffffff" />
+      <circle cx="14" cy="46" r="2" fill="#ffff00" />
+    </svg>`;
+    const utf8Bytes = new TextEncoder().encode(svg);
+    let binStr = '';
+    for (let i = 0; i < utf8Bytes.length; i++) binStr += String.fromCharCode(utf8Bytes[i]);
+    return `data:image/svg+xml;base64,${btoa(binStr)}`;
+  }
+
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
     <defs>
       <linearGradient id="rg" x1="0" y1="0" x2="1" y2="1">
@@ -1359,7 +1472,59 @@ export const createRankBadgeSvgDataUrl = (rank: string): string => {
   return `data:image/svg+xml;base64,${btoa(binStr)}`;
 };
 
-export type SkillType = 'center_pop' | 'random_pop' | 'all_pop' | 'inflate_puni' | 'heal' | 'damage' | 'fever_charge' | 'puni_unify' | 'team_gauge_fill' | 'god_burst';
+// ==========================================
+// パッシブスキル（スキル特性）の型定義
+// ==========================================
+export type PassiveSkillType = 
+  | 'tribe_boost'        // 種族効果アップ（同種族味方の攻撃力/HPアップ）
+  | 'damage_boost'       // 自身のぷに消し時のダメージアップ
+  | 'damage_cut'         // 敵からの被ダメージ軽減
+  | 'gauge_start'        // バトル開始時に技ゲージがチャージされた状態で開始
+  | 'gauge_boost'        // 自身のぷに消し時の技ゲージ上昇量アップ
+  | 'connect_boost'      // つながりやすさアップ（自身ぷにの接続距離拡大＆サイズ2以上同士連結）
+  | 'fever_boost'        // フィーバーゲージ溜まりやすさアップ
+  | 'drop_rate_boost'    // 自身のぷにが降ってきやすくなる
+  | 'revive_shield'      // 致命傷を受けた時にHPを一定割合で耐える/復活
+  | 'fever_gauge_charge' // フィーバーイン時に味方全体の技ゲージアップ
+  | 'super_fever_boost'; // スーパーフィーバー効果アップ
+
+export interface PassiveSkill {
+  name: string;
+  type: PassiveSkillType;
+  value: number; // % または固定値
+  description: string;
+}
+
+// ==========================================
+// 必殺技（ひっさつわざ）の型定義
+// ==========================================
+export type SkillType = 
+  | 'center_pop'         // 中央範囲消し
+  | 'range_pop'          // 範囲消し (縦・横・十字)
+  | 'random_pop'         // ランダム消し
+  | 'all_pop'            // 全画面消し
+  | 'trace_pop'          // なぞり消し（なぞった軌跡のぷにを連続爆破）
+  | 'tap_pop'            // タップ技（タップした箇所を中心に大爆発消去）
+  | 'inflate_puni'       // ぷに膨張
+  | 'deka_create'        // でかぷに生成（特大でかぷにを即時生成）
+  | 'puni_tidy'          // ぷに整理（盤面ぷにを一時的に2〜3種類に整理・統一）
+  | 'puni_unify'         // ぷに同色変化
+  | 'super_fever'        // スーパーフィーバー（フィーバー持続時間超延長）
+  | 'gauge_charge'       // 自身の技ゲージアップ
+  | 'team_gauge_fill'    // 全味方の技ゲージ上昇（+25〜45%）
+  | 'heal'               // HP回復
+  | 'damage'             // 単体大ダメージ
+  | 'fever_charge'       // フィーバーゲージ蓄積（※フィーバー中は無効）
+  | 'god_burst'          // 創世神滅破（画面全消去＋超絶ダメージ）
+  // BLEACH Z' 特殊技（単一技）
+  | 'bleach_lansa' | 'bleach_desgarron' | 'bleach_cero_metralleta' | 'bleach_respira'
+  | 'bleach_caudal' | 'bleach_santa_teresa' | 'bleach_gran_rey_cero' | 'bleach_brujeria'
+  | 'bleach_teatro' | 'bleach_glotoneria' | 'bleach_kurohitsugi'
+  // ZZ 神昇奥義（キャラごとに全く異なる2つの技の組み合わせ）
+  | 'zz_god_lansa' | 'zz_god_desgarron' | 'zz_god_cero' | 'zz_god_respira'
+  | 'zz_god_caudal' | 'zz_god_santa_teresa' | 'zz_god_gran_rey' | 'zz_god_brujeria'
+  | 'zz_god_teatro' | 'zz_god_glotoneria' | 'zz_god_kurohitsugi'
+  | 'zz_god_enma' | 'zz_god_jibanyan';
 
 export interface Skill {
   name: string;
@@ -1376,6 +1541,7 @@ export interface CharacterDef {
   skillName?: string;
   skillType?: SkillType;
   skillPower?: number;
+  passiveSkills?: PassiveSkill[];
 }
 
 export interface Character {
@@ -1390,9 +1556,11 @@ export interface Character {
   baseHp: number;
   baseAtk: number;
   skill?: Skill;
+  passiveSkills?: PassiveSkill[]; // SSS: 1個, Z/Z': 1個, ZZ: 2個！
   trait?: string;
   eventBoost?: boolean;
   eventBoostDesc?: string;
+  ascensionSourceId?: string; // Z'から神昇進化する場合の元キャラID
 }
 
 export const getSkillDetails = (skill?: Skill, skillLevel: number = 1) => {
@@ -1478,46 +1646,482 @@ export const getSkillDetails = (skill?: Skill, skillLevel: number = 1) => {
     case 'fever_charge': {
       const currentPower = Math.round(skill.power * (1 + (lv - 1) * 0.3));
       const nextPower = Math.round(skill.power * (1 + lv * 0.3));
+      const chargePct = 30 + lv * 5;
       return {
-        description: `敵に極大攻撃を与え、フィーバーゲージを即座に100%（MAX）チャージする！`,
+        description: `敵に強力なダメージを与え、フィーバーゲージを+${chargePct}%蓄積チャージする！（※フィーバー中はゲージ蓄積効果なし）`,
         power: currentPower,
-        countInfo: `技威力: ${currentPower} / フィーバーMAX即時進入`,
-        nextUpgrade: isMax ? '技レベルMAX！' : `次Lv: 威力 ${nextPower}`
+        countInfo: `フィーバー+${chargePct}%蓄積 / 技威力: ${currentPower}`,
+        nextUpgrade: isMax ? '技レベルMAX！' : `次Lv: 威力 ${nextPower} / +${chargePct + 5}%`
       };
     }
     case 'puni_unify': {
       const currentPower = Math.round(skill.power * (1 + (lv - 1) * 0.3));
       const nextPower = Math.round(skill.power * (1 + lv * 0.3));
       return {
-        description: `盤面にある全ぷにを「自分自身のぷに」に瞬時に統一変換し、一気に巨大繋ぎ可能にする！`,
+        description: `盤面にある全ぷにを「自分自身のぷに」に瞬時に変化させ、巨大な超ロング連鎖を可能にする！`,
         power: currentPower,
-        countInfo: `全ぷに自分変化 / 技威力: ${currentPower}`,
+        countInfo: `全ぷに自分色変化 / 技威力: ${currentPower}`,
         nextUpgrade: isMax ? '技レベルMAX！' : `次Lv: 威力 ${nextPower}`
       };
     }
     case 'team_gauge_fill': {
       const currentPower = Math.round(skill.power * (1 + (lv - 1) * 0.3));
       const nextPower = Math.round(skill.power * (1 + lv * 0.3));
+      const chargePct = 20 + lv * 4;
       return {
-        description: `敵に超ダメージを与えつつ、チーム全員の技ゲージを＋50%分チャージする！`,
+        description: `敵にダメージを与えつつ、チーム全員の技ゲージを＋${chargePct}%分上昇させる！`,
         power: currentPower,
-        countInfo: `全員技ゲージ+50% / 技威力: ${currentPower}`,
-        nextUpgrade: isMax ? '技レベルMAX！' : `次Lv: 威力 ${nextPower}`
+        countInfo: `全員技ゲージ+${chargePct}% / 技威力: ${currentPower}`,
+        nextUpgrade: isMax ? '技レベルMAX！' : `次Lv: 威力 ${nextPower} / +${chargePct + 4}%`
       };
     }
     case 'god_burst': {
+      const currentPower = Math.round(skill.power * (1 + (lv - 1) * 0.35));
+      const nextPower = Math.round(skill.power * (1 + lv * 0.35));
+      return {
+        description: `【創世神奥義】全画面のぷにを一撃で全消去し、敵に壊滅的な大ダメージを与える！`,
+        power: currentPower,
+        countInfo: `全画面神消滅 / 技威力: ${currentPower}`,
+        nextUpgrade: isMax ? '技レベルMAX！' : `次Lv: 威力 ${nextPower}`
+      };
+    }
+    case 'bleach_lansa': {
+      const currentPower = Math.round(skill.power * (1 + (lv - 1) * 0.35));
+      const nextPower = Math.round(skill.power * (1 + lv * 0.35));
+      return {
+        description: `【ウルキオラ専用奥義】なぞった軌跡のぷにを緑の雷霆で連続爆破消去し、多段スラッシュダメージを与える！`,
+        power: currentPower,
+        countInfo: `雷霆なぞり爆破消去 / 威力: ${currentPower}`,
+        nextUpgrade: isMax ? '技レベルMAX！' : `次Lv: 威力 ${nextPower}`
+      };
+    }
+    case 'bleach_desgarron': {
+      const currentPower = Math.round(skill.power * (1 + (lv - 1) * 0.35));
+      const nextPower = Math.round(skill.power * (1 + lv * 0.35));
+      return {
+        description: `【グリムジョー専用奥義】タップした箇所を中心に青き爪撃大爆発を連続発生させ、10連続多段ヒットを与える！`,
+        power: currentPower,
+        countInfo: `10連続多段爪撃タップ爆破 / 威力: ${currentPower}`,
+        nextUpgrade: isMax ? '技レベルMAX！' : `次Lv: 威力 ${nextPower}`
+      };
+    }
+    case 'bleach_cero_metralleta': {
+      const currentPower = Math.round(skill.power * (1 + (lv - 1) * 0.35));
+      const nextPower = Math.round(skill.power * (1 + lv * 0.35));
+      const chargePct = 25 + lv * 3;
+      return {
+        description: `【スターク専用奥義】無数の青白い虚閃を連射！敵に大ダメージを与え、味方全員の技ゲージを+${chargePct}%上昇させる！`,
+        power: currentPower,
+        countInfo: `味方全員技ゲージ+${chargePct}% / 威力: ${currentPower}`,
+        nextUpgrade: isMax ? '技レベルMAX！' : `次Lv: 威力 ${nextPower} / +${chargePct + 3}%`
+      };
+    }
+    case 'bleach_respira': {
+      const currentPower = Math.round(skill.power * (1 + (lv - 1) * 0.35));
+      const nextPower = Math.round(skill.power * (1 + lv * 0.35));
+      return {
+        description: `【バラガン専用奥義】死の吐息による絶対腐朽！敵の攻撃カウントを7秒間完全凍結停止し、敵HP割合スリップダメージを与える！`,
+        power: currentPower,
+        countInfo: `敵7秒行動凍結＋割合腐朽ダメージ / 威力: ${currentPower}`,
+        nextUpgrade: isMax ? '技レベルMAX！' : `次Lv: 威力 ${nextPower}`
+      };
+    }
+    case 'bleach_caudal': {
+      const currentPower = Math.round(skill.power * (1 + (lv - 1) * 0.35));
+      const nextPower = Math.round(skill.power * (1 + lv * 0.35));
+      return {
+        description: `【ハリベル専用奥義】皇鮫後から放たれる大津波！画面下部60%のぷにを一気に押し流して消滅させる！`,
+        power: currentPower,
+        countInfo: `下部60%水流消滅 / 威力: ${currentPower}`,
+        nextUpgrade: isMax ? '技レベルMAX！' : `次Lv: 威力 ${nextPower}`
+      };
+    }
+    case 'bleach_santa_teresa': {
+      const currentPower = Math.round(skill.power * (1 + (lv - 1) * 0.35));
+      const nextPower = Math.round(skill.power * (1 + lv * 0.35));
+      return {
+        description: `【ノイトラ専用奥義】六本の鎌による十字範囲の超絶クリティカル6連撃斬滅！`,
+        power: currentPower,
+        countInfo: `十字範囲6連撃斬滅 / 威力: ${currentPower}`,
+        nextUpgrade: isMax ? '技レベルMAX！' : `次Lv: 威力 ${nextPower}`
+      };
+    }
+    case 'bleach_gran_rey_cero': {
+      const currentPower = Math.round(skill.power * (1 + (lv - 1) * 0.38));
+      const nextPower = Math.round(skill.power * (1 + lv * 0.38));
+      return {
+        description: `【ヤミー専用奥義】盤面中央に超巨大な特大でかぷに（サイズ20）を即座に投下生成する！`,
+        power: currentPower,
+        countInfo: `サイズ20特大でかぷに生成 / 威力: ${currentPower}`,
+        nextUpgrade: isMax ? '技レベルMAX！' : `次Lv: 威力 ${nextPower}`
+      };
+    }
+    case 'bleach_brujeria': {
+      const currentPower = Math.round(skill.power * (1 + (lv - 1) * 0.35));
+      const nextPower = Math.round(skill.power * (1 + lv * 0.35));
+      return {
+        description: `【ゾマリ専用奥義】双児響転による愛の支配！盤面のぷにを一時的に2種類に整理し、ロング連鎖を容易にする！`,
+        power: currentPower,
+        countInfo: `盤面2種類整理 / 威力: ${currentPower}`,
+        nextUpgrade: isMax ? '技レベルMAX！' : `次Lv: 威力 ${nextPower}`
+      };
+    }
+    case 'bleach_teatro': {
+      const currentPower = Math.round(skill.power * (1 + (lv - 1) * 0.35));
+      const healAmount = Math.round(60000 * (1 + (lv - 1) * 0.3));
+      const nextPower = Math.round(skill.power * (1 + lv * 0.35));
+      return {
+        description: `【ザエルアポロ専用奥義】受胎告知による細胞再生！味方チームのHPを${healAmount}特大回復する！`,
+        power: currentPower,
+        countInfo: `HP${healAmount}特大回復 / 威力: ${currentPower}`,
+        nextUpgrade: isMax ? '技レベルMAX！' : `次Lv: 威力 ${nextPower}`
+      };
+    }
+    case 'bleach_glotoneria': {
+      const currentPower = Math.round(skill.power * (1 + (lv - 1) * 0.35));
+      const nextPower = Math.round(skill.power * (1 + lv * 0.35));
+      return {
+        description: `【アーロニーロ専用奥義】三万三千六百五十の虚捕食！盤面上の全ぷにを自キャラぷにへ統一変化させる！`,
+        power: currentPower,
+        countInfo: `全ぷに自分統一変化 / 威力: ${currentPower}`,
+        nextUpgrade: isMax ? '技レベルMAX！' : `次Lv: 威力 ${nextPower}`
+      };
+    }
+    case 'bleach_kurohitsugi': {
+      const currentPower = Math.round(skill.power * (1 + (lv - 1) * 0.45));
+      const nextPower = Math.round(skill.power * (1 + lv * 0.45));
+      return {
+        description: `【藍染惣右介専用奥義】崩玉の神域！破道の九十『黒棺』による全画面ぷに消滅＆大ダメージ！`,
+        power: currentPower,
+        countInfo: `全画面黒棺消滅 / 威力: ${currentPower}`,
+        nextUpgrade: isMax ? '技レベルMAX！' : `次Lv: 威力 ${nextPower}`
+      };
+    }
+    case 'range_pop': {
+      const currentPower = Math.round(skill.power * (1 + (lv - 1) * 0.28));
+      const nextPower = Math.round(skill.power * (1 + lv * 0.28));
+      return {
+        description: `十字・縦横の直線範囲上のぷにを豪快に一刀両断して消去する！`,
+        power: currentPower,
+        countInfo: `直線範囲消去 / 技威力: ${currentPower}`,
+        nextUpgrade: isMax ? '技レベルMAX！' : `次Lv: 威力 ${nextPower}`
+      };
+    }
+    case 'trace_pop': {
+      const currentPower = Math.round(skill.power * (1 + (lv - 1) * 0.32));
+      const nextPower = Math.round(skill.power * (1 + lv * 0.32));
+      return {
+        description: `画面をなぞった軌跡のぷにを連続で爆破消去！なぞるほど連鎖ダメージ急増！`,
+        power: currentPower,
+        countInfo: `なぞり爆破消去 / 技威力: ${currentPower}`,
+        nextUpgrade: isMax ? '技レベルMAX！' : `次Lv: 威力 ${nextPower}`
+      };
+    }
+    case 'tap_pop': {
+      const currentPower = Math.round(skill.power * (1 + (lv - 1) * 0.35));
+      const nextPower = Math.round(skill.power * (1 + lv * 0.35));
+      return {
+        description: `タップした場所のぷにを中心に大爆発を起こし、周囲のぷにを巻き込んで消去！`,
+        power: currentPower,
+        countInfo: `タップ範囲大爆発 / 技威力: ${currentPower}`,
+        nextUpgrade: isMax ? '技レベルMAX！' : `次Lv: 威力 ${nextPower}`
+      };
+    }
+    case 'deka_create': {
+      const currentPower = Math.round(skill.power * (1 + (lv - 1) * 0.25));
+      const nextPower = Math.round(skill.power * (1 + lv * 0.25));
+      return {
+        description: `盤面に特大サイズ（サイズ10〜15）のでかぷにを即時生成する！`,
+        power: currentPower,
+        countInfo: `特大でかぷに生成 / 技威力: ${currentPower}`,
+        nextUpgrade: isMax ? '技レベルMAX！' : `次Lv: 威力 ${nextPower}`
+      };
+    }
+    case 'puni_tidy': {
       const currentPower = Math.round(skill.power * (1 + (lv - 1) * 0.3));
-      const healAmount = Math.round(50000 * (1 + (lv - 1) * 0.3));
       const nextPower = Math.round(skill.power * (1 + lv * 0.3));
       return {
-        description: `【創世神奥義】画面内全消去＋HP極大回復＋即時フィーバーMAXを同時に発動する絶対必殺技！`,
+        description: `盤面のぷにを一時的に2〜3種類のみに整理し、超ロング連鎖を容易にする！`,
         power: currentPower,
-        countInfo: `全消去＋HP${healAmount}回復＋フィーバー満タン / 威力: ${currentPower}`,
+        countInfo: `ぷに種類整理・ロング繋ぎ誘発 / 技威力: ${currentPower}`,
+        nextUpgrade: isMax ? '技レベルMAX！' : `次Lv: 威力 ${nextPower}`
+      };
+    }
+    case 'super_fever': {
+      const currentPower = Math.round(skill.power * (1 + (lv - 1) * 0.35));
+      const nextPower = Math.round(skill.power * (1 + lv * 0.35));
+      return {
+        description: `フィーバー中の持続時間を超延長し、敵に強力なダメージを与える！`,
+        power: currentPower,
+        countInfo: `フィーバー時間延長＋特大ダメージ / 威力: ${currentPower}`,
+        nextUpgrade: isMax ? '技レベルMAX！' : `次Lv: 威力 ${nextPower}`
+      };
+    }
+    case 'gauge_charge': {
+      const currentPower = Math.round(skill.power * (1 + (lv - 1) * 0.25));
+      const nextPower = Math.round(skill.power * (1 + lv * 0.25));
+      return {
+        description: `敵にダメージを与えつつ、自身の技ゲージを大量チャージ（即時連発準備）！`,
+        power: currentPower,
+        countInfo: `技ゲージ自己チャージ / 技威力: ${currentPower}`,
+        nextUpgrade: isMax ? '技レベルMAX！' : `次Lv: 威力 ${nextPower}`
+      };
+    }
+    // ZZ 専用神昇奥義（キャラごとに全く異なる2つの技の組み合わせ）
+    case 'zz_god_lansa': {
+      const currentPower = Math.round(skill.power * (1 + (lv - 1) * 0.4));
+      const nextPower = Math.round(skill.power * (1 + lv * 0.4));
+      return {
+        description: `【神虚・ウルキオラZZ】なぞり消しで盤面を切り刻み、特大でかぷに（サイズ15×2個）を生成！`,
+        power: currentPower,
+        countInfo: `なぞり消し ＋ 特大でかぷに生成 / 威力: ${currentPower}`,
+        nextUpgrade: isMax ? '技レベルMAX！' : `次Lv: 威力 ${nextPower}`
+      };
+    }
+    case 'zz_god_desgarron': {
+      const currentPower = Math.round(skill.power * (1 + (lv - 1) * 0.4));
+      const nextPower = Math.round(skill.power * (1 + lv * 0.4));
+      const feverPct = 40 + lv * 5;
+      return {
+        description: `【神豹王・グリムジョーZZ】10連撃タップ爪撃大爆破 ＋ フィーバーゲージを+${feverPct}%チャージ！（※フィーバー中はゲージ蓄積なし）`,
+        power: currentPower,
+        countInfo: `タップ連撃爆破 ＋ フィーバー+${feverPct}%蓄積 / 威力: ${currentPower}`,
+        nextUpgrade: isMax ? '技レベルMAX！' : `次Lv: 威力 ${nextPower}`
+      };
+    }
+    case 'zz_god_cero': {
+      const currentPower = Math.round(skill.power * (1 + (lv - 1) * 0.4));
+      const nextPower = Math.round(skill.power * (1 + lv * 0.4));
+      const chargePct = 25 + lv * 3;
+      return {
+        description: `【神群狼・スタークZZ】全味方の技ゲージを+${chargePct}%上昇させ、盤面のぷにをスターク色へ変化！`,
+        power: currentPower,
+        countInfo: `全味方技ゲージ+${chargePct}% ＋ ぷに同色変化 / 威力: ${currentPower}`,
+        nextUpgrade: isMax ? '技レベルMAX！' : `次Lv: 威力 ${nextPower}`
+      };
+    }
+    case 'zz_god_respira': {
+      const currentPower = Math.round(skill.power * (1 + (lv - 1) * 0.4));
+      const nextPower = Math.round(skill.power * (1 + lv * 0.4));
+      return {
+        description: `【神髑髏帝・バラガンZZ】敵の攻撃行動を10秒間完全凍結停止し、全画面のぷにを一撃消滅！`,
+        power: currentPower,
+        countInfo: `敵10秒凍結 ＋ 全画面消滅 / 威力: ${currentPower}`,
+        nextUpgrade: isMax ? '技レベルMAX！' : `次Lv: 威力 ${nextPower}`
+      };
+    }
+    case 'zz_god_caudal': {
+      const currentPower = Math.round(skill.power * (1 + (lv - 1) * 0.4));
+      const healAmount = Math.round(100000 * (1 + (lv - 1) * 0.3));
+      const nextPower = Math.round(skill.power * (1 + lv * 0.4));
+      return {
+        description: `【神皇鮫・ハリベルZZ】皇鮫の大津波で画面下部を一掃し、味方のHPを${healAmount}特大回復！`,
+        power: currentPower,
+        countInfo: `下部範囲水流消去 ＋ HP${healAmount}回復 / 威力: ${currentPower}`,
+        nextUpgrade: isMax ? '技レベルMAX！' : `次Lv: 威力 ${nextPower}`
+      };
+    }
+    case 'zz_god_santa_teresa': {
+      const currentPower = Math.round(skill.power * (1 + (lv - 1) * 0.4));
+      const nextPower = Math.round(skill.power * (1 + lv * 0.4));
+      return {
+        description: `【神聖螳螂・ノイトラZZ】八臂の神鎌による十字範囲斬滅 ＋ 被ダメージを90%カットする神鋼皮シールドを展開！`,
+        power: currentPower,
+        countInfo: `十字範囲連撃 ＋ 被ダメ90%シールド / 威力: ${currentPower}`,
+        nextUpgrade: isMax ? '技レベルMAX！' : `次Lv: 威力 ${nextPower}`
+      };
+    }
+    case 'zz_god_gran_rey': {
+      const currentPower = Math.round(skill.power * (1 + (lv - 1) * 0.4));
+      const nextPower = Math.round(skill.power * (1 + lv * 0.4));
+      return {
+        description: `【神憤獣・ヤミーZZ】特大でかぷに（サイズ25）を生成し、盤面のぷにを一気に巨大化膨張させる！`,
+        power: currentPower,
+        countInfo: `特大でかぷに生成 ＋ ぷに膨張 / 威力: ${currentPower}`,
+        nextUpgrade: isMax ? '技レベルMAX！' : `次Lv: 威力 ${nextPower}`
+      };
+    }
+    case 'zz_god_brujeria': {
+      const currentPower = Math.round(skill.power * (1 + (lv - 1) * 0.4));
+      const nextPower = Math.round(skill.power * (1 + lv * 0.4));
+      const chargePct = 25 + lv * 2;
+      return {
+        description: `【神呪眼・ゾマリZZ】盤面ぷにを2種類に整理し、全味方の技ゲージを+${chargePct}%チャージ！`,
+        power: currentPower,
+        countInfo: `盤面2種整理 ＋ 全味方技ゲージ+${chargePct}% / 威力: ${currentPower}`,
+        nextUpgrade: isMax ? '技レベルMAX！' : `次Lv: 威力 ${nextPower}`
+      };
+    }
+    case 'zz_god_teatro': {
+      const currentPower = Math.round(skill.power * (1 + (lv - 1) * 0.4));
+      const nextPower = Math.round(skill.power * (1 + lv * 0.4));
+      return {
+        description: `【神邪妃・ザエルアポロZZ】HP0時に完全自動復活するリレイズ保険を付与し、特大でかぷにを生成！`,
+        power: currentPower,
+        countInfo: `自動蘇生保険 ＋ 特大でかぷに生成 / 威力: ${currentPower}`,
+        nextUpgrade: isMax ? '技レベルMAX！' : `次Lv: 威力 ${nextPower}`
+      };
+    }
+    case 'zz_god_glotoneria': {
+      const currentPower = Math.round(skill.power * (1 + (lv - 1) * 0.4));
+      const drainAmount = Math.round(80000 * (1 + (lv - 1) * 0.3));
+      const nextPower = Math.round(skill.power * (1 + lv * 0.4));
+      return {
+        description: `【神喰虚・アーロニーロZZ】盤面ぷにを自色へ統一変化させ、敵からHP${drainAmount}を吸収回復！`,
+        power: currentPower,
+        countInfo: `ぷに同色変化 ＋ HP${drainAmount}吸収回復 / 威力: ${currentPower}`,
+        nextUpgrade: isMax ? '技レベルMAX！' : `次Lv: 威力 ${nextPower}`
+      };
+    }
+    case 'zz_god_kurohitsugi': {
+      const currentPower = Math.round(skill.power * (1 + (lv - 1) * 0.45));
+      const nextPower = Math.round(skill.power * (1 + lv * 0.45));
+      const feverPct = 50 + lv * 5;
+      return {
+        description: `【神崩玉・藍染惣右介ZZ】破道の九十「神黒棺」による全消滅 ＋ フィーバーゲージを+${feverPct}%蓄積チャージ！（※フィーバー中は無効）`,
+        power: currentPower,
+        countInfo: `全画面消滅 ＋ フィーバー+${feverPct}%蓄積 / 威力: ${currentPower}`,
+        nextUpgrade: isMax ? '技レベルMAX！' : `次Lv: 威力 ${nextPower}`
+      };
+    }
+    case 'zz_god_enma': {
+      const currentPower = Math.round(skill.power * (1 + (lv - 1) * 0.4));
+      const nextPower = Math.round(skill.power * (1 + lv * 0.4));
+      const chargePct = 25 + lv * 3;
+      return {
+        description: `【極天創世・極エンマ神ZZ】創世神炎のなぞり斬撃で大爆破し、全味方の技ゲージを+${chargePct}%チャージ！`,
+        power: currentPower,
+        countInfo: `なぞり斬撃 ＋ 全味方技ゲージ+${chargePct}% / 威力: ${currentPower}`,
+        nextUpgrade: isMax ? '技レベルMAX！' : `次Lv: 威力 ${nextPower}`
+      };
+    }
+    case 'zz_god_jibanyan': {
+      const currentPower = Math.round(skill.power * (1 + (lv - 1) * 0.4));
+      const nextPower = Math.round(skill.power * (1 + lv * 0.4));
+      return {
+        description: `【神光無双・極ジバニャンZZ】ひゃくれつ神肉球の多段タップ爆破 ＋ 盤面ぷにを2種類に整理！`,
+        power: currentPower,
+        countInfo: `タップ爆破 ＋ 盤面2種整理 / 威力: ${currentPower}`,
+        nextUpgrade: isMax ? '技レベルMAX！' : `次Lv: 威力 ${nextPower}`
+      };
+    }
+    default: {
+      const currentPower = Math.round(skill.power * (1 + (lv - 1) * 0.25));
+      const nextPower = Math.round(skill.power * (1 + lv * 0.25));
+      return {
+        description: skill.description || '敵に強力なダメージを与える！',
+        power: currentPower,
+        countInfo: `技威力: ${currentPower}`,
         nextUpgrade: isMax ? '技レベルMAX！' : `次Lv: 威力 ${nextPower}`
       };
     }
   }
 };
+
+// ==========================================
+// 神昇合成（Z' → ZZ）のレシピ定義
+// ==========================================
+export interface GodAscensionRecipe {
+  baseCharId: string;
+  targetCharId: string;
+  targetCharName: string;
+  requiredStones: number;
+  description: string;
+}
+
+export const GOD_ASCENSION_RECIPES: GodAscensionRecipe[] = [
+  {
+    baseCharId: 'char_bleach_zprime_1',
+    targetCharId: 'char_zz_bleach_1',
+    targetCharName: '神虚・ウルキオラZZ',
+    requiredStones: 1,
+    description: '神昇の秘石の力で黒翼大魔が真の神化覚醒！スキル2個＆神昇雷霆奥義を習得！'
+  },
+  {
+    baseCharId: 'char_bleach_zprime_2',
+    targetCharId: 'char_zz_bleach_2',
+    targetCharName: '神豹王・グリムジョーZZ',
+    requiredStones: 1,
+    description: '青き咆哮が神域へ昇華！怒涛のなぞり爪撃とスーパーフィーバーを解放！'
+  },
+  {
+    baseCharId: 'char_bleach_zprime_3',
+    targetCharId: 'char_zz_bleach_3',
+    targetCharName: '神群狼・スタークZZ',
+    requiredStones: 1,
+    description: '無数の魂の狼と神性虚閃が融合！全員技ゲージ充填＆種族効果特大アップ！'
+  },
+  {
+    baseCharId: 'char_bleach_zprime_4',
+    targetCharId: 'char_zz_bleach_4',
+    targetCharName: '神髑髏帝・バラガンZZ',
+    requiredStones: 1,
+    description: '時を司る老神の完全覚醒！被ダメージ95%カット＆敵行動永続停止の神域！'
+  },
+  {
+    baseCharId: 'char_bleach_zprime_5',
+    targetCharId: 'char_zz_bleach_5',
+    targetCharName: '神皇鮫・ハリベルZZ',
+    requiredStones: 1,
+    description: '断瀑の大津波が神の結界となる！HP上限250%超過バリア＆ぷに整理技！'
+  },
+  {
+    baseCharId: 'char_bleach_zprime_6',
+    targetCharId: 'char_zz_bleach_6',
+    targetCharName: '神聖螳螂・ノイトラZZ',
+    requiredStones: 1,
+    description: '無敵の鋼皮と八本の神鎌！ダメージカットと超絶会心タップ技を併せ持つ！'
+  },
+  {
+    baseCharId: 'char_bleach_zprime_7',
+    targetCharId: 'char_zz_bleach_7',
+    targetCharName: '神憤獣・ヤミーZZ',
+    requiredStones: 1,
+    description: '無限の怒りが神の巨神を生む！サイズ60超巨大神ぷに圧縮爆破！'
+  },
+  {
+    baseCharId: 'char_bleach_zprime_8',
+    targetCharId: 'char_zz_bleach_8',
+    targetCharName: '神呪眼・ゾマリZZ',
+    requiredStones: 1,
+    description: '神速の響転と愛の結界！つながりやすさ神域アップ＆攻撃力3倍付与！'
+  },
+  {
+    baseCharId: 'char_bleach_zprime_9',
+    targetCharId: 'char_zz_bleach_9',
+    targetCharName: '神邪妃・ザエルアポロZZ',
+    requiredStones: 1,
+    description: '不死の科学が神域再生へ到達！何度でもHP100%全快蘇生＆特大でかぷに連続生成！'
+  },
+  {
+    baseCharId: 'char_bleach_zprime_10',
+    targetCharId: 'char_zz_bleach_10',
+    targetCharName: '神喰虚・アーロニーロZZ',
+    requiredStones: 1,
+    description: '無数の虚と神の霊力を喰らい尽くす！敵HP割合吸収＆技ゲージ超加速！'
+  },
+  {
+    baseCharId: 'char_bleach_zprime_11',
+    targetCharId: 'char_zz_bleach_11',
+    targetCharName: '神崩玉・藍染惣右介ZZ',
+    requiredStones: 1,
+    description: '天に立つ者。全次元の神をも統べる黒棺神域奥義＆スキル2個完全開放！'
+  },
+  {
+    baseCharId: 'char_z_6', // 超終次元・極エンマ神
+    targetCharId: 'char_zz_yokai_1',
+    targetCharName: '極天創世・極エンマ神ZZ',
+    requiredStones: 1,
+    description: 'エンマ大王の極限神域形態！全種族効果＋スーパーフィーバー神奥義！'
+  },
+  {
+    baseCharId: 'char_z_1', // 神威覇道・覚醒ジバニャンＺ
+    targetCharId: 'char_zz_yokai_2',
+    targetCharName: '神光無双・極ジバニャンZZ',
+    requiredStones: 1,
+    description: 'プリチーの頂点を極めし黄金のニャン！でかぷに生成となぞり技の神技！'
+  }
+];
 
 export const generateCharacters = (): Character[] => {
   const chars: Character[] = [];
@@ -1532,9 +2136,11 @@ export const generateCharacters = (): Character[] => {
     'SS': createRankBadgeSvgDataUrl('SS'),
     'SSS': createRankBadgeSvgDataUrl('SSS'),
     'Z': createRankBadgeSvgDataUrl('Z'),
+    "Z'": createRankBadgeSvgDataUrl("Z'"),
+    'ZZ': createRankBadgeSvgDataUrl('ZZ'),
   };
 
-  const createSet = (rank: Rank, baseHp: number, baseAtk: number, color: string, list: CharacterDef[]) => {
+  const createSet = (rank: Rank, baseHp: number, baseAtk: number, color: string, list: CharacterDef[], idPrefix?: string) => {
     list.forEach((a, i) => {
       let tribe: Tribe = a.tribe || 'イサマシ';
       if (!a.tribe) {
@@ -1563,7 +2169,7 @@ export const generateCharacters = (): Character[] => {
       }
 
       const char: Character = {
-        id: `char_${rank.toLowerCase()}_${i + 1}`,
+        id: `char_${(idPrefix || rank).toLowerCase()}_${i + 1}`,
         name: a.name,
         rank,
         tribe,
@@ -1571,33 +2177,97 @@ export const generateCharacters = (): Character[] => {
         emoji: a.emoji,
         rankImage: rankImageMap[rank],
         imageUrl: createPuniSvgDataUrl(a.name, color, rank, a.emoji),
-        baseHp: baseHp + i * 8,
+        baseHp: baseHp + i * 15,
         baseAtk: baseAtk + i * 3,
       };
 
+      // 必殺技の設定
       if (a.skillName && a.skillType) {
         char.skill = {
           name: a.skillName,
           type: a.skillType,
           power: a.skillPower || (
-            rank === 'SS' ? (a.skillType === 'heal' ? 3000 : 50) :
-            rank === 'S'  ? (a.skillType === 'heal' ? 1500 : 30) :
-            (a.skillType === 'heal' ? 400 : 12)
+            rank === 'ZZ' ? 220 :
+            rank === "Z'" ? 180 :
+            rank === 'Z'  ? 150 :
+            rank === 'SSS'? 120 :
+            rank === 'SS' ? (a.skillType === 'heal' ? 800 : 90) :
+            rank === 'S'  ? (a.skillType === 'heal' ? 500 : 65) :
+            (a.skillType === 'heal' ? 300 : 45)
           )
         };
       } else if (rank === 'S' || rank === 'SS') {
         const isSS = rank === 'SS';
-        const defaultTypes: SkillType[] = ['center_pop', 'random_pop', 'inflate_puni', 'heal', 'all_pop'];
+        const defaultTypes: SkillType[] = ['center_pop', 'random_pop', 'inflate_puni', 'heal', 'all_pop', 'range_pop'];
         const chosenType = defaultTypes[i % defaultTypes.length];
         char.skill = {
           name: isSS ? (i % 2 === 0 ? '覇王絶空斬' : '神聖なる光') : (i % 2 === 0 ? '爆裂連撃' : '癒やしの陣'),
           type: chosenType,
-          power: isSS ? (chosenType === 'heal' ? 2500 : 45) : (chosenType === 'heal' ? 1000 : 25),
+          power: isSS ? (chosenType === 'heal' ? 800 : 95) : (chosenType === 'heal' ? 500 : 65),
         };
+      }
+
+      // パッシブスキルの設定（SSS以上は自動付与、ZZは2個！）
+      if (a.passiveSkills && a.passiveSkills.length > 0) {
+        char.passiveSkills = a.passiveSkills;
+      } else if (rank === 'ZZ') {
+        // ZZランクは必ず2つのスキルを所持
+        char.passiveSkills = [
+          {
+            name: `${tribe}の神域加護`,
+            type: 'tribe_boost',
+            value: 25,
+            description: `${tribe}族の味方のHPと攻撃力を+25%アップ！`
+          },
+          {
+            name: '超神昇ゲージブースト',
+            type: 'gauge_boost',
+            value: 30,
+            description: '自身のぷにを消した時の技ゲージ上昇量が+30%アップ！'
+          }
+        ];
+      } else if (rank === "Z'") {
+        // Z'ランクはスキル1個所持
+        char.passiveSkills = [
+          {
+            name: `${tribe}の覚醒陣`,
+            type: 'tribe_boost',
+            value: 18,
+            description: `${tribe}族の味方のHPと攻撃力を+18%アップ！`
+          }
+        ];
+      } else if (rank === 'Z') {
+        // Zランクはスキル1個所持
+        char.passiveSkills = [
+          {
+            name: '神速リンク',
+            type: 'connect_boost',
+            value: 20,
+            description: '自身のぷにが繋がりやすくなり、少し離れたぷにも繋がる！'
+          }
+        ];
+      } else if (rank === 'SSS') {
+        // SSSランクはスキル1個所持
+        char.passiveSkills = [
+          {
+            name: '闘気覚醒',
+            type: 'damage_boost',
+            value: 15,
+            description: '自身のぷにを消した時のダメージが+15%アップ！'
+          }
+        ];
       }
 
       if (a.trait) {
         char.trait = a.trait;
+      } else if (rank === 'ZZ') {
+        char.trait = '【ZZランク】神昇の秘石により真の神域へ覚醒した最高峰の存在。2つのスキルと究極奥義を宿す。';
+      } else if (rank === "Z'") {
+        char.trait = '【Z\'ランク】虚圏の頂点に君臨する十刃。圧倒的な霊圧とスキルを持つ。';
+      } else if (rank === 'Z') {
+        char.trait = '【Zランク】終次元の超越支配者。神速のスキルと絶大な攻撃力を誇る。';
+      } else if (rank === 'SSS') {
+        char.trait = '【SSSランク】神の領域に達した伝説の存在。固有スキルを宿す。';
       } else if (rank === 'SS') {
         char.trait = i % 2 === 0 ? '神域に達した伝説の存在。圧倒的な火力で敵を滅ぼす。' : '究極の治癒力を宿した聖なる妖怪。';
       } else if (rank === 'S') {
@@ -1606,23 +2276,15 @@ export const generateCharacters = (): Character[] => {
         char.trait = `${rank}ランクの頼れる仲間。チームの力を底上げする！`;
       }
 
-      // イベント特効キャラ（Zランク全キャラ ＆ SSSランク全キャラ ＆ SSランクの特定のキャラ）
-      if (rank === 'Z') {
-        char.eventBoost = true;
-        char.eventBoostDesc = '【Z極限超特効】イベントステージで攻撃力が30倍爆増！';
-      } else if (rank === 'SSS') {
-        char.eventBoost = true;
-        char.eventBoostDesc = '【SSS超特効】イベントステージで攻撃力が10倍爆増！';
-      } else if (rank === 'SS' && i % 3 === 0) {
-        char.eventBoost = true;
-        char.eventBoostDesc = 'イベントステージで攻撃力が3倍アップ！';
-      }
+      // 特攻はなし（等倍）
+      char.eventBoost = false;
+      char.eventBoostDesc = undefined;
 
       chars.push(char);
     });
   };
 
-  // Eランク妖怪
+  // Eランク妖怪 (適正HP/ATKバランス)
   const eList: CharacterDef[] = [
     { name: 'ぶようじん坊', emoji: '🗡️', trait: 'いつも油断ばかりしている足軽妖怪。' },
     { name: 'ダラケ刀', emoji: '⚔️', trait: 'だらけて切れない刀の妖怪。' },
@@ -1635,7 +2297,7 @@ export const generateCharacters = (): Character[] => {
     { name: 'パッカー', emoji: '口', trait: '何でもパッカンと開けてしまう。' },
     { name: 'ナンデナン', emoji: '❓', trait: '何でも「なんでナン？」と聞いてくる。' },
   ];
-  createSet('E', 100, 10, '#88cc88', eList);
+  createSet('E', 120, 12, '#88cc88', eList);
 
   // Dランク妖怪
   const dList: CharacterDef[] = [
@@ -1650,7 +2312,7 @@ export const generateCharacters = (): Character[] => {
     { name: 'カブトさん', emoji: '🪲', trait: '立派な角と兜を持つカブトムシ。' },
     { name: 'バクロ婆', emoji: '👵', trait: '隠し事を暴露させてしまうおばあさん。' },
   ];
-  createSet('D', 150, 15, '#55aa55', dList);
+  createSet('D', 200, 20, '#55aa55', dList);
 
   // Cランク妖怪
   const cList: CharacterDef[] = [
@@ -1665,11 +2327,11 @@ export const generateCharacters = (): Character[] => {
     { name: 'ホンマグロ大将', emoji: '🐟', trait: '活きのいいマグロの寿司職人。' },
     { name: 'ザンバラ刀', emoji: '⚔️', trait: 'ザンバラ髪のワイルドな刀妖怪。' },
   ];
-  createSet('C', 200, 25, '#aa5555', cList);
+  createSet('C', 350, 35, '#aa5555', cList);
 
   // Bランク妖怪
   const bList: CharacterDef[] = [
-    { name: 'さきがけの助', emoji: '🚩', trait: '一番槍を狙う一番手。', skillName: '突撃一番槍', skillType: 'random_pop' },
+    { name: 'さきがけの助', emoji: '🚩', trait: '一番槍を狙う一番手。', skillName: '突撃一番槍', skillType: 'range_pop' },
     { name: 'グラグライオン', emoji: '🌋', trait: '大地をグラグラ揺らすライオン。', skillName: 'グラグララッシュ', skillType: 'center_pop' },
     { name: 'クワノ武士', emoji: '🪲', trait: '立派なハサミで切断するクワガタ。', skillName: 'ハサミ一閃', skillType: 'random_pop' },
     { name: 'フユニャン', emoji: '🐱', trait: '根性あふれるダークブルーのガッツネコ！', skillName: 'ど根性ストレート', skillType: 'inflate_puni' },
@@ -1678,9 +2340,9 @@ export const generateCharacters = (): Character[] => {
     { name: 'さきがけの助金旋', emoji: '✨', trait: '金箔を施された特別なさきがけの助。', skillName: '黄金突撃', skillType: 'center_pop' },
     { name: 'いばる〜ん', emoji: '😤', trait: '威張ってばかりいる気取った妖怪。', skillName: 'いばり威嚇', skillType: 'heal' },
     { name: '早乙女乱馬', emoji: '🥋', trait: '無差別格闘早乙女流の継承者！', skillName: '飛龍昇天破', skillType: 'all_pop' },
-    { name: '犬夜叉', emoji: '🐕', trait: '鉄砕牙を操る半妖の少年！', skillName: '風の傷', skillType: 'random_pop' },
+    { name: '犬夜叉', emoji: '🐕', trait: '鉄砕牙を操る半妖の少年！', skillName: '風の傷', skillType: 'range_pop' },
   ];
-  createSet('B', 300, 40, '#ff88aa', bList);
+  createSet('B', 600, 60, '#ff88aa', bList);
 
   // Aランク妖怪
   const aList: CharacterDef[] = [
@@ -1689,89 +2351,483 @@ export const generateCharacters = (): Character[] => {
     { name: '万尾獅子', emoji: '🦁', trait: '「満を持して…今だ！」圧倒的一撃。', skillName: '満を持して連撃', skillType: 'random_pop' },
     { name: 'モモタロニャン', emoji: '🍑', trait: '鬼退治の英雄となった桃ネコ妖怪。', skillName: 'きびだんごアタック', skillType: 'inflate_puni' },
     { name: 'マスクドニャーン', emoji: '🎭', trait: '覆面を被った謎のプロレスニャン。', skillName: '必殺フライングプレス', skillType: 'center_pop' },
-    { name: 'ニャン騎士', emoji: '🛡️', trait: '騎士道精神に溢れる高貴なネコ騎士。', skillName: 'ホーリーセイバー', skillType: 'random_pop' },
+    { name: 'ニャン騎士', emoji: '🛡️', trait: '騎士道精神に溢れる高貴なネコ騎士。', skillName: 'ホーリーセイバー', skillType: 'range_pop' },
     { name: '総ナメ', emoji: '👅', trait: 'あらゆる栄冠を総ナメにする豪運妖怪。', skillName: '栄光の舌舐め', skillType: 'heal' },
     { name: '天下無僧', emoji: '⛩️', trait: '天下に敵なしと謳われる修行僧。', skillName: '天下無双掌', skillType: 'center_pop' },
-    { name: 'まさむね', emoji: '⚔️', trait: '名刀政宗を宿した天下一の剣士。', skillName: '名刀一刀両断', skillType: 'random_pop' },
+    { name: 'まさむね', emoji: '⚔️', trait: '名刀政宗を宿した天下一の剣士。', skillName: '名刀一刀両断', skillType: 'range_pop' },
     { name: 'むらまさ', emoji: '🗡️', trait: '妖刀村正に魅せられた妖しき剣豪。', skillName: '妖刀連撃', skillType: 'random_pop' },
   ];
-  createSet('A', 450, 60, '#ffaa00', aList);
+  createSet('A', 950, 95, '#ffaa00', aList);
 
   // Sランク妖怪
   const sList: CharacterDef[] = [
-    { name: '花垣武道', emoji: '👊', trait: '何度倒れても立ち上がるリベンジャー！', skillName: '譲れない思い', skillType: 'inflate_puni', skillPower: 35 },
-    { name: 'ミカサ', emoji: '⚔️', trait: '人類最強 of 戦闘能力を誇る調査兵団。', skillName: 'ブレード乱舞', skillType: 'random_pop', skillPower: 38 },
-    { name: 'ゴモラ', emoji: '🦖', trait: '超振動波で岩盤をも砕く古代怪獣！', skillName: '超振動波', skillType: 'center_pop', skillPower: 34 },
-    { name: 'ウルトラマン', emoji: '光', trait: 'M78星雲からきた光 of 巨人！', skillName: 'スペシウム光線', skillType: 'center_pop', skillPower: 40 },
-    { name: '獅白ぼたん', emoji: '♌', trait: 'ホロライブ所属のFPSゲーマー獅子！', skillName: 'エイム爆撃', skillType: 'random_pop', skillPower: 36 },
-    { name: '赤ぷよ', emoji: '🔴', trait: '4つ揃うと弾けて大連鎖を起こす！', skillName: 'ばよえ〜ん連鎖', skillType: 'all_pop', skillPower: 32 },
-    { name: 'アーサー', emoji: '👑', trait: '聖剣エクスカリバーを掲げる騎士王。', skillName: 'エクスカリバー', skillType: 'center_pop', skillPower: 38 },
-    { name: 'クワガ大将', emoji: '🪲', trait: 'クワガタ族の頂点に立つ将軍。', skillName: '大将の挟撃', skillType: 'random_pop', skillPower: 30 },
-    { name: 'オオクワノ神', emoji: '✨', trait: '神の加護を受けたクワガタの神霊。', skillName: '神域の鋏', skillType: 'heal', skillPower: 2000 },
-    { name: 'なまはげ', emoji: '👹', trait: '「悪い子はいねーかー！」包丁を乱舞！', skillName: '悪い子乱舞', skillType: 'random_pop', skillPower: 38 },
+    { name: '花垣武道', emoji: '👊', trait: '何度倒れても立ち上がるリベンジャー！', skillName: '譲れない思い', skillType: 'inflate_puni', skillPower: 160 },
+    { name: 'ミカサ', emoji: '⚔️', trait: '人類最強 of 戦闘能力を誇る調査兵団。', skillName: 'ブレード乱舞', skillType: 'trace_pop', skillPower: 180 },
+    { name: 'ゴモラ', emoji: '🦖', trait: '超振動波で岩盤をも砕く古代怪獣！', skillName: '超振動波', skillType: 'center_pop', skillPower: 165 },
+    { name: 'ウルトラマン', emoji: '光', trait: 'M78星雲からきた光 of 巨人！', skillName: 'スペシウム光線', skillType: 'range_pop', skillPower: 190 },
+    { name: '獅白ぼたん', emoji: '♌', trait: 'ホロライブ所属のFPSゲーマー獅子！', skillName: 'エイム爆撃', skillType: 'tap_pop', skillPower: 175 },
+    { name: '赤ぷよ', emoji: '🔴', trait: '4つ揃うと弾けて大連鎖を起こす！', skillName: 'ばよえ〜ん連鎖', skillType: 'all_pop', skillPower: 160 },
+    { name: 'アーサー', emoji: '👑', trait: '聖剣エクスカリバーを掲げる騎士王。', skillName: 'エクスカリバー', skillType: 'range_pop', skillPower: 185 },
+    { name: 'クワガ大将', emoji: '🪲', trait: 'クワガタ族の頂点に立つ将軍。', skillName: '大将の挟撃', skillType: 'random_pop', skillPower: 150 },
+    { name: 'オオクワノ神', emoji: '✨', trait: '神の加護を受けたクワガタの神霊。', skillName: '神域の鋏', skillType: 'heal', skillPower: 800 },
+    { name: 'なまはげ', emoji: '👹', trait: '「悪い子はいねーかー！」包丁を乱舞！', skillName: '悪い子乱舞', skillType: 'random_pop', skillPower: 170 },
   ];
-  createSet('S', 700, 100, '#ff2222', sList);
+  createSet('S', 1500, 160, '#ff2222', sList);
 
   // SSランク妖怪
   const ssList: CharacterDef[] = [
-    { name: 'パウロ', emoji: '🗡️', trait: '無職転生の伝承剣士。二刀流で敵を圧倒！', skillName: '二閃流斬撃', skillType: 'random_pop', skillPower: 60 },
-    { name: 'ベニマル', emoji: '🔥', trait: '鬼種族の若き大将。黒炎で敵を焼き尽くす！', skillName: '黒炎獄', skillType: 'center_pop', skillPower: 62 },
-    { name: '里羽リュウタ', emoji: '🐉', trait: '龍の血を継ぐ龍羽の戦士！', skillName: '龍神極光斬', skillType: 'inflate_puni', skillPower: 65 },
-    { name: '阿弥陀丸', emoji: '⚔️', trait: 'シャーマンキングの持霊！名刀春雨の一撃！', skillName: '真空仏陀切り', skillType: 'random_pop', skillPower: 64 },
-    { name: '覚醒早乙女乱馬', emoji: '🥋', trait: '究極の格闘センスが開花した乱馬！', skillName: '猛虎高飛車', skillType: 'inflate_puni', skillPower: 68 },
-    { name: 'フェルト', emoji: '風', trait: '風のように素早い風足の王位候補。', skillName: '風の疾走', skillType: 'random_pop', skillPower: 58 },
-    { name: 'めぐみん', emoji: '💥', trait: '爆裂魔法を愛し、爆裂魔法に生きる紅魔族！', skillName: 'エクスプロージョン！', skillType: 'all_pop', skillPower: 80 },
-    { name: '五月', emoji: '⭐', trait: '五等分の花嫁！真面目で一途なパワー！', skillName: '星 of 祝福', skillType: 'heal', skillPower: 4500 },
-    { name: 'メリオダス', emoji: '😈', trait: '＜七つの大罪＞団長！魔神の力を全解放！', skillName: '全反撃（フルカウンター）', skillType: 'all_pop', skillPower: 75 },
-    { name: 'ブシ王', emoji: '👑', trait: 'レジェンド武士の王者！全妖怪を平定する！', skillName: '天下布武・千人斬り', skillType: 'center_pop', skillPower: 70 },
+    { name: 'パウロ', emoji: '🗡️', trait: '無職転生の伝承剣士。二刀流で敵を圧倒！', skillName: '二閃流斬撃', skillType: 'range_pop', skillPower: 340 },
+    { name: 'ベニマル', emoji: '🔥', trait: '鬼種族の若き大将。黒炎で敵を焼き尽くす！', skillName: '黒炎獄', skillType: 'center_pop', skillPower: 350 },
+    { name: '里羽リュウタ', emoji: '🐉', trait: '龍の血を継ぐ龍羽の戦士！', skillName: '龍神極光斬', skillType: 'inflate_puni', skillPower: 360 },
+    { name: '阿弥陀丸', emoji: '⚔️', trait: 'シャーマンキングの持霊！名刀春雨の一撃！', skillName: '真空仏陀切り', skillType: 'random_pop', skillPower: 345 },
+    { name: '覚醒早乙女乱馬', emoji: '🥋', trait: '究極の格闘センスが開花した乱馬！', skillName: '猛虎高飛車', skillType: 'trace_pop', skillPower: 380 },
+    { name: 'フェルト', emoji: '風', trait: '風のように素早い風足の王位候補。', skillName: '風の疾走', skillType: 'tap_pop', skillPower: 330 },
+    { name: 'めぐみん', emoji: '💥', trait: '爆裂魔法を愛し、爆裂魔法に生きる紅魔族！', skillName: 'エクスプロージョン！', skillType: 'all_pop', skillPower: 450 },
+    { name: '五月', emoji: '⭐', trait: '五等分の花嫁！真面目で一途なパワー！', skillName: '星 of 祝福', skillType: 'heal', skillPower: 1600 },
+    { name: 'メリオダス', emoji: '😈', trait: '＜七つの大罪＞団長！魔神の力を全解放！', skillName: '全反撃（フルカウンター）', skillType: 'all_pop', skillPower: 420 },
+    { name: 'ブシ王', emoji: '👑', trait: 'レジェンド武士の王者！全妖怪を平定する！', skillName: '天下布武・千人斬り', skillType: 'range_pop', skillPower: 390 },
   ];
-  createSet('SS', 1200, 250, '#ff22ff', ssList);
+  createSet('SS', 2500, 280, '#ff22ff', ssList);
 
-  // SSSランク妖怪（超高級ガシャ限定・新神降臨！絶対王者）
+  // SSSランク妖怪（スキル1個所持）
   const sssList: CharacterDef[] = [
-    { name: '創世神・サマーエンマ王', emoji: '☀️👑🔥', trait: '常夏ビーチの神創神。全画面消滅＆100億オーバーの天災超ダメージ！', skillName: '創世神創・極熱天翔', skillType: 'all_pop', skillPower: 2500 },
-    { name: 'アルティメット龍神エンマ', emoji: '🐉👑✨', trait: '龍神の血と神王の力を極限解放した絶対王者！一撃で敵を即死追放！', skillName: '極龍神王・創世覇斬', skillType: 'center_pop', skillPower: 2300 },
-    { name: '極・覚醒サマーエンマ', emoji: '☀️👑⚡', trait: '10億の敵をも一瞬で打ち砕く神の領域。超デカぷにを画面満たし一気に連爆！', skillName: '超神炎・創世大爆発', skillType: 'inflate_puni', skillPower: 2200 },
-    { name: '冥王神・終焉ハデス', emoji: '💀👑🔥', trait: '冥界と太陽を統べる絶対神。無差別の神雷で敵全滅＆HP10万極大回復！', skillName: '冥王神・終焉爆破', skillType: 'random_pop', skillPower: 2400 },
-    { name: '極限支配・魔王リムル', emoji: '👿🔥🔵', trait: '魔王へと進化したリムル。神之怒（メギド）で敵の魂を根こそぎ喰らう。', skillName: '暴食之王（ベルゼビュート）', skillType: 'inflate_puni', skillPower: 2480 },
-    { name: '無限虚空・五条悟', emoji: '👁️⚡👓', trait: '領域展開「無量空処」を発動。無限の情報を脳内に流し込み敵を行動不能にする！', skillName: '術式反転「赫」・虚式「茈」', skillType: 'all_pop', skillPower: 2600 },
-    { name: '太陽神・天照大御神', emoji: '☀️🌸👑', trait: '高天原を統べる太陽の女神。八咫鏡の聖光で盤面を全消去し味方を最大回復！', skillName: '八咫鏡・日輪創生輝', skillType: 'all_pop', skillPower: 2550 },
-    { name: '絶対覇王・ルフィＧ５', emoji: '🍖⚡👑', trait: 'ギア5の覚醒に達した自由の戦士。ゴムゴムの巨人で盤面全体を縦横無尽に跳ね回る！', skillName: 'ゴムゴムの雷・白き戦士', skillType: 'center_pop', skillPower: 2450 },
-    { name: '氷雪女王・エルサ', emoji: '❄️👑🏰', trait: '氷の魔法を極めた美しき女王。盤面のぷにを瞬時に凍りつかせて一斉爆破！', skillName: 'レット・イット・ゴー極氷破', skillType: 'random_pop', skillPower: 2380 },
-    { name: 'ウルトラゼロマント', emoji: '🌌👑🛡️', trait: '宇宙警備隊の若き最強戦士。無限の光エネルギーをチャージし、必殺光線で敵を両断！', skillName: 'ワイドゼロショット・極', skillType: 'center_pop', skillPower: 2420 },
+    { 
+      name: '創世神・サマーエンマ王', emoji: '☀️👑🔥', 
+      trait: '常夏ビーチの神創神。全画面消滅＆天災超ダメージ！', 
+      skillName: '創世神創・極熱天翔', skillType: 'super_fever', skillPower: 120,
+      passiveSkills: [{ name: 'エンマの統率', type: 'tribe_boost', value: 15, description: 'エンマ族の味方の攻撃力とHPを+15%アップ！' }]
+    },
+    { 
+      name: 'アルティメット龍神エンマ', emoji: '🐉👑✨', 
+      trait: '龍神の血と神王の力を極限解放した絶対王者！', 
+      skillName: '極龍神王・創世覇斬', skillType: 'trace_pop', skillPower: 115,
+      passiveSkills: [{ name: '龍気集中', type: 'damage_boost', value: 15, description: '自身のぷに消しダメージが+15%アップ！' }]
+    },
+    { 
+      name: '極・覚醒サマーエンマ', emoji: '☀️👑⚡', 
+      trait: '超デカぷにを画面満たし一気に連爆！', 
+      skillName: '超神炎・創世大爆発', skillType: 'deka_create', skillPower: 110,
+      passiveSkills: [{ name: '神火充填', type: 'gauge_boost', value: 20, description: '技ゲージの上昇量が+20%アップ！' }]
+    },
+    { 
+      name: '冥王神・終焉ハデス', emoji: '💀👑🔥', 
+      trait: '冥界と太陽を統べる絶対神。', 
+      skillName: '冥王神・終焉爆破', skillType: 'tap_pop', skillPower: 118,
+      passiveSkills: [{ name: '冥王の威厳', type: 'damage_cut', value: 15, description: '敵から受ける被ダメージを15%カット！' }]
+    },
+    { 
+      name: '極限支配・魔王リムル', emoji: '👿🔥🔵', 
+      trait: '魔王へと進化したリムル。神之怒で敵の魂を喰らう。', 
+      skillName: '暴食之王（ベルゼビュート）', skillType: 'puni_tidy', skillPower: 122,
+      passiveSkills: [{ name: '魔王覇気', type: 'fever_boost', value: 20, description: 'フィーバーゲージの溜まりやすさが+20%アップ！' }]
+    },
+    { 
+      name: '無限虚空・五条悟', emoji: '👁️⚡👓', 
+      trait: '領域展開「無量空処」を発動。無限の情報を脳内に流し込む！', 
+      skillName: '術式反転「赫」・虚式「茈」', skillType: 'all_pop', skillPower: 130,
+      passiveSkills: [{ name: '六眼の視界', type: 'connect_boost', value: 20, description: '自身のぷにが繋がりやすくなる！' }]
+    },
+    { 
+      name: '太陽神・天照大御神', emoji: '☀️🌸👑', 
+      trait: '高天原を統べる太陽の女神。八咫鏡の聖光で盤面を全消去！', 
+      skillName: '八咫鏡・日輪創生輝', skillType: 'super_fever', skillPower: 125,
+      passiveSkills: [{ name: '日輪の加護', type: 'tribe_boost', value: 15, description: 'ポカポカ族の味方の攻撃力・HP+15%！' }]
+    },
+    { 
+      name: '絶対覇王・ルフィＧ５', emoji: '🍖⚡👑', 
+      trait: 'ギア5の覚醒に達した自由の戦士。ゴムゴムの巨人で大暴れ！', 
+      skillName: 'ゴムゴムの雷・白き戦士', skillType: 'trace_pop', skillPower: 120,
+      passiveSkills: [{ name: '解放のドラム', type: 'fever_boost', value: 25, description: 'フィーバーゲージの上昇量が+25%アップ！' }]
+    },
+    { 
+      name: '氷雪女王・エルサ', emoji: '❄️👑🏰', 
+      trait: '氷の魔法を極めた美しき女王。', 
+      skillName: 'レット・イット・ゴー極氷破', skillType: 'tap_pop', skillPower: 114,
+      passiveSkills: [{ name: '氷雪結界', type: 'damage_cut', value: 15, description: '被ダメージを15%カット！' }]
+    },
+    { 
+      name: 'ウルトラゼロマント', emoji: '🌌👑🛡️', 
+      trait: '宇宙警備隊の若き最強戦士。無限の光エネルギーをチャージ！', 
+      skillName: 'ワイドゼロショット・極', skillType: 'range_pop', skillPower: 118,
+      passiveSkills: [{ name: '光の戦士', type: 'damage_boost', value: 15, description: '自身のぷに消し攻撃力+15%！' }]
+    },
   ];
-  createSet('SSS', 25000, 8500, '#ffd700', sssList);
+  createSet('SSS', 4500, 450, '#ffd700', sssList);
 
-  // Zランク妖怪（超ウルトラガシャ限定・終次元の超越支配者。SSSの10倍のステータス＆異次元極限パワー）
+  // Zランク妖怪（スキル1個所持）
   const zList: CharacterDef[] = [
     // --- プリチー族 (5体) ---
-    { name: '神威覇道・覚醒ジバニャンＺ', tribe: 'プリチー', emoji: '🐱🔥🐾', trait: '【性能SSSの10倍！】限界を超えし覚醒 of プリチー王者！盤面全ぷにを自分に超スピード変化させる！', skillName: '極・ひゃくれつ肉球変化斬', skillType: 'puni_unify', skillPower: 24000 },
-    { name: '極覚醒・身勝手の悟空', tribe: 'プリチー', emoji: '🔥🥋👟', trait: '【性能SSSの10倍！】神の領域「身勝手の極意」を極めたサイヤ人！全消去＋HP回復＋フィーバーMAXの創世神技！', skillName: '身勝手の極意・創世爆裂破', skillType: 'god_burst', skillPower: 26000 },
-    { name: '桃源超神・コマさんＺ', tribe: 'プリチー', emoji: '🐶🔥🌸', trait: '【性能SSSの10倍！】もんげー！桃源郷の神霊が宿った究極コマさん！聖なる青い霊火で即座にフィーバー突入！', skillName: '超・もんげー桃源フィーバー', skillType: 'fever_charge', skillPower: 24500 },
-    { name: '夢幻可憐・プリンセスコマミＺ', tribe: 'プリチー', emoji: '👑🌸🎀', trait: '【性能SSSの10倍！】可憐な王冠を冠した夢幻の姫君コマミ。愛と癒やしの輝きでチームのHPを特大回復！', skillName: '夢幻・愛されプリンセスヒーリング', skillType: 'heal', skillPower: 85000 },
-    { name: '天星無双・ぷに神フウキ', tribe: 'プリチー', emoji: '🌟🐱💖', trait: '【性能SSSの10倍！】星々の輝きを束ねしぷに神！愛くるしい笑顔から放たれる無限のぷに巨大化魔法！', skillName: '天星ぷに神・無限連鎖でかぷに', skillType: 'inflate_puni', skillPower: 23500 },
+    { 
+      name: '神威覇道・覚醒ジバニャンＺ', tribe: 'プリチー', emoji: '🐱🔥🐾', 
+      trait: '限界を超えし覚醒 of プリチー王者！盤面全ぷにを自分に超スピード変化！', 
+      skillName: '極・ひゃくれつ肉球変化斬', skillType: 'puni_unify', skillPower: 2400,
+      passiveSkills: [{ name: 'プリチーの結束', type: 'tribe_boost', value: 20, description: 'プリチー族の味方のHPと攻撃力を+20%アップ！' }]
+    },
+    { 
+      name: '極覚醒・身勝手の悟空', tribe: 'プリチー', emoji: '🔥🥋👟', 
+      trait: '神の領域「身勝手の極意」を極めたサイヤ人！全消去＋HP回復＋フィーバーMAX！', 
+      skillName: '身勝手の極意・創世爆裂破', skillType: 'god_burst', skillPower: 2600,
+      passiveSkills: [{ name: '身勝手の極意', type: 'damage_boost', value: 25, description: '自身のぷに消しダメージが+25%アップ！' }]
+    },
+    { 
+      name: '桃源超神・コマさんＺ', tribe: 'プリチー', emoji: '🐶🔥🌸', 
+      trait: 'もんげー！桃源郷の神霊が宿った究極コマさん！聖なる青い霊火でフィーバー突入！', 
+      skillName: '超・もんげー桃源フィーバー', skillType: 'super_fever', skillPower: 2450,
+      passiveSkills: [{ name: '桃源の霊火', type: 'fever_boost', value: 30, description: 'フィーバーゲージの上昇量が+30%アップ！' }]
+    },
+    { 
+      name: '夢幻可憐・プリンセスコマミＺ', tribe: 'プリチー', emoji: '👑🌸🎀', 
+      trait: '可憐な王冠を冠した夢幻の姫君コマミ。愛と癒やしの輝きでチームのHPを特大回復！', 
+      skillName: '夢幻・愛されプリンセスヒーリング', skillType: 'heal', skillPower: 4500,
+      passiveSkills: [{ name: '癒やしのオーラ', type: 'damage_cut', value: 20, description: '敵から受ける被ダメージを20%カット！' }]
+    },
+    { 
+      name: '天星無双・ぷに神フウキ', tribe: 'プリチー', emoji: '🌟🐱💖', 
+      trait: '星々の輝きを束ねしぷに神！愛くるしい笑顔から放たれる無限のぷに巨大化魔法！', 
+      skillName: '天星ぷに神・無限連鎖でかぷに', skillType: 'deka_create', skillPower: 2350,
+      passiveSkills: [{ name: '星の引力', type: 'connect_boost', value: 25, description: 'ぷにが繋がりやすくなり、サイズ2以上も連結可能！' }]
+    },
 
     // --- エンマ族 (5体) ---
-    { name: '超終次元・極エンマ神', tribe: 'エンマ', emoji: '🌀👑🌌⚡', trait: '【性能SSSの10倍！】全次元の因果を統べる超越神。異次元の攻撃力と全消去必殺技で宇宙を無に帰す！', skillName: '終次元超越・極極大消滅', skillType: 'all_pop', skillPower: 25000 },
-    { name: '極滅神・暗黒ハデス', tribe: 'エンマ', emoji: '💀🔥😈', trait: '【性能SSSの10倍！】暗黒の深淵から蘇りし冥府の絶対破壊神。味方全員の技ゲージを＋50%強奪チャージ！', skillName: '冥府終焉・暗黒技ゲージ強奪', skillType: 'team_gauge_fill', skillPower: 25200 },
-    { name: '輪廻転生・業炎輪廻', tribe: 'エンマ', emoji: '🔥👑☯️', trait: '【性能SSSの10倍！】六道を司る業炎の輪廻神！地獄の業火を解き放ち、敵を灼熱フィーバーへと叩き落とす！', skillName: '六道業炎・輪廻地獄フィーバー', skillType: 'fever_charge', skillPower: 25800 },
-    { name: '覇王神・カイラ大王', tribe: 'エンマ', emoji: '👑❄️🐉', trait: '【性能SSSの10倍！】妖魔界を背負う覇王カイラ。絶対零度の氷龍を召喚しパズル中央を一網打尽！', skillName: '覇王氷龍・絶対零度一閃', skillType: 'center_pop', skillPower: 24800 },
-    { name: '創世邪神・蛇王カイラ覚醒', tribe: 'エンマ', emoji: '🐍👑⚡', trait: '【性能SSSの10倍！】邪龍の力を極限覚醒させた黒き大王。全消去＋HP回復＋フィーバーを同時に創世発動！', skillName: '創世邪龍・極大雷霆破滅創生', skillType: 'god_burst', skillPower: 26500 },
+    { 
+      name: '超終次元・極エンマ神', tribe: 'エンマ', emoji: '🌀👑🌌⚡', 
+      trait: '全次元の因果を統べる超越神。異次元の攻撃力と全消去必殺技で宇宙を無に帰す！', 
+      skillName: '終次元超越・極極大消滅', skillType: 'all_pop', skillPower: 2500,
+      passiveSkills: [{ name: 'エンマの全統率', type: 'tribe_boost', value: 22, description: 'エンマ族・全味方のHPと攻撃力を+22%アップ！' }]
+    },
+    { 
+      name: '極滅神・暗黒ハデス', tribe: 'エンマ', emoji: '💀🔥😈', 
+      trait: '暗黒の深淵から蘇りし冥府の絶対破壊神。味方全員の技ゲージを＋50%強奪チャージ！', 
+      skillName: '冥府終焉・暗黒技ゲージ強奪', skillType: 'team_gauge_fill', skillPower: 2520,
+      passiveSkills: [{ name: '冥府の強奪', type: 'gauge_boost', value: 25, description: '技ゲージの上昇量が+25%アップ！' }]
+    },
+    { 
+      name: '輪廻転生・業炎輪廻', tribe: 'エンマ', emoji: '🔥👑☯️', 
+      trait: '六道を司る業炎の輪廻神！地獄の業火を解き放ち、敵を灼熱フィーバーへと叩き落とす！', 
+      skillName: '六道業炎・輪廻地獄フィーバー', skillType: 'super_fever', skillPower: 2580,
+      passiveSkills: [{ name: '六道輪廻', type: 'fever_boost', value: 30, description: 'フィーバー突入ゲージが+30%早く溜まる！' }]
+    },
+    { 
+      name: '覇王神・カイラ大王', tribe: 'エンマ', emoji: '👑❄️🐉', 
+      trait: '妖魔界を背負う覇王カイラ。絶対零度の氷龍を召喚しパズル中央を一網打尽！', 
+      skillName: '覇王氷龍・絶対零度一閃', skillType: 'trace_pop', skillPower: 2480,
+      passiveSkills: [{ name: '覇王の眼光', type: 'damage_boost', value: 22, description: 'ぷに消し時のダメージが+22%アップ！' }]
+    },
+    { 
+      name: '創世邪神・蛇王カイラ覚醒', tribe: 'エンマ', emoji: '🐍👑⚡', 
+      trait: '邪龍の力を極限覚醒させた黒き大王。全消去＋HP回復＋フィーバーを同時に創世発動！', 
+      skillName: '創世邪龍・極大雷霆破滅創生', skillType: 'god_burst', skillPower: 2650,
+      passiveSkills: [{ name: '邪龍神域', type: 'tribe_boost', value: 20, description: '同種族味方のステータス+20%！' }]
+    },
 
     // --- ウスラカゲ族 (5体) ---
-    { name: '深淵虚空・黒色星夜神', tribe: 'ウスラカゲ', emoji: '🌌⭐🖤', trait: '【性能SSSの10倍！】ブラックホールを宿した深淵の神。盤面全体のぷにをブラックホール化して自分色に変換！', skillName: '虚無終焉・特異点ブラックホール変化', skillType: 'puni_unify', skillPower: 26500 },
-    { name: '絶対守護・黄金金剛武神', tribe: 'ウスラカゲ', emoji: '🤖🛡️💎', trait: '【性能SSSの10倍！】黄金に輝く巨大なゴーケツ武神。鉄壁の装甲と聖なる癒やしで不沈の盾となる！', skillName: '金剛輝神・万物不沈守護', skillType: 'heal', skillPower: 80000 },
-    { name: '虚無終焉・カイチ闇夜神', tribe: 'ウスラカゲ', emoji: '🌙💀🔮', trait: '【性能SSSの10倍！】暗闇の深淵を統べる黒き虚無神。紫の月光で敵にダメージ＋全味方の技ゲージを即チャージ！', skillName: '虚無月影・全技チャージ闇爆発', skillType: 'team_gauge_fill', skillPower: 25100 },
-    { name: '幻影天魔・覚醒ブシニャン闇', tribe: 'ウスラカゲ', emoji: '🌙⚔️🖤', trait: '【性能SSSの10倍！】影の剣術を極めし黒の侍。漆黒の新月三日月刀でランダムに敵を一瞬で一刀両断！', skillName: '影流・新月漆黒千人斬り', skillType: 'random_pop', skillPower: 25500 },
-    { name: '暗黒蛇帝・オロチ影極', tribe: 'ウスラカゲ', emoji: '🌙🐍💜', trait: '【性能SSSの10倍！】影の龍を従える伝説の暗黒忍び。無数の影龍で盤面のぷにを巨大でかぷにへ変貌させる！', skillName: '極・影龍幻影でかぷに乱舞', skillType: 'inflate_puni', skillPower: 24200 },
+    { 
+      name: '深淵虚空・黒色星夜神', tribe: 'ウスラカゲ', emoji: '🌌⭐🖤', 
+      trait: 'ブラックホールを宿した深淵の神。盤面全体のぷにをブラックホール化して自分色に変換！', 
+      skillName: '虚無終焉・特異点ブラックホール変化', skillType: 'puni_unify', skillPower: 2650,
+      passiveSkills: [{ name: 'ブラックホール', type: 'connect_boost', value: 25, description: '自身のぷにの連結距離が大幅拡大！' }]
+    },
+    { 
+      name: '絶対守護・黄金金剛武神', tribe: 'ウスラカゲ', emoji: '🤖🛡️💎', 
+      trait: '黄金に輝く巨大なゴーケツ武神。鉄壁の装甲と聖なる癒やしで不沈の盾となる！', 
+      skillName: '金剛輝神・万物不沈守護', skillType: 'heal', skillPower: 5000,
+      passiveSkills: [{ name: '金剛不壊', type: 'damage_cut', value: 25, description: '敵からの被ダメージを25%カット！' }]
+    },
+    { 
+      name: '虚無終焉・カイチ闇夜神', tribe: 'ウスラカゲ', emoji: '🌙💀🔮', 
+      trait: '暗闇の深淵を統べる黒き虚無神。紫の月光で敵にダメージ＋全味方の技ゲージを即チャージ！', 
+      skillName: '虚無月影・全技チャージ闇爆発', skillType: 'team_gauge_fill', skillPower: 2510,
+      passiveSkills: [{ name: '闇夜の導き', type: 'gauge_boost', value: 25, description: '技ゲージ上昇量+25%！' }]
+    },
+    { 
+      name: '幻影天魔・覚醒ブシニャン闇', tribe: 'ウスラカゲ', emoji: '🌙⚔️🖤', 
+      trait: '影の剣術を極めし黒の侍。漆黒の新月三日月刀でランダムに敵を一瞬で一刀両断！', 
+      skillName: '影流・新月漆黒千人斬り', skillType: 'trace_pop', skillPower: 2550,
+      passiveSkills: [{ name: '影討ち', type: 'damage_boost', value: 25, description: '自身のぷに消しダメージ+25%！' }]
+    },
+    { 
+      name: '暗黒蛇帝・オロチ影極', tribe: 'ウスラカゲ', emoji: '🌙🐍💜', 
+      trait: '影の龍を従える伝説の暗黒忍び。無数の影龍で盤面のぷにを巨大でかぷにへ変貌させる！', 
+      skillName: '極・影龍幻影でかぷに乱舞', skillType: 'deka_create', skillPower: 2420,
+      passiveSkills: [{ name: '影龍の結束', type: 'tribe_boost', value: 20, description: 'ウスラカゲ族の味方ステータス+20%！' }]
+    },
 
     // --- その他Zランク神話級キャラ ---
-    { name: '覇邪の邪龍神・大蛇', tribe: 'ニョロロン', emoji: '🐍👑💥🌀', trait: '【性能SSSの10倍！】次元の狭間から顕現した大蛇の究極神化。敵を一撃で蹂躙する神速でかぷに成長技！', skillName: '八岐終焉・極・邪龍豪裂波', skillType: 'inflate_puni', skillPower: 22000 },
-    { name: '終焉創世神・アルセウス', tribe: 'フシギ', emoji: '🐎💫💎', trait: '【性能SSSの10倍！】全宇宙を創造したとされる始まりの神。全ての属性を無効化する絶対神！', skillName: 'さばきのつぶて', skillType: 'all_pop', skillPower: 25500 },
-    { name: '終滅蛇神・八岐大蛇', tribe: 'ニョロロン', emoji: '🐉💀🔥', trait: '【性能SSSの10倍！】八つの頭と尾を持つ伝説の大蛇。その巨大な牙で盤面を薙ぎ払う！', skillName: '八頭終焉・天叢雲剣斬', skillType: 'center_pop', skillPower: 24500 },
-    { name: '覇邪破滅・大豪傑阿修羅', tribe: 'ゴーケツ', emoji: '👹🔥🛡️', trait: '【性能SSSの10倍！】六臂の腕を持つ伝説の破壊神。怒りの業火であらゆる障害を焼き滅ぼす！', skillName: '阿修羅六道・極大紅蓮烈火', skillType: 'random_pop', skillPower: 24800 },
+    { 
+      name: '覇邪の邪龍神・大蛇', tribe: 'ニョロロン', emoji: '🐍👑💥🌀', 
+      trait: '次元の狭間から顕現した大蛇の究極神化。神速でかぷに成長技！', 
+      skillName: '八岐終焉・極・邪龍豪裂波', skillType: 'deka_create', skillPower: 2200,
+      passiveSkills: [{ name: '邪龍の猛威', type: 'damage_boost', value: 20, description: 'ダメージ+20%！' }]
+    },
+    { 
+      name: '終焉創世神・アルセウス', tribe: 'フシギ', emoji: '🐎💫💎', 
+      trait: '全宇宙を創造したとされる始まりの神。全ての属性を無効化する絶対神！', 
+      skillName: 'さばきのつぶて', skillType: 'all_pop', skillPower: 2550,
+      passiveSkills: [{ name: '全知全能', type: 'tribe_boost', value: 20, description: 'フシギ族の味方ステータス+20%！' }]
+    },
+    { 
+      name: '終滅蛇神・八岐大蛇', tribe: 'ニョロロン', emoji: '🐉💀🔥', 
+      trait: '八つの頭と尾を持つ伝説の大蛇。その巨大な牙で盤面を薙ぎ払う！', 
+      skillName: '八頭終焉・天叢雲剣斬', skillType: 'tap_pop', skillPower: 145,
+      passiveSkills: [{ name: '八重の牙', type: 'connect_boost', value: 20, description: 'ぷにが繋がりやすくなる！' }]
+    },
+    { 
+      name: '覇邪破滅・大豪傑阿修羅', tribe: 'ゴーケツ', emoji: '👹🔥🛡️', 
+      trait: '六臂の腕を持つ伝説の破壊神。怒りの業火であらゆる障害を焼き滅ぼす！', 
+      skillName: '阿修羅六道・極大紅蓮烈火', skillType: 'range_pop', skillPower: 150,
+      passiveSkills: [{ name: '阿修羅の怒り', type: 'damage_boost', value: 22, description: '攻撃力+22%！' }]
+    },
   ];
-  createSet('Z', 250000, 85000, '#00ffff', zList);
+  createSet('Z', 8500, 800, '#00ffff', zList);
+
+  // Z'ランク・ブリーチ十刃（Espada）＆藍染惣右介（スキル1個所持）
+  const bleachZPrimeList: CharacterDef[] = [
+    { 
+      name: 'ウルキオラ・シファー（第二階層）', tribe: 'ウスラカゲ', emoji: '🦇💚⚡', 
+      trait: '【Z\'ランク】黒翼大魔の刀剣解放第二階層。なぞった軌跡のぷにを緑の雷霆で連続爆破消去！', 
+      skillName: '雷霆の槍（ランサ・デル・レランパゴ）', skillType: 'bleach_lansa', skillPower: 180,
+      passiveSkills: [{ name: '黒翼の霊圧', type: 'tribe_boost', value: 25, description: 'ウスラカゲ族の味方のHPと攻撃力を+25%アップ！' }]
+    },
+    { 
+      name: 'グリムジョー・ジャガージャック（豹王）', tribe: 'イサマシ', emoji: '豹💙⚡', 
+      trait: '【Z\'ランク】豹王（パンテラ）の帰刃。タップした箇所を中心に青き爪撃大爆発を連続発生！', 
+      skillName: '豹王の爪（デスガロン）', skillType: 'bleach_desgarron', skillPower: 175,
+      passiveSkills: [{ name: '豹王の本能', type: 'damage_boost', value: 25, description: '自身のぷに消しダメージが+25%アップ！' }]
+    },
+    { 
+      name: 'コヨーテ・スターク（群狼）', tribe: 'フシギ', emoji: '🐺🔫⚡', 
+      trait: '【Z\'ランク】リリネットを銃に変えた第1十刃。無限装弾虚閃で味方全員の技ゲージを上昇！', 
+      skillName: '無限装弾虚閃（セロ・メトラジェッタ）', skillType: 'bleach_cero_metralleta', skillPower: 170,
+      passiveSkills: [{ name: '群狼の絆', type: 'gauge_boost', value: 30, description: '技ゲージの上昇量が+30%アップ！' }]
+    },
+    { 
+      name: 'バラガン・ルイゼンバーン（髑髏大帝）', tribe: 'ウスラカゲ', emoji: '💀👑⌛', 
+      trait: '【Z\'ランク】死の息吹（レスピラ）で敵の攻撃行動を7秒完全凍結＋割合スリップダメージ！', 
+      skillName: '死の吐息（レスピラ）・絶対腐朽', skillType: 'bleach_respira', skillPower: 175,
+      passiveSkills: [{ name: '老いの結界', type: 'damage_cut', value: 30, description: '敵から受ける被ダメージを30%カット！' }]
+    },
+    { 
+      name: 'ティア・ハリベル（皇鮫後）', tribe: 'プリチー', emoji: '🦈🌊🗡️', 
+      trait: '【Z\'ランク】大剣状の斬魄刀から高圧の水流を放つ女十刃。断瀑の大津波で画面下部を一掃！', 
+      skillName: '皇鮫後・断瀑（トレビュロン・カスケーダ）', skillType: 'bleach_caudal', skillPower: 170,
+      passiveSkills: [{ name: '皇鮫の潮騒', type: 'connect_boost', value: 30, description: 'ぷにが繋がりやすくなり、サイズ2以上も連結可能！' }]
+    },
+    { 
+      name: 'ノイトラ・ギルガ（聖哭螳螂）', tribe: 'イサマシ', emoji: '🌙⚔️💪', 
+      trait: '【Z\'ランク】六本の手と巨大な鎌を持つ聖哭螳螂。十字範囲に超絶クリティカル6連撃！', 
+      skillName: '聖哭螳螂・六臂絶命連斬', skillType: 'bleach_santa_teresa', skillPower: 175,
+      passiveSkills: [{ name: '鋼皮（イエロ）', type: 'damage_cut', value: 35, description: '被ダメージを35%常時カット！' }]
+    },
+    { 
+      name: 'ヤミー・リヤルゴ（憤獣）', tribe: 'ゴーケツ', emoji: '👹💥💪', 
+      trait: '【Z\'ランク】怒るほどに巨大化する第0十刃。盤面中央に超巨大な特大でかぷに（サイズ20）を投下生成！', 
+      skillName: '憤獣極限解放・巨獣圧縮破', skillType: 'bleach_gran_rey_cero', skillPower: 180,
+      passiveSkills: [{ name: '憤怒の巨躯', type: 'damage_boost', value: 30, description: 'ぷに消し時の攻撃力が+30%アップ！' }]
+    },
+    { 
+      name: 'ゾマリ・ルルー（呪眼僧伽）', tribe: 'ブキミー', emoji: '👁️✨💜', 
+      trait: '【Z\'ランク】最速の破面。双児響転による愛の支配で盤面のぷにを一時的に2種類に整理！', 
+      skillName: '双児響転・愛の絶対支配', skillType: 'bleach_brujeria', skillPower: 165,
+      passiveSkills: [{ name: '最速の響転', type: 'connect_boost', value: 35, description: 'ぷにの接続可能距離が超大幅アップ！' }]
+    },
+    { 
+      name: 'ザエルアポロ・グランツ（邪淫妃）', tribe: 'ブキミー', emoji: '🔬💖🧪', 
+      trait: '【Z\'ランク】完璧なる科学者。受胎告知による細胞再生でチームのHPを特大回復！', 
+      skillName: '受胎告知（ガブリエール）・細胞再生', skillType: 'bleach_teatro', skillPower: 600,
+      passiveSkills: [{ name: '完璧な生命', type: 'revive_shield', value: 50, description: 'HP0になった時にHP50%で自動復活する！' }]
+    },
+    { 
+      name: 'アーロニーロ・アルルエリ（喰虚）', tribe: 'ニョロロン', emoji: '🧪🎭🌊', 
+      trait: '【Z\'ランク】海淵の霊を混ぜ合わせる虚。三万三千六百五十の虚捕食で全ぷにを自キャラ色へ変化！', 
+      skillName: '喰虚・三万三千六百五十捕食', skillType: 'bleach_glotoneria', skillPower: 170,
+      passiveSkills: [{ name: '虚捕食の霊核', type: 'gauge_boost', value: 28, description: '自身の技ゲージ上昇量が+28%アップ！' }]
+    },
+    { 
+      name: '藍染惣右介（崩玉融合・第三形態）', tribe: 'エンマ', emoji: '👑🔮🌌', 
+      trait: '【Z\'ランク超神】崩玉と完全に融合し神の領域に達した藍染惣右介。破道の九十「黒棺」で全画面ぷに消滅！', 
+      skillName: '破道の九十「黒棺」・完全催眠（鏡花水月）', skillType: 'bleach_kurohitsugi', skillPower: 190,
+      passiveSkills: [{ name: '神の超越', type: 'tribe_boost', value: 30, description: '全味方のHPと攻撃力を+30%アップ！' }]
+    },
+  ];
+  createSet("Z'", 12000, 1100, '#ff3399', bleachZPrimeList, 'bleach_zprime');
+
+  // ==========================================
+  // ZZランク・神昇進化キャラクター（スキル2個所持！固有デュアル必殺技）
+  // ==========================================
+  const zzList: CharacterDef[] = [
+    {
+      name: '神虚・ウルキオラZZ', tribe: 'ウスラカゲ', emoji: '🦇👑⚡💚',
+      trait: '【ZZ神昇】神昇の秘石により真の神域へ覚醒したウルキオラ。なぞり消し＋特大でかぷに（サイズ15×2）生成！',
+      skillName: '極神雷霆・真神昇ランサ', skillType: 'zz_god_lansa', skillPower: 230,
+      passiveSkills: [
+        { name: '神虚の全統率', type: 'tribe_boost', value: 30, description: 'ウスラカゲ族の味方のHPと攻撃力を+30%アップ！' },
+        { name: '神昇ゲージ充填', type: 'gauge_boost', value: 35, description: '自身のぷにを消した時の技ゲージ上昇量が+35%アップ！' }
+      ]
+    },
+    {
+      name: '神豹王・グリムジョーZZ', tribe: 'イサマシ', emoji: '🐆👑⚡💙',
+      trait: '【ZZ神昇】神昇の秘石で青き爪撃が神域へ到達！タップ10連撃爪撃爆破＋フィーバーゲージ蓄積（フィーバー中無効）！',
+      skillName: '極神豹王・真デスガロン', skillType: 'zz_god_desgarron', skillPower: 225,
+      passiveSkills: [
+        { name: '神豹王の闘志', type: 'damage_boost', value: 35, description: '自身のぷに消しダメージが+35%アップ！' },
+        { name: '神速フィーバー加速', type: 'fever_boost', value: 35, description: 'フィーバーゲージが+35%高速チャージ！' }
+      ]
+    },
+    {
+      name: '神群狼・スタークZZ', tribe: 'フシギ', emoji: '🐺👑🔫⚡',
+      trait: '【ZZ神昇】神の狼と無限装弾が合一！全味方の技ゲージ上昇＋盤面ぷにをスターク色へ変化！',
+      skillName: '極神群狼・無限神閃連射', skillType: 'zz_god_cero', skillPower: 220,
+      passiveSkills: [
+        { name: '群狼の神域加護', type: 'tribe_boost', value: 30, description: 'フシギ族の味方のHPと攻撃力を+30%アップ！' },
+        { name: '神技全開供給', type: 'fever_gauge_charge', value: 40, description: 'フィーバー突入時に味方全員の技ゲージを+40%即時チャージ！' }
+      ]
+    },
+    {
+      name: '神髑髏帝・バラガンZZ', tribe: 'ウスラカゲ', emoji: '💀👑⌛✨',
+      trait: '【ZZ神昇】時と老化の絶対神。敵の行動を8秒間完全凍結＋画面全消去大ダメージ！',
+      skillName: '極神腐朽・死の絶対神息', skillType: 'zz_god_respira', skillPower: 225,
+      passiveSkills: [
+        { name: '絶対神域結界', type: 'damage_cut', value: 40, description: '敵から受ける被ダメージを40%カット！' },
+        { name: '老神の威厳', type: 'tribe_boost', value: 25, description: 'ウスラカゲ族味方の攻撃力・HP+25%！' }
+      ]
+    },
+    {
+      name: '神皇鮫・ハリベルZZ', tribe: 'プリチー', emoji: '🦈👑🌊🗡️',
+      trait: '【ZZ神昇】神域の大津波が盤面下部を一掃＋味方チームのHPを特大回復！',
+      skillName: '極神皇鮫・真断瀑カスケーダ', skillType: 'zz_god_caudal', skillPower: 220,
+      passiveSkills: [
+        { name: '神水の接続結界', type: 'connect_boost', value: 35, description: 'ぷにの接続距離が拡大＆サイズ2以上同士も連結可能！' },
+        { name: 'プリチーの神域加護', type: 'tribe_boost', value: 30, description: 'プリチー族味方のHP・攻撃力+30%！' }
+      ]
+    },
+    {
+      name: '神聖螳螂・ノイトラZZ', tribe: 'イサマシ', emoji: '🌙👑⚔️💪',
+      trait: '【ZZ神昇】八本の神鎌による十字範囲斬滅＋被ダメージを90%カットする神鋼皮シールド展開！',
+      skillName: '極神聖哭・八臂神天絶斬', skillType: 'zz_god_santa_teresa', skillPower: 225,
+      passiveSkills: [
+        { name: '神鋼皮（神イエロ）', type: 'damage_cut', value: 40, description: '被ダメージを40%常時カット！' },
+        { name: '絶命の会心', type: 'damage_boost', value: 35, description: '自身のぷに消しダメージ+35%！' }
+      ]
+    },
+    {
+      name: '神憤獣・ヤミーZZ', tribe: 'ゴーケツ', emoji: '👹👑💥💪',
+      trait: '【ZZ神昇】特大でかぷに（サイズ25）を生成＋盤面のぷにを一気に巨大化膨張！',
+      skillName: '極神巨獣・神域圧縮大爆震', skillType: 'zz_god_gran_rey', skillPower: 230,
+      passiveSkills: [
+        { name: '神巨神の豪腕', type: 'damage_boost', value: 35, description: '自身のぷに消し攻撃力が+35%アップ！' },
+        { name: 'ゴーケツの神域', type: 'tribe_boost', value: 30, description: 'ゴーケツ族味方のステータス+30%！' }
+      ]
+    },
+    {
+      name: '神呪眼・ゾマリZZ', tribe: 'ブキミー', emoji: '👁️👑✨💜',
+      trait: '【ZZ神昇】最速の神速響転！盤面ぷにを2種類に整理＋全味方の技ゲージをチャージ！',
+      skillName: '極神呪眼・神愛絶対支配', skillType: 'zz_god_brujeria', skillPower: 215,
+      passiveSkills: [
+        { name: '神速マグネット', type: 'connect_boost', value: 40, description: '全ぷにの繋がりやすさが大幅アップ！' },
+        { name: '神愛の鼓舞', type: 'tribe_boost', value: 30, description: 'ブキミー族味方のステータス+30%！' }
+      ]
+    },
+    {
+      name: '神邪妃・ザエルアポロZZ', tribe: 'ブキミー', emoji: '🔬👑💖🧪',
+      trait: '【ZZ神昇】不死の科学の神境！HP0時に完全自動復活するリレイズ保険付与＋特大でかぷに生成！',
+      skillName: '極神受胎・神界細胞完全再生', skillType: 'zz_god_teatro', skillPower: 750,
+      passiveSkills: [
+        { name: '完全不死の神核', type: 'revive_shield', value: 100, description: 'HPが0になってもHP100%で完全復活する！' },
+        { name: 'でかぷに神創生', type: 'drop_rate_boost', value: 25, description: '自身のぷにが降ってきやすくなる！' }
+      ]
+    },
+    {
+      name: '神喰虚・アーロニーロZZ', tribe: 'ニョロロン', emoji: '🧪👑🎭🌊',
+      trait: '【ZZ神昇】全虚と神霊を捕食！盤面ぷにを自色へ統一変化＋敵からHPを吸収回復！',
+      skillName: '極神喰虚・十万神霊大捕食', skillType: 'zz_god_glotoneria', skillPower: 220,
+      passiveSkills: [
+        { name: '神喰の霊核', type: 'gauge_boost', value: 35, description: '技ゲージの上昇量が+35%アップ！' },
+        { name: 'ニョロロン神域', type: 'tribe_boost', value: 30, description: 'ニョロロン族味方のステータス+30%！' }
+      ]
+    },
+    {
+      name: '神崩玉・藍染惣右介ZZ', tribe: 'エンマ', emoji: '👑🌌🔮⚡',
+      trait: '【ZZ最高神】天の座に立つ絶対神。破道の九十「神黒棺」全消滅＋フィーバーゲージ蓄積（フィーバー中無効）！',
+      skillName: '天座神域・破道の九十「神黒棺」', skillType: 'zz_god_kurohitsugi', skillPower: 240,
+      passiveSkills: [
+        { name: '天に立つ者', type: 'tribe_boost', value: 35, description: '全味方全種族のHPと攻撃力を+35%アップ！' },
+        { name: '完全催眠・神域', type: 'fever_boost', value: 40, description: 'フィーバー突入ゲージが+40%高速チャージ！' }
+      ]
+    },
+    {
+      name: '極天創世・極エンマ神ZZ', tribe: 'エンマ', emoji: '🌀👑☀️🌌',
+      trait: '【ZZ妖怪神】全妖魔界を統べる創世の神王。なぞり神斬撃爆破＋全味方の技ゲージ上昇！',
+      skillName: '創世極天・神王大破滅斬', skillType: 'zz_god_enma', skillPower: 235,
+      passiveSkills: [
+        { name: 'エンマ神王の覇気', type: 'tribe_boost', value: 35, description: 'エンマ族・全味方のHP・攻撃力+35%！' },
+        { name: '創世の神炎', type: 'damage_boost', value: 35, description: 'ぷに消しダメージが+35%アップ！' }
+      ]
+    },
+    {
+      name: '神光無双・極ジバニャンZZ', tribe: 'プリチー', emoji: '🐱👑✨🐾',
+      trait: '【ZZ妖怪神】プリチーの限界を突破した奇跡のニャン神！多段タップ爆破＋盤面ぷに2種整理！',
+      skillName: '極神無双・ひゃくれつ神肉球', skillType: 'zz_god_jibanyan', skillPower: 230,
+      passiveSkills: [
+        { name: 'プリチーの奇跡', type: 'tribe_boost', value: 35, description: 'プリチー族味方のHP・攻撃力+35%！' },
+        { name: '神速肉球ステップ', type: 'connect_boost', value: 40, description: 'ぷにが繋がりやすくなり超ロング連鎖が可能！' }
+      ]
+    }
+  ];
+  createSet('ZZ', 19500, 1450, '#ffd700', zzList, 'zz');
+
+  // ブリーチガシャ用 Zランクキャラ
+  const bleachZList: CharacterDef[] = [
+    { 
+      name: '黒崎一護（卍解）', tribe: 'イサマシ', emoji: '⚔️🧡⚡', 
+      trait: '【Zランク】天鎖斬月を振るう死神の力。月牙天衝で盤面を一気に消去！', 
+      skillName: '月牙天衝', skillType: 'range_pop', skillPower: 155,
+      passiveSkills: [{ name: '死神の矜持', type: 'damage_boost', value: 20, description: '攻撃力+20%！' }]
+    },
+    { 
+      name: '朽木白哉（千本桜景厳）', tribe: 'ウスラカゲ', emoji: '🌸⚔️🔮', 
+      trait: '【Zランク】千本桜景厳の刃で全敵を切り刻む。盤面を一掃！', 
+      skillName: '千本桜景厳', skillType: 'trace_pop', skillPower: 150,
+      passiveSkills: [{ name: '貴族の気品', type: 'tribe_boost', value: 20, description: 'ウスラカゲ族味方+20%！' }]
+    },
+    { 
+      name: '日番谷冬獅郎（大紅蓮氷輪丸）', tribe: 'フシギ', emoji: '❄️🐉🗡️', 
+      trait: '【Zランク】凍てつく大紅蓮氷輪丸。盤面を凍らせぷにを巨大化！', 
+      skillName: '大紅蓮氷輪丸', skillType: 'deka_create', skillPower: 150,
+      passiveSkills: [{ name: '氷雪系最強', type: 'connect_boost', value: 20, description: 'ぷにが繋がりやすくなる！' }]
+    },
+  ];
+  createSet('Z', 8500, 800, '#00ffff', bleachZList, 'bleach_z');
+
+  // ブリーチガシャ用 SSSランクキャラ
+  const bleachSSSList: CharacterDef[] = [
+    { 
+      name: '黒崎一護（虚化）', tribe: 'イサマシ', emoji: '⚔️👺⚡', 
+      trait: '【SSSランク】虚の力を纏う死神。盤面を乱舞する斬撃で敵を一掃！', 
+      skillName: '虚化・月牙', skillType: 'range_pop', skillPower: 120,
+      passiveSkills: [{ name: '虚の闘争心', type: 'damage_boost', value: 15, description: 'ダメージ+15%！' }]
+    },
+    { 
+      name: '朽木ルキア（袖白雪）', tribe: 'フシギ', emoji: '❄️💎👗', 
+      trait: '【SSSランク】最も美しい斬魄刀。敵を氷漬けにして行動不能にする！', 
+      skillName: '次の舞・白漣', skillType: 'tap_pop', skillPower: 115,
+      passiveSkills: [{ name: '白雪の加護', type: 'damage_cut', value: 15, description: '被ダメージ15%カット！' }]
+    },
+  ];
+  createSet('SSS', 4500, 450, '#ffd700', bleachSSSList, 'bleach_sss');
+
+  // ブリーチガシャ用 SSランクキャラ
+  const bleachSSList: CharacterDef[] = [
+    { name: '阿散井恋次', tribe: 'イサマシ', emoji: '⚔️❤️🐯', trait: '【SSランク】蛇尾丸を振るう情熱家。盤面のぷにを消し去る！', skillName: '狒骨大砲', skillType: 'center_pop', skillPower: 90 },
+    { name: '石田雨竜', tribe: 'フシギ', emoji: '🏹💙👓', trait: '【SSランク】滅却師の誇り。精度の高い弓撃で敵を狙い撃つ！', skillName: 'ゼーレシュナイダー', skillType: 'random_pop', skillPower: 90 },
+  ];
+  createSet('SS', 2500, 280, '#ff22ff', bleachSSList, 'bleach_ss');
+
+  // ブリーチガシャ用 Sランクキャラ
+  const bleachSList: CharacterDef[] = [
+    { name: '茶渡泰虎', tribe: 'ゴーケツ', emoji: '💪🤎🧱', trait: '【Sランク】鉄壁のチャド。巨人の右腕で敵を粉砕！', skillName: '巨人の右腕', skillType: 'inflate_puni', skillPower: 60 },
+    { name: '井上織姫', tribe: 'ポカポカ', emoji: '🌸🧡🛡️', trait: '【Sランク】盾舜六花で味方を護り癒やしを与える！', skillName: '三天結盾', skillType: 'heal', skillPower: 500 },
+  ];
+  createSet('S', 1500, 160, '#ff2222', bleachSList, 'bleach_s');
 
   return chars;
 };

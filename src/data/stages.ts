@@ -83,25 +83,22 @@ const generateStages = (count: number): Stage[] => {
 
     if (i <= 150) {
       // World 1 (Stages 1-150)
-      // Stage 1: HP 500, ATK 12
-      // Stage 150: HP 1,200,000, ATK 850
-      hp = Math.floor(500 + Math.pow(i, 2.7) * 2.2 + i * 250);
-      atk = Math.floor(12 + Math.pow(i, 1.4) * 0.75 + i * 1.8);
+      // Stage 1: HP 450, ATK 10
+      // Stage 150: HP ~180,000, ATK ~550
+      hp = Math.floor(450 + Math.pow(i, 2.3) * 1.5 + i * 120);
+      atk = Math.floor(10 + Math.pow(i, 1.25) * 0.45 + i * 0.9);
       money = Math.floor(60 + i * 18 + Math.pow(i, 1.2) * 2);
       yPoints = Math.floor(12 + i * 4.5);
 
       const areaIndex = Math.min(Math.floor((i - 1) / 10), AREA_NAMES.length - 1);
       areaName = AREA_NAMES[areaIndex];
     } else {
-      // World 2 (Stages 151-200) - Ultimate God Realm (100 Billion+ HP Routine!)
-      // Stage 151: HP ~32.5 Billion (325億)
-      // Stage 175: HP ~236 Billion (2360億)
-      // Stage 200: HP ~1 Trillion (1.01兆)
+      // World 2 (Stages 151-200) - 神界エリア (HP 20万 〜 120万)
       const w2Index = i - 150; // 1 to 50
-      hp = Math.floor(30000000000 + Math.pow(w2Index, 2.5) * 500000000 + w2Index * 2000000000);
-      atk = Math.floor(8000 + Math.pow(w2Index, 1.8) * 80 + w2Index * 1200);
-      money = Math.floor(200000 + w2Index * 50000);
-      yPoints = Math.floor(10000 + w2Index * 3000);
+      hp = Math.floor(200000 + Math.pow(w2Index, 2.2) * 180 + w2Index * 15000);
+      atk = Math.floor(600 + Math.pow(w2Index, 1.35) * 8 + w2Index * 25);
+      money = Math.floor(8000 + w2Index * 500);
+      yPoints = Math.floor(300 + w2Index * 25);
 
       const w2AreaIndex = Math.min(Math.floor((w2Index - 1) / 10), WORLD2_AREA_NAMES.length - 1);
       areaName = WORLD2_AREA_NAMES[w2AreaIndex];
@@ -225,12 +222,12 @@ export const EVENT_SUMMER_DEEP_STAGES: Stage[] = [
     id: 'event_snow_2_1',
     name: '常夏ビーチ 裏の裏 2-1',
     enemyName: '【極裏】灼熱の魔海竜ヴォルカ',
-    enemyHp: 10000000,
-    enemyAtk: 7500,
+    enemyHp: 800000,
+    enemyAtk: 1200,
     enemyColor: '#dc2626',
     enemyEmoji: '🌋🐉',
-    rewardMoney: 500000,
-    rewardYPoints: 50,
+    rewardMoney: 30000,
+    rewardYPoints: 40,
     areaName: '常夏ビーチ (裏の裏)',
     isHidden: true,
     isDeepHidden: true,
@@ -239,12 +236,12 @@ export const EVENT_SUMMER_DEEP_STAGES: Stage[] = [
     id: 'event_snow_2_2',
     name: '常夏ビーチ 裏の裏 2-2',
     enemyName: '【極裏】常夏の冥界覇王ハデス',
-    enemyHp: 50000000,
-    enemyAtk: 12000,
+    enemyHp: 1500000,
+    enemyAtk: 1800,
     enemyColor: '#581c87',
     enemyEmoji: '🔥💀',
-    rewardMoney: 1000000,
-    rewardYPoints: 80,
+    rewardMoney: 60000,
+    rewardYPoints: 60,
     areaName: '常夏ビーチ (裏の裏)',
     isHidden: true,
     isDeepHidden: true,
@@ -253,12 +250,12 @@ export const EVENT_SUMMER_DEEP_STAGES: Stage[] = [
     id: 'event_snow_2_3',
     name: '常夏ビーチ 裏の裏 2-3',
     enemyName: '【極裏】超覚醒・常夏皇帝ゼウス',
-    enemyHp: 200000000,
-    enemyAtk: 18000,
+    enemyHp: 2500000,
+    enemyAtk: 2400,
     enemyColor: '#d97706',
     enemyEmoji: '⚡👑',
-    rewardMoney: 2500000,
-    rewardYPoints: 120,
+    rewardMoney: 120000,
+    rewardYPoints: 100,
     areaName: '常夏ビーチ (裏の裏)',
     isHidden: true,
     isDeepHidden: true,
@@ -267,12 +264,12 @@ export const EVENT_SUMMER_DEEP_STAGES: Stage[] = [
     id: 'event_snow_2_4',
     name: '常夏ビーチ 裏の裏 2-4',
     enemyName: '【終焉極裏ボス】神創・サマーエンマ大王 創世形態',
-    enemyHp: 1000000000, // 10億 (1B)
-    enemyAtk: 25000,
+    enemyHp: 4500000,
+    enemyAtk: 3200,
     enemyColor: '#4c0519',
     enemyEmoji: '☀️👑🔥',
-    rewardMoney: 10000000,
-    rewardYPoints: 200,
+    rewardMoney: 250000,
+    rewardYPoints: 150,
     areaName: '常夏ビーチ (裏の裏)',
     isHidden: true,
     isDeepHidden: true,
@@ -284,12 +281,12 @@ export const EVENT_SUMMER_DEEPEST_STAGES: Stage[] = [
     id: 'event_snow_3_1',
     name: '常夏ビーチ 裏の裏の裏 3-1',
     enemyName: '【超越裏】虚無の灼熱魔獣 ヴォイド',
-    enemyHp: 1000000000000, // 1兆 (1T)
-    enemyAtk: 35000,
+    enemyHp: 6000000,
+    enemyAtk: 3800,
     enemyColor: '#dc2626',
     enemyEmoji: '🔥🐉💥',
-    rewardMoney: 20000000,
-    rewardYPoints: 350,
+    rewardMoney: 400000,
+    rewardYPoints: 200,
     areaName: '常夏ビーチ (裏の裏の裏)',
     isHidden: true,
     isDeepHidden: true,
@@ -299,12 +296,12 @@ export const EVENT_SUMMER_DEEPEST_STAGES: Stage[] = [
     id: 'event_snow_3_2',
     name: '常夏ビーチ 裏の裏の裏 3-2',
     enemyName: '【超越裏】終焉の暗黒神 ヴェルゼ',
-    enemyHp: 5000000000000, // 5兆 (5T)
-    enemyAtk: 48000,
+    enemyHp: 8000000,
+    enemyAtk: 4500,
     enemyColor: '#4c0519',
     enemyEmoji: '💀👑⚡',
-    rewardMoney: 50000000,
-    rewardYPoints: 600,
+    rewardMoney: 600000,
+    rewardYPoints: 300,
     areaName: '常夏ビーチ (裏の裏の裏)',
     isHidden: true,
     isDeepHidden: true,
@@ -314,12 +311,12 @@ export const EVENT_SUMMER_DEEPEST_STAGES: Stage[] = [
     id: 'event_snow_3_3',
     name: '常夏ビーチ 裏の裏の裏 3-3',
     enemyName: '【超越裏】絶対真神 創世オルティス',
-    enemyHp: 20000000000000, // 20兆 (20T)
-    enemyAtk: 65000,
+    enemyHp: 11000000,
+    enemyAtk: 5200,
     enemyColor: '#7c2d12',
     enemyEmoji: '☀️👑🌌',
-    rewardMoney: 100000000,
-    rewardYPoints: 1000,
+    rewardMoney: 800000,
+    rewardYPoints: 400,
     areaName: '常夏ビーチ (裏の裏の裏)',
     isHidden: true,
     isDeepHidden: true,
@@ -329,12 +326,12 @@ export const EVENT_SUMMER_DEEPEST_STAGES: Stage[] = [
     id: 'event_snow_3_4',
     name: '常夏ビーチ 裏の裏の裏 3-4',
     enemyName: '【次元頂点神】全知全能・無限創世エンマ神',
-    enemyHp: 100000000000000, // 100兆 (100T)
-    enemyAtk: 88000,
+    enemyHp: 15000000,
+    enemyAtk: 6000,
     enemyColor: '#ffd700',
     enemyEmoji: '👑☀️🌌🔥',
-    rewardMoney: 500000000,
-    rewardYPoints: 2000,
+    rewardMoney: 1200000,
+    rewardYPoints: 600,
     areaName: '常夏ビーチ (裏の裏の裏)',
     isHidden: true,
     isDeepHidden: true,
@@ -347,12 +344,12 @@ export const EVENT_SUMMER_ULTRA_DEEP_STAGES: Stage[] = [
     id: 'event_snow_4_1',
     name: '常夏ビーチ 最裏 4-1',
     enemyName: '【超越最裏】虚無の極限深海王 オケアノス',
-    enemyHp: 500000000000000, // 500兆 (500T)
-    enemyAtk: 120000,
+    enemyHp: 18000000,
+    enemyAtk: 6800,
     enemyColor: '#0369a1',
     enemyEmoji: '🔱🐙🌊',
-    rewardMoney: 1000000000, // 10億
-    rewardYPoints: 3500,
+    rewardMoney: 1500000,
+    rewardYPoints: 800,
     areaName: '常夏ビーチ (最裏)',
     isHidden: true,
     isDeepHidden: true,
@@ -362,12 +359,12 @@ export const EVENT_SUMMER_ULTRA_DEEP_STAGES: Stage[] = [
     id: 'event_snow_4_2',
     name: '常夏ビーチ 最裏 4-2',
     enemyName: '【超越最裏】常夏の時空支配神 クロノス',
-    enemyHp: 2000000000000000, // 2000兆 (2000T / 2京)
-    enemyAtk: 160000,
+    enemyHp: 22000000,
+    enemyAtk: 7500,
     enemyColor: '#7c2d12',
     enemyEmoji: '⏳👑🔥',
-    rewardMoney: 2000000000, // 20億
-    rewardYPoints: 6000,
+    rewardMoney: 2000000,
+    rewardYPoints: 1000,
     areaName: '常夏ビーチ (最裏)',
     isHidden: true,
     isDeepHidden: true,
@@ -377,12 +374,12 @@ export const EVENT_SUMMER_ULTRA_DEEP_STAGES: Stage[] = [
     id: 'event_snow_4_3',
     name: '常夏ビーチ 最裏 4-3',
     enemyName: '【超越最裏】真・絶対破壊神 デストロイ',
-    enemyHp: 10000000000000000, // 1京 (10000兆 / 10P)
-    enemyAtk: 220000,
+    enemyHp: 28000000,
+    enemyAtk: 8500,
     enemyColor: '#7f1d1d',
     enemyEmoji: '💀💥🔥',
-    rewardMoney: 5000000000, // 50億
-    rewardYPoints: 10000,
+    rewardMoney: 3000000,
+    rewardYPoints: 1500,
     areaName: '常夏ビーチ (最裏)',
     isHidden: true,
     isDeepHidden: true,
@@ -392,12 +389,12 @@ export const EVENT_SUMMER_ULTRA_DEEP_STAGES: Stage[] = [
     id: 'event_snow_4_4',
     name: '常夏ビーチ 最裏 4-4',
     enemyName: '【最深頂点神】極限超越・常夏創世ゼウスエンマ',
-    enemyHp: 50000000000000000, // 5京 (50000兆 / 50P)
-    enemyAtk: 320000,
+    enemyHp: 35000000,
+    enemyAtk: 9800,
     enemyColor: '#00ffff',
     enemyEmoji: '👑☀️⚡🌌',
-    rewardMoney: 10000000000, // 100億
-    rewardYPoints: 20000,
+    rewardMoney: 5000000,
+    rewardYPoints: 2500,
     areaName: '常夏ビーチ (最裏)',
     isHidden: true,
     isDeepHidden: true,
@@ -406,6 +403,105 @@ export const EVENT_SUMMER_ULTRA_DEEP_STAGES: Stage[] = [
 ];
 
 export const EVENT_SNOW_STAGES = [...EVENT_SUMMER_STAGES, ...EVENT_SUMMER_DEEP_STAGES, ...EVENT_SUMMER_DEEPEST_STAGES, ...EVENT_SUMMER_ULTRA_DEEP_STAGES];
+
+export const BLEACH_EVENT_STAGES: Stage[] = [
+  {
+    id: 'bleach_st_1',
+    name: '虚圏 1-1',
+    enemyName: '【第6十刃】グリムジョー・ジャガージャック',
+    enemyHp: 1800000,
+    enemyAtk: 180,
+    enemyColor: '#0284c7',
+    enemyEmoji: '🐆💙⚡',
+    rewardMoney: 25000,
+    rewardYPoints: 300,
+    areaName: '虚圏（ウェコムンド）特設エリア',
+  },
+  {
+    id: 'bleach_st_2',
+    name: '虚圏 1-2',
+    enemyName: '【第3十刃】皇鮫後 ティア・ハリベル',
+    enemyHp: 4500000,
+    enemyAtk: 260,
+    enemyColor: '#075985',
+    enemyEmoji: '🦈🌊🗡️',
+    rewardMoney: 45000,
+    rewardYPoints: 450,
+    areaName: '虚圏（ウェコムンド）特設エリア',
+  },
+  {
+    id: 'bleach_st_3',
+    name: '虚圏 1-3',
+    enemyName: '【第2十刃】神聖死神老帝 バラガン',
+    enemyHp: 9000000,
+    enemyAtk: 360,
+    enemyColor: '#450a0a',
+    enemyEmoji: '💀👑⌛',
+    rewardMoney: 80000,
+    rewardYPoints: 700,
+    areaName: '虚圏（ウェコムンド）特設エリア',
+  },
+  {
+    id: 'bleach_st_4',
+    name: '虚圏 1-4',
+    enemyName: '【第1十刃】群狼 コヨーテ・スターク',
+    enemyHp: 18000000,
+    enemyAtk: 480,
+    enemyColor: '#1e293b',
+    enemyEmoji: '🐺🔫⚡',
+    rewardMoney: 150000,
+    rewardYPoints: 1000,
+    areaName: '虚圏（ウェコムンド）特設エリア',
+  },
+  {
+    id: 'bleach_st_5',
+    name: '虚圏 1-5 (激戦)',
+    enemyName: '【第4十刃・刀剣解放第二階層】覚醒ウルキオラ',
+    enemyHp: 35000000,
+    enemyAtk: 620,
+    enemyColor: '#030712',
+    enemyEmoji: '🦇💚⚡👑',
+    rewardMoney: 300000,
+    rewardYPoints: 1600,
+    areaName: '虚圏（ウェコムンド）特設エリア',
+  },
+  {
+    id: 'bleach_st_6',
+    name: '虚圏 最奥 (崩玉神殿)',
+    enemyName: '【虚圏統括・超越神】藍染惣右介（崩玉完全融合）',
+    enemyHp: 75000000,
+    enemyAtk: 800,
+    enemyColor: '#312e81',
+    enemyEmoji: '👑🔮🌌⚡',
+    rewardMoney: 600000,
+    rewardYPoints: 2500,
+    areaName: '虚圏（ウェコムンド）特設エリア',
+  },
+  {
+    id: 'bleach_st_7',
+    name: '虚圏 特別マップ 1 (虚夜宮 天蓋)',
+    enemyName: '【第0十刃・憤獣極限解放】ヤミー＆十刃総力戦',
+    enemyHp: 150000000,
+    enemyAtk: 980,
+    enemyColor: '#831843',
+    enemyEmoji: '👹💥🌙⚔️',
+    rewardMoney: 1500000,
+    rewardYPoints: 5000,
+    areaName: '虚圏（ウェコムンド）特別深層マップ',
+  },
+  {
+    id: 'bleach_st_8',
+    name: '虚圏 特別マップ 2 (崩玉次元絶対領域)',
+    enemyName: '【神域超越終焉神】藍染惣右介（崩玉最終完全覚醒）',
+    enemyHp: 300000000,
+    enemyAtk: 1250,
+    enemyColor: '#4c0519',
+    enemyEmoji: '👑🌌🔮⚡✨',
+    rewardMoney: 3500000,
+    rewardYPoints: 10000,
+    areaName: '虚圏（ウェコムンド）特別深層マップ',
+  },
+];
 
 export const SCORE_ATTACK_STAGE: Stage = {
   id: 'score_attack',
@@ -420,5 +516,5 @@ export const SCORE_ATTACK_STAGE: Stage = {
   areaName: 'スコアタ特設ステージ',
 };
 
-export const STAGES = [SCORE_ATTACK_STAGE, ...EVENT_SNOW_STAGES, ...generateStages(200)];
+export const STAGES = [SCORE_ATTACK_STAGE, ...BLEACH_EVENT_STAGES, ...EVENT_SNOW_STAGES, ...generateStages(200)];
 
