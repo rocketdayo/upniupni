@@ -7,6 +7,14 @@ import { STAGES, EVENT_SNOW_STAGES } from '../data/stages';
 import { decodeSerialCode } from '../utils/serialCode';
 import type { PlayerData } from '../storage';
 import { DAILY_MISSIONS_POOL, getTodayDailyMissions } from '../data/dailyMissions';
+import { saveScoreAttackToFirebase, resetPlayerScoreAttackInFirebase, saveTowerRecordToFirebase, saveSpeedrunRecordToFirebase, fetchMyScoreAttackRecord } from '../firebase';
+import { getScoreAttackWeekKey } from '../utils/scoreAttackCycle';
+import { TOWER_MILESTONES } from '../data/towerData';
+import { SPEEDRUN_COURSES, getSpeedrunRank } from '../data/speedrunData';
+import { GATE_ROOM_TYPES, GATE_LEVEL_REWARDS, getGateRoomTotalWaves } from '../data/gateData';
+import { RAID_BOSSES } from '../data/raidData';
+
+
 
 export const getWeeklyRewardWeekKey = (): string => {
   const d = new Date();
@@ -68,11 +76,36 @@ export const computeUnlockedTitles = (playerData: PlayerData): string[] => {
   if ((missionProg['m_fever_1'] || 0) >= 1 || (missionProg['m_fever_2'] || 0) >= 5) currentUnlocked.add('でかぷに職人');
   if ((missionProg['m_deka_1'] || 0) >= 10) currentUnlocked.add('ぷにぷにマスター');
   if ((missionProg['m_fever_2'] || 0) >= 5) currentUnlocked.add('フィーバーロード');
+  if ((missionProg['m_fever_2'] || 0) >= 1 || (missionProg['m_deka_1'] || 0) >= 1) currentUnlocked.add('連鎖の鬼');
   if (clearedStages.length >= 10) currentUnlocked.add('百戦錬磨の勇士');
+
+  // --- コラボ・神昇・UZ解禁条件 ---
+  if (ownedCharList.some(c => c.id === 'char_uz_god_supreme')) {
+    currentUnlocked.add('【UZ+++降臨】神創絶神・天照極エンマ王');
+  }
+  if (ownedCharList.some(c => c.rank === 'ZZ')) {
+    currentUnlocked.add('神昇せし超越者');
+  }
+  if (ownedCharList.some(c => c.id?.startsWith('char_bleach_'))) {
+    currentUnlocked.add('死神代行');
+  }
+  if (ownedCharList.some(c => c.id === 'char_bleach_ichigo_bankai')) {
+    currentUnlocked.add('卍解の極致');
+  }
+  if (ownedCharList.some(c => c.id === 'char_bleach_aizen')) {
+    currentUnlocked.add('虚圏の統括者');
+  }
+  if (ownedCharList.some(c => c.id === 'char_bleach_aizen_hogyoku' || c.id === 'char_bleach_aizen_transcended')) {
+    currentUnlocked.add('崩玉との融合');
+  }
+  if (ownedCharList.some(c => c.id === 'char_bleach_yamamoto')) {
+    currentUnlocked.add('護廷十三隊総隊長');
+  }
 
   if (currentUnlocked.size >= 15) currentUnlocked.add('ぷにぷに神');
 
   // --- 超難関LEGEND称号解禁条件 ---
+  if ((playerData.scoreAttackHighScore || 0) >= 1000000000000000000 || playerData.unlockedTitles?.includes('百京神話の創世神')) currentUnlocked.add('百京神話の創世神');
   if ((playerData.scoreAttackHighScore || 0) >= 100000000) currentUnlocked.add('一億突破の絶対神');
   if (yPoints >= 100000) currentUnlocked.add('Ypt兆万長者');
   if ((playerData.gachaHistory?.length || 0) >= 100) currentUnlocked.add('神引きの覇王');
@@ -82,6 +115,16 @@ export const computeUnlockedTitles = (playerData: PlayerData): string[] => {
   if (ownedCharList.filter(c => c.rank === 'Z').length >= 2) currentUnlocked.add('Zランク絶神軍団');
   if ((missionProg['m_fever_2'] || 0) >= 25) currentUnlocked.add('神速の千連鎖');
   if ((missionProg['m_fever_2'] || 0) >= 100) currentUnlocked.add('永劫のフィーバー');
+
+  // --- 塔＆タイムアタック称号解禁 ---
+  if ((playerData.towerHighestFloor || 0) >= 20) currentUnlocked.add('塔の覇王');
+  if ((playerData.towerHighestFloor || 0) >= 30) currentUnlocked.add('試練を統べし者');
+  if ((playerData.towerHighestFloor || 0) >= 50) currentUnlocked.add('無限の超越神');
+  if ((playerData.towerHighestFloor || 0) >= 100) currentUnlocked.add('百界の制覇神');
+  if (playerData.speedrunRecords?.['speedrun_novice']) currentUnlocked.add('疾風の抜刀手');
+  if (playerData.speedrunRecords?.['speedrun_expert']) currentUnlocked.add('音速の撃墜神');
+  if (playerData.speedrunRecords?.['speedrun_master']) currentUnlocked.add('光速の神罰');
+  if (playerData.speedrunRecords?.['speedrun_god']) currentUnlocked.add('時空の支配者');
 
   if (currentUnlocked.size >= 25) currentUnlocked.add('ぷにぷに界の創造主');
 
@@ -178,9 +221,9 @@ interface GameState extends PlayerData {
   addYPoints: (amount: number) => void;
   setMoney: (amount: number) => void;
   setYPoints: (amount: number) => void;
-  addSummerMedals: (amount: number) => void;
   addBleachRings: (amount: number) => void;
   unlockCharacter: (charId: string) => void;
+  unlockKDeveloper: () => void;
   unlockAllCharacters: () => void;
   unlockAllStages: () => void;
   unlockEventStages: () => void;
@@ -206,14 +249,41 @@ interface GameState extends PlayerData {
   claimMission: (missionId: string) => void;
   trackDailyMission: (type: string, amount?: number) => void;
   claimDailyMission: (missionId: string) => void;
-  submitScoreAttackScore: (score: number) => { isNewHighScore: boolean; previousHighScore: number };
+  submitScoreAttackScore: (score: number, timeLimit?: number) => { isNewHighScore: boolean; previousHighScore: number; unlockedUzGod?: boolean };
+  setScoreAttackConfiguredTime: (seconds: number) => void;
   recordGachaResult: (charIds: string[], newPityCount: number, newStepUpCount: number) => void;
   redeemSerialCode: (code: string) => { success: boolean; message: string; rewardsSummary?: string };
-  convertYPointsToSummerMedals: (amount: number) => { success: boolean; message: string };
   convertYPointsToBleachRings: (amount: number) => { success: boolean; message: string };
   exchangeBleachRing: (itemId: string) => { success: boolean; message: string };
   claimScoreMilestone: (milestoneReq: string) => { success: boolean; message: string };
   claimWeeklyReward: (weekKey: string) => void;
+  advanceTowerFloor: (floor: number, newArtifactId?: string) => void;
+  setTowerCurrentFloor: (floor: number) => void;
+  claimTowerReward: (floor: number) => { success: boolean; message: string };
+  claimAllTowerRewards: () => { success: boolean; message: string; count: number };
+  submitSpeedrunTime: (courseId: string, timeMs: number) => { isNewBest: boolean; previousBestMs?: number; rank: string };
+  // きまぐれゲート（Gate of Caprice）
+  openGateRoom: (roomId: string) => void;
+  completeGateWave: (roomId: string, wave: number, remainingHp: number) => {
+    isRoomCleared: boolean;
+    nextWave?: number;
+    specialRoomAppeared?: 'boss' | 'reward' | null;
+    specialRoomLevel?: number;
+    specialAppearance?: { type: 'boss' | 'reward'; level: number };
+    clearedRoomType?: 'normal' | 'boss' | 'reward';
+    clearedLevel?: number;
+    rewards?: { yPoints: number; money: number; bonusDrops?: { name: string; count: number; icon: string }[] };
+  };
+  consumeKampoItem: () => { success: boolean; message: string };
+  useKampoItem?: () => { success: boolean; message: string };
+  claimGateReward: (rewardKey: string | number) => { success: boolean; message: string; reward?: any };
+
+  claimFriendKampo: (friendId: string) => { success: boolean; message: string };
+  resetGateRoom: () => void;
+  // 超大型レイドボス（Raid Boss）
+
+  damageRaidBoss: (bossId: string, damage: number) => { currentHp: number; maxHp: number; isCleared: boolean; rewardYPoints: number; rewardItemName?: string; rewardItemCount?: number };
+  syncScoreAttackWithFirebase: () => Promise<void>;
   exportRawPlayerData: () => PlayerData;
   importAllPlayerData: (importedData: Partial<PlayerData>) => void;
 }
@@ -243,7 +313,6 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [data, setData] = useState<PlayerData>({
     money: 0,
     yPoints: 0,
-    summerMedals: 0,
     characters: {},
     team: [],
     maxClearedStageId: '',
@@ -260,7 +329,6 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     loginAndGetData((playerData, uid) => {
-      if (playerData.summerMedals === undefined) playerData.summerMedals = 0;
       if (playerData.bleachRings === undefined) playerData.bleachRings = 10;
       if (!playerData.clearedStages) playerData.clearedStages = [];
       if (!playerData.items) playerData.items = DEFAULT_ITEMS;
@@ -290,6 +358,18 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (!playerData.dailyMissionsProgress) playerData.dailyMissionsProgress = {};
       if (!playerData.dailyMissionsCompleted) playerData.dailyMissionsCompleted = [];
       if (playerData.lastDailyResetTime === undefined) playerData.lastDailyResetTime = 0;
+
+      // 毎週日曜日の夜 23:59 にスコアタ記録をリセット
+      const currentScoreAttackWeekKey = getScoreAttackWeekKey();
+      if (!playerData.lastScoreAttackWeekKey) {
+        playerData.lastScoreAttackWeekKey = currentScoreAttackWeekKey;
+      } else if (playerData.lastScoreAttackWeekKey !== currentScoreAttackWeekKey) {
+        playerData.scoreAttackHighScore = 0;
+        playerData.lastScoreAttackWeekKey = currentScoreAttackWeekKey;
+        resetPlayerScoreAttackInFirebase().catch((err) => {
+          console.warn('Failed to reset score attack in Firebase on week rollover:', err);
+        });
+      }
 
       const currentDayIndex = Math.floor(Date.now() / (24 * 3600 * 1000));
       if (playerData.lastDailyResetTime < currentDayIndex) {
@@ -334,6 +414,61 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setData(playerData);
       setUid(uid);
       setLoading(false);
+
+      // 🌟 Firebaseから最新のスコアタ歴代最高スコアを取得して同期
+      fetchMyScoreAttackRecord().then((fbRecord) => {
+        if (fbRecord) {
+          const currentWeekKey = getScoreAttackWeekKey();
+          setData(prev => {
+            const currentAllTime = prev.allTimeScoreAttackHighScore || 0;
+            const fbAllTime = fbRecord.allTimeScore || 0;
+            const currentWeekly = prev.scoreAttackHighScore || 0;
+            const fbWeekly = fbRecord.score || 0;
+
+            const updates: Partial<PlayerData> = {};
+            if (fbAllTime > currentAllTime) {
+              updates.allTimeScoreAttackHighScore = fbAllTime;
+              if (fbRecord.allTimeLimit) {
+                updates.allTimeScoreAttackTimeLimit = fbRecord.allTimeLimit;
+              }
+            }
+            if (fbWeekly > currentWeekly && fbRecord.weekKey === currentWeekKey) {
+              updates.scoreAttackHighScore = fbWeekly;
+              if (fbRecord.timeLimit) {
+                updates.scoreAttackHighScoreTimeLimit = fbRecord.timeLimit;
+              }
+            }
+
+            // 100京突破報酬
+            const maxAllTime = Math.max(currentAllTime, fbAllTime);
+            if (maxAllTime >= 1000000000000000000) {
+              const newChars = { ...prev.characters };
+              if (!newChars['char_uz_god_supreme']) {
+                newChars['char_uz_god_supreme'] = {
+                  level: 300,
+                  skillLevel: 7,
+                  limitBreak: 10,
+                  duplicates: 1,
+                };
+                updates.characters = newChars;
+              }
+              const unlocked = prev.unlockedTitles || ['新米妖怪レーサー'];
+              if (!unlocked.includes('百京神話の創世神')) {
+                updates.unlockedTitles = [...unlocked, '百京神話の創世神'];
+              }
+            }
+
+            if (Object.keys(updates).length > 0) {
+              const merged = { ...prev, ...updates };
+              savePlayerData(uid, merged);
+              return merged;
+            }
+            return prev;
+          });
+        }
+      }).catch(err => {
+        console.warn('Failed to fetch initial score attack record from Firebase:', err);
+      });
     });
   }, []);
 
@@ -371,6 +506,44 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       window.removeEventListener('pagehide', handleBeforeUnload);
     };
   }, [uid, data]);
+
+  // 毎週日曜日の夜 23:59:59 の週替わりリセットを監視
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const currentWeekKey = getScoreAttackWeekKey();
+      if (data.lastScoreAttackWeekKey && data.lastScoreAttackWeekKey !== currentWeekKey) {
+        mutateAndSave({
+          scoreAttackHighScore: 0,
+          lastScoreAttackWeekKey: currentWeekKey,
+        });
+        resetPlayerScoreAttackInFirebase().catch((err) => {
+          console.warn('Periodic weekly reset score attack failed:', err);
+        });
+      }
+    }, 30000);
+    return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data.lastScoreAttackWeekKey]);
+
+  const unlockKDeveloper = () => {
+    mutateAndSave(prev => {
+      const existing = prev.characters['char_k_developer'];
+      return {
+        characters: {
+          ...prev.characters,
+          'char_k_developer': {
+            level: 300,
+            skillLevel: 7,
+            limitBreak: 10,
+            duplicates: (existing?.duplicates || 0) + 1,
+          }
+        },
+        unlockedTitles: prev.unlockedTitles?.includes('最高位開発神・Kの主')
+          ? prev.unlockedTitles
+          : [...(prev.unlockedTitles || ['新米妖怪レーサー']), '最高位開発神・Kの主']
+      };
+    });
+  };
 
   const unlockAllCharacters = () => {
     mutateAndSave(() => {
@@ -443,7 +616,6 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const setMoney = (amount: number) => mutateAndSave({ money: amount });
   const addYPoints = (amount: number) => mutateAndSave(prev => ({ yPoints: prev.yPoints + amount }));
   const setYPoints = (amount: number) => mutateAndSave({ yPoints: amount });
-  const addSummerMedals = (amount: number) => mutateAndSave(prev => ({ summerMedals: (prev.summerMedals || 0) + amount }));
   const addBleachRings = (amount: number) => mutateAndSave(prev => ({ bleachRings: (prev.bleachRings || 0) + amount }));
 
   const unlockCharacter = (charId: string) => {
@@ -644,16 +816,33 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       // チーム編成：もしベースキャラが編成されていた場合、新たに獲得したZZキャラで更新
-      const updatedTeam = (prev.team || []).map(id => id === baseCharId ? targetChar.id : id);
+      const mappedTeam = (prev.team || []).map(id => id === baseCharId ? targetChar.id : id);
+      const uniqueTeam: string[] = [];
+      for (const id of mappedTeam) {
+        if (!uniqueTeam.includes(id)) {
+          uniqueTeam.push(id);
+        }
+      }
+      if (uniqueTeam.length < (prev.team || []).length) {
+        const otherOwned = Object.keys(currentChars).filter(id => !uniqueTeam.includes(id));
+        for (const oId of otherOwned) {
+          if (uniqueTeam.length >= 5) break;
+          uniqueTeam.push(oId);
+        }
+      }
+
       const updatedSavedTeams = (prev.savedTeams || []).map(t => ({
         ...t,
         team: (t.team || []).map(id => id === baseCharId ? targetChar.id : id)
       }));
 
+      // 進化元キャラクターはお別れ（融合で疲れ切って離脱）
+      delete currentChars[baseCharId];
+
       const unlocked = prev.unlockedTitles || ['新米妖怪レーサー'];
       const newUnlocked = unlocked.includes('神昇の到達者') ? unlocked : [...unlocked, '神昇の到達者'];
 
-      successMsg = `神昇の秘石の力により、神域の扉が開かれた！『${targetChar.name}』が降臨しました！`;
+      successMsg = `『${baseChar.name}』は激しい融合で全力を捧げて疲れ切り、お別れとなりました…\nその魂と意志は『${targetChar.name}』へと受け継がれ、神昇降臨を果たしました！`;
 
       return {
         items: {
@@ -661,7 +850,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           godAscensionStone: Math.max(0, currentStones - 1)
         },
         characters: currentChars,
-        team: updatedTeam,
+        team: uniqueTeam.length > 0 ? uniqueTeam : mappedTeam,
         savedTeams: updatedSavedTeams,
         unlockedTitles: newUnlocked
       };
@@ -887,7 +1076,6 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       expLargeCount: 0,
       skillBookCount: 0,
     };
-    const isSummerStage = stageId.startsWith('event_snow_');
     const isBleachStage = stageId.startsWith('bleach_st_');
     
     mutateAndSave(prev => {
@@ -949,15 +1137,6 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           money: prev.money + moneyReward,
           yPoints: prev.yPoints + yPointReward,
           bleachRings: (prev.bleachRings || 0) + bleachRingReward,
-          maxClearedStageId: stageId,
-          clearedStages: newCleared,
-          items: newItems,
-          characters: newChars,
-        };
-      } else if (isSummerStage) {
-        return {
-          money: prev.money + moneyReward,
-          summerMedals: (prev.summerMedals || 0) + yPointReward,
           maxClearedStageId: stageId,
           clearedStages: newCleared,
           items: newItems,
@@ -1038,19 +1217,76 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
   };
 
-  const submitScoreAttackScore = (score: number) => {
-    const currentHighScore = data.scoreAttackHighScore || 0;
+  const setScoreAttackConfiguredTime = (seconds: number) => {
+    const clamped = Math.max(1, Math.min(600, Math.round(seconds)));
+    localStorage.setItem('score_attack_custom_time', clamped.toString());
+    mutateAndSave({ scoreAttackConfiguredTime: clamped });
+  };
+
+  const submitScoreAttackScore = (score: number, timeLimit: number = 60): { isNewHighScore: boolean; previousHighScore: number; unlockedUzGod?: boolean } => {
+    const currentWeekKey = getScoreAttackWeekKey();
+    let currentHighScore = data.scoreAttackHighScore || 0;
+    if (data.lastScoreAttackWeekKey && data.lastScoreAttackWeekKey !== currentWeekKey) {
+      currentHighScore = 0;
+    }
     const isNewHighScore = score > currentHighScore;
+    const newBestScore = Math.max(score, currentHighScore);
+    const newBestTimeLimit = isNewHighScore ? timeLimit : (data.scoreAttackHighScoreTimeLimit || 60);
+
+    const currentAllTime = data.allTimeScoreAttackHighScore || 0;
+    const isNewAllTimeHighScore = score > currentAllTime;
+    const newAllTimeScore = Math.max(score, currentAllTime);
+    const newAllTimeLimit = isNewAllTimeHighScore ? timeLimit : (data.allTimeScoreAttackTimeLimit || 60);
+
+    const UZ_GOD_SCORE_THRESHOLD = 1000000000000000000; // 100京 (10^18 pt)
+    const isUzGodAchieved = score >= UZ_GOD_SCORE_THRESHOLD;
     
     mutateAndSave(prev => {
       const updates: Partial<PlayerData> = {
         yPoints: (prev.yPoints || 0) + 100,
         money: (prev.money || 0) + 300,
+        lastScoreAttackWeekKey: currentWeekKey,
       };
       if (isNewHighScore) {
         updates.scoreAttackHighScore = score;
+        updates.scoreAttackHighScoreTimeLimit = timeLimit;
       }
+      if (isNewAllTimeHighScore) {
+        updates.allTimeScoreAttackHighScore = score;
+        updates.allTimeScoreAttackTimeLimit = timeLimit;
+      }
+
+      // 🌟 スコアタで100京ptを超えた場合、最強UZ+++キャラ「神創絶神・天照極エンマ王UZ+++」を即時獲得！
+      if (isUzGodAchieved) {
+        const newChars = { ...prev.characters };
+        const existing = newChars['char_uz_god_supreme'];
+        newChars['char_uz_god_supreme'] = {
+          level: existing ? Math.max(existing.level, 300) : 300,
+          skillLevel: 7, // Max skill level
+          limitBreak: 10, // Max limit break
+          duplicates: (existing?.duplicates || 0) + 1,
+        };
+        updates.characters = newChars;
+
+        const unlocked = prev.unlockedTitles || ['新米妖怪レーサー'];
+        if (!unlocked.includes('百京神話の創世神')) {
+          updates.unlockedTitles = [...unlocked, '百京神話の創世神'];
+        }
+      }
+
       return updates;
+    });
+
+    // Save to Firebase Real-time Firestore Leaderboard
+    saveScoreAttackToFirebase(
+      newBestScore,
+      data.selectedTitle || '新米妖怪レーサー',
+      data.team,
+      newBestTimeLimit,
+      newAllTimeScore,
+      newAllTimeLimit
+    ).catch((err) => {
+      console.warn('Failed to sync score attack to Firebase:', err);
     });
 
     // Track Daily Mission for Score Attack play and score
@@ -1059,7 +1295,58 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       trackDailyMission('score_attack_score', score);
     }, 0);
 
-    return { isNewHighScore, previousHighScore: currentHighScore };
+    return { isNewHighScore, previousHighScore: currentHighScore, unlockedUzGod: isUzGodAchieved };
+  };
+
+  const syncScoreAttackWithFirebase = async () => {
+    try {
+      const fbRecord = await fetchMyScoreAttackRecord();
+      if (fbRecord) {
+        const currentWeekKey = getScoreAttackWeekKey();
+        mutateAndSave(prev => {
+          const currentAllTime = prev.allTimeScoreAttackHighScore || 0;
+          const fbAllTime = fbRecord.allTimeScore || 0;
+          const currentWeekly = prev.scoreAttackHighScore || 0;
+          const fbWeekly = fbRecord.score || 0;
+
+          const updates: Partial<PlayerData> = {};
+          if (fbAllTime > currentAllTime) {
+            updates.allTimeScoreAttackHighScore = fbAllTime;
+            if (fbRecord.allTimeLimit) {
+              updates.allTimeScoreAttackTimeLimit = fbRecord.allTimeLimit;
+            }
+          }
+          if (fbWeekly > currentWeekly && fbRecord.weekKey === currentWeekKey) {
+            updates.scoreAttackHighScore = fbWeekly;
+            if (fbRecord.timeLimit) {
+              updates.scoreAttackHighScoreTimeLimit = fbRecord.timeLimit;
+            }
+          }
+
+          const maxAllTime = Math.max(currentAllTime, fbAllTime);
+          if (maxAllTime >= 1000000000000000000) {
+            const newChars = { ...prev.characters };
+            if (!newChars['char_uz_god_supreme']) {
+              newChars['char_uz_god_supreme'] = {
+                level: 300,
+                skillLevel: 7,
+                limitBreak: 10,
+                duplicates: 1,
+              };
+              updates.characters = newChars;
+            }
+            const unlocked = prev.unlockedTitles || ['新米妖怪レーサー'];
+            if (!unlocked.includes('百京神話の創世神')) {
+              updates.unlockedTitles = [...unlocked, '百京神話の創世神'];
+            }
+          }
+
+          return Object.keys(updates).length > 0 ? updates : {};
+        });
+      }
+    } catch (err) {
+      console.warn('Failed to sync score attack from Firebase:', err);
+    }
   };
 
   const trackMission = (type: string, amount: number = 1) => {
@@ -1136,9 +1423,15 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return { success: false, message: decoded.error || '無効なシリアルコードです。' };
     }
 
-    const { yPoints = 0, money = 0, items, unlockStagesCount = 0, title } = decoded.payload;
+    const { yPoints = 0, money = 0, items, unlockStagesCount = 0, characterId, title } = decoded.payload;
 
     const summaryParts: string[] = [];
+    if (characterId) {
+      const targetChar = CHARACTERS.find(c => c.id === characterId);
+      if (targetChar) {
+        summaryParts.unshift(`🌟【${targetChar.rank}】${targetChar.name} (Lv.MAX / 技Lv.MAX)`);
+      }
+    }
     if (yPoints > 0) summaryParts.push(`Yポイント +${yPoints.toLocaleString()}pt`);
     if (money > 0) summaryParts.push(`yマネー +${money.toLocaleString()}`);
     if (unlockStagesCount > 0) summaryParts.push(`通常ステージ +${unlockStagesCount}進展`);
@@ -1155,6 +1448,21 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (items?.expSmall) newItems.expSmall = (newItems.expSmall || 0) + items.expSmall;
       if (items?.expLarge) newItems.expLarge = (newItems.expLarge || 0) + items.expLarge;
       if (items?.skillBook) newItems.skillBook = (newItems.skillBook || 0) + items.skillBook;
+
+      const newChars = { ...prev.characters };
+      if (characterId) {
+        const existing = newChars[characterId];
+        newChars[characterId] = {
+          level: existing ? Math.max(existing.level, 300) : 300,
+          skillLevel: 7, // Max skill level
+          limitBreak: 10, // Max limit break
+          duplicates: (existing?.duplicates || 0) + 1,
+        };
+      }
+
+      // Title unlocking
+      const unlocked = prev.unlockedTitles || ['新米妖怪レーサー'];
+      const newUnlocked = (title && !unlocked.includes(title)) ? [...unlocked, title] : unlocked;
 
       // 通常ステージ進展の計算
       let newClearedStages = [...(prev.clearedStages || [])];
@@ -1183,8 +1491,10 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         yPoints: prev.yPoints + yPoints,
         money: prev.money + money,
         items: newItems,
+        characters: newChars,
+        unlockedTitles: newUnlocked,
         clearedStages: newClearedStages,
-        usedSerialCodes: [...(prev.usedSerialCodes || []), cleanCode, cleanCode.toUpperCase()],
+        usedSerialCodes: [...(prev.usedSerialCodes || []), cleanCode, cleanCode.toUpperCase(), cleanCode.replace(/[\s-]/g, '')],
       };
     });
 
@@ -1193,27 +1503,6 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       message: title ? `【${title}】の特典を獲得しました！` : 'シリアルコード特典を獲得しました！',
       rewardsSummary: summaryText,
     };
-  };
-
-  const convertYPointsToSummerMedals = (amount: number): { success: boolean; message: string } => {
-    // 10,000 YP = 3 Medals
-    const multiplier = Math.floor(amount / 10000);
-    if (multiplier < 1) {
-      return { success: false, message: '10,000 Yポイント以上から変換可能です！' };
-    }
-    const cost = multiplier * 10000;
-    const medals = multiplier * 3;
-
-    if ((data.yPoints || 0) < cost) {
-      return { success: false, message: 'Yポイントが足りません！' };
-    }
-
-    mutateAndSave(prev => ({
-      yPoints: prev.yPoints - cost,
-      summerMedals: (prev.summerMedals || 0) + medals
-    }));
-
-    return { success: true, message: `${cost.toLocaleString()} Yポイントを消費して、${medals}枚のサマーコインに変換しました！` };
   };
 
   const convertYPointsToBleachRings = (amount: number): { success: boolean; message: string } => {
@@ -1309,6 +1598,11 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       '1000億 pt': 100000000000,
       '10兆 pt': 10000000000000,
       '1000兆 pt': 1000000000000000,
+      '100京 pt': 1e18,
+      '100垓 pt': 1e22,
+      '100穣 pt': 1e30,
+      '100極 pt': 1e50,
+      '1無量大数 pt': 1e68,
     };
 
     const targetVal = reqValues[milestoneReq];
@@ -1322,7 +1616,10 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     mutateAndSave(prev => {
       const newClaimed = [...(prev.scoreAttackClaimedMilestones || []), milestoneReq];
       const newItems = { ...prev.items };
+      const newChars = { ...prev.characters };
       let newYPoints = prev.yPoints;
+      const unlocked = prev.unlockedTitles || ['新米妖怪レーサー'];
+      let newUnlocked = [...unlocked];
 
       if (milestoneReq === '10万 pt') {
         newYPoints += 100;
@@ -1349,16 +1646,557 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         newItems.superLimitBreakBook = (newItems.superLimitBreakBook || 0) + 1;
         newItems.godAscensionStone = (newItems.godAscensionStone || 0) + 2;
         summaryText = '💎神昇の秘石 x2, Yポイント x5,000, 超限界突破の書 x1';
+      } else if (milestoneReq === '100京 pt') {
+        newYPoints += 50000;
+        newItems.godAscensionStone = (newItems.godAscensionStone || 0) + 5;
+        newItems.superLimitBreakBook = (newItems.superLimitBreakBook || 0) + 5;
+        const existing = newChars['char_uz_god_supreme'];
+        newChars['char_uz_god_supreme'] = {
+          level: existing ? Math.max(existing.level, 300) : 300,
+          skillLevel: 7,
+          limitBreak: 10,
+          duplicates: (existing?.duplicates || 0) + 1,
+        };
+        if (!newUnlocked.includes('百京神話の創世神')) {
+          newUnlocked.push('百京神話の創世神');
+        }
+        summaryText = '👑【UZ+++】神創絶神・天照極エンマ王UZ+++, 称号「百京神話の創世神」, 💎神昇の秘石 x5, 超限界突破の書 x5, Yポイント x50,000';
+      } else if (milestoneReq === '100垓 pt') {
+        newYPoints += 100000;
+        newItems.godAscensionStone = (newItems.godAscensionStone || 0) + 10;
+        newItems.godSkillBook = (newItems.godSkillBook || 0) + 10;
+        newItems.superLimitBreakBook = (newItems.superLimitBreakBook || 0) + 10;
+        if (!newUnlocked.includes('百垓無双の覇王')) {
+          newUnlocked.push('百垓無双の覇王');
+        }
+        summaryText = '称号「百垓無双の覇王」, 💎神昇の秘石 x10, 神ひっさつの秘伝書 x10, 超限界突破の書 x10, Yポイント x100,000';
+      } else if (milestoneReq === '100穣 pt') {
+        newYPoints += 300000;
+        newItems.godAscensionStone = (newItems.godAscensionStone || 0) + 20;
+        newItems.superLimitBreakBook = (newItems.superLimitBreakBook || 0) + 20;
+        if (!newUnlocked.includes('百穣銀河の支配者')) {
+          newUnlocked.push('百穣銀河の支配者');
+        }
+        summaryText = '称号「百穣銀河の支配者」, 💎神昇の秘石 x20, 超限界突破の書 x20, Yポイント x300,000';
+      } else if (milestoneReq === '100極 pt') {
+        newYPoints += 500000;
+        newItems.godAscensionStone = (newItems.godAscensionStone || 0) + 50;
+        newItems.superLimitBreakBook = (newItems.superLimitBreakBook || 0) + 50;
+        if (!newUnlocked.includes('百極次元の超越神')) {
+          newUnlocked.push('百極次元の超越神');
+        }
+        summaryText = '称号「百極次元の超越神」, 💎神昇の秘石 x50, 超限界突破の書 x50, Yポイント x500,000';
+      } else if (milestoneReq === '1無量大数 pt') {
+        newYPoints += 1000000;
+        newItems.godAscensionStone = (newItems.godAscensionStone || 0) + 99;
+        newItems.superLimitBreakBook = (newItems.superLimitBreakBook || 0) + 99;
+        newItems.godSkillBook = (newItems.godSkillBook || 0) + 99;
+        if (!newUnlocked.includes('無量大数の絶対全能神')) {
+          newUnlocked.push('無量大数の絶対全能神');
+        }
+        summaryText = '称号「無量大数の絶対全能神」, 💎神昇の秘石 x99, 神ひっさつの秘伝書 x99, 超限界突破の書 x99, Yポイント x1,000,000';
       }
 
       return {
         scoreAttackClaimedMilestones: newClaimed,
         items: newItems,
+        characters: newChars,
         yPoints: newYPoints,
+        unlockedTitles: newUnlocked,
       };
     });
 
     return { success: true, message: `【${milestoneReq} 達成報酬】\n${summaryText} を獲得しました！` };
+  };
+
+  // 塔の階層クリア処理
+  const advanceTowerFloor = (floor: number, newArtifactId?: string) => {
+    let highestReached = floor;
+    let currentTeam: string[] = [];
+    let currentTitle = '新米妖怪レーサー';
+    let totalArtifacts = 0;
+
+    mutateAndSave(prev => {
+      const currentHighest = prev.towerHighestFloor || 0;
+      const nextHighest = Math.max(currentHighest, floor);
+      highestReached = nextHighest;
+      currentTeam = [...(prev.team || [])];
+      currentTitle = prev.selectedTitle || '新米妖怪レーサー';
+
+      const nextFloor = floor + 1;
+      const artifacts = [...(prev.towerArtifacts || [])];
+      if (newArtifactId && !artifacts.includes(newArtifactId)) {
+        artifacts.push(newArtifactId);
+      }
+      totalArtifacts = artifacts.length;
+
+      return {
+        towerHighestFloor: nextHighest,
+        towerCurrentFloor: nextFloor,
+        towerArtifacts: artifacts,
+      };
+    });
+
+    // オンラインリーダーボードへ自動送信
+    saveTowerRecordToFirebase(highestReached, currentTitle, currentTeam, totalArtifacts).catch(() => {});
+  };
+
+  // 塔の挑戦階層セット
+  const setTowerCurrentFloor = (floor: number) => {
+    mutateAndSave({ towerCurrentFloor: Math.max(1, floor) });
+  };
+
+  // 塔の節目報酬受け取り
+  const claimTowerReward = (floor: number): { success: boolean; message: string } => {
+    const milestone = TOWER_MILESTONES.find(m => m.floor === floor);
+    if (!milestone) return { success: false, message: '報酬が存在しません' };
+    const claimed = data.towerClaimedRewards || [];
+    if (claimed.includes(floor)) return { success: false, message: '既に受取済みです' };
+    if ((data.towerHighestFloor || 0) < floor) return { success: false, message: 'まだ踏破していません' };
+
+    mutateAndSave(prev => {
+      const newClaimed = [...(prev.towerClaimedRewards || []), floor];
+      const items = { ...prev.items };
+      let yPoints = prev.yPoints;
+      const titles = new Set(prev.unlockedTitles || []);
+
+      if (milestone.rewardValue.itemKey) {
+        const k = milestone.rewardValue.itemKey as keyof typeof items;
+        items[k] = (items[k] || 0) + (milestone.rewardValue.amount || 1);
+      }
+      if (milestone.rewardValue.extraItem) {
+        const ek = milestone.rewardValue.extraItem as keyof typeof items;
+        items[ek] = (items[ek] || 0) + (milestone.rewardValue.extraAmount || 1);
+      }
+      if (milestone.rewardValue.yPoints) {
+        yPoints += milestone.rewardValue.yPoints;
+      }
+      if (milestone.rewardValue.title) {
+        titles.add(milestone.rewardValue.title);
+      }
+
+      return {
+        towerClaimedRewards: newClaimed,
+        items,
+        yPoints,
+        unlockedTitles: Array.from(titles),
+      };
+    });
+
+    return { success: true, message: `【${floor}F報酬】${milestone.rewardDesc} を受け取りました！` };
+  };
+
+  // 塔の達成報酬一括受取
+  const claimAllTowerRewards = (): { success: boolean; message: string; count: number } => {
+    const highest = data.towerHighestFloor || 0;
+    const claimed = data.towerClaimedRewards || [];
+    const claimable = TOWER_MILESTONES.filter(m => m.floor <= highest && !claimed.includes(m.floor));
+
+    if (claimable.length === 0) {
+      return { success: false, message: '現在受け取り可能な未受取報酬はありません。', count: 0 };
+    }
+
+    let totalYpt = 0;
+    mutateAndSave(prev => {
+      const newClaimed = [...(prev.towerClaimedRewards || [])];
+      const items = { ...prev.items };
+      let yPoints = prev.yPoints;
+      const titles = new Set(prev.unlockedTitles || []);
+
+      claimable.forEach(m => {
+        newClaimed.push(m.floor);
+        if (m.rewardValue.itemKey) {
+          const k = m.rewardValue.itemKey as keyof typeof items;
+          items[k] = (items[k] || 0) + (m.rewardValue.amount || 1);
+        }
+        if (m.rewardValue.extraItem) {
+          const ek = m.rewardValue.extraItem as keyof typeof items;
+          items[ek] = (items[ek] || 0) + (m.rewardValue.extraAmount || 1);
+        }
+        if (m.rewardValue.yPoints) {
+          yPoints += m.rewardValue.yPoints;
+          totalYpt += m.rewardValue.yPoints;
+        }
+        if (m.rewardValue.title) {
+          titles.add(m.rewardValue.title);
+        }
+      });
+
+      return {
+        towerClaimedRewards: Array.from(new Set(newClaimed)),
+        items,
+        yPoints,
+        unlockedTitles: Array.from(titles),
+      };
+    });
+
+    return {
+      success: true,
+      message: `${claimable.length}件の報酬を一括受取しました！ (合計 +${totalYpt.toLocaleString()} Ypt)`,
+      count: claimable.length
+    };
+  };
+
+  // スピードランタイム提出
+  const submitSpeedrunTime = (courseId: string, timeMs: number): { isNewBest: boolean; previousBestMs?: number; rank: string } => {
+    const course = SPEEDRUN_COURSES.find(c => c.id === courseId);
+    const existing = data.speedrunRecords?.[courseId];
+    const previousBestMs = existing?.timeMs;
+    const isNewBest = !previousBestMs || timeMs < previousBestMs;
+
+    const rankObj = course ? getSpeedrunRank(timeMs / 1000, course.targetTimes) : { rank: 'C', color: '#999', label: 'C' };
+
+    mutateAndSave(prev => {
+      const records = { ...(prev.speedrunRecords || {}) };
+      if (isNewBest) {
+        records[courseId] = {
+          timeMs,
+          clearedAt: Date.now(),
+          team: [...prev.team],
+        };
+      }
+
+      // 初回クリア報酬判定
+      let yPoints = prev.yPoints;
+      const titles = new Set(prev.unlockedTitles || []);
+      const items = { ...prev.items };
+
+      if (!existing && course?.firstClearReward) {
+        if (course.firstClearReward.yPoints) yPoints += course.firstClearReward.yPoints;
+        if (course.firstClearReward.title) titles.add(course.firstClearReward.title);
+        if (course.firstClearReward.itemKey) {
+          const k = course.firstClearReward.itemKey as keyof typeof items;
+          items[k] = (items[k] || 0) + (course.firstClearReward.itemAmount || 1);
+        }
+      }
+
+      return {
+        speedrunRecords: records,
+        yPoints,
+        items,
+        unlockedTitles: Array.from(titles),
+      };
+    });
+
+    // オンラインリーダーボードへ自動送信
+    saveSpeedrunRecordToFirebase(
+      courseId,
+      timeMs,
+      data.selectedTitle || '新米妖怪レーサー',
+      data.team || []
+    ).catch(() => {});
+
+    return { isNewBest, previousBestMs, rank: rankObj.rank };
+  };
+
+  // ---------- きまぐれゲート（異次元サバイバルパズル Gate of Caprice）ハンドラー ----------
+  const openGateRoom = (roomId: string) => {
+    mutateAndSave(prev => ({
+      ...prev,
+      gateActiveRoom: roomId,
+      gateCurrentWave: 1,
+      gatePlayerHp: null, // フルHPで開始
+    }));
+  };
+
+  const completeGateWave = (roomId: string, wave: number, remainingHp: number) => {
+    let result: {
+      isRoomCleared: boolean;
+      nextWave?: number;
+      specialRoomAppeared?: 'boss' | 'reward' | null;
+      specialRoomLevel?: number;
+      specialAppearance?: { type: 'boss' | 'reward'; level: number };
+      clearedRoomType?: 'normal' | 'boss' | 'reward';
+      clearedLevel?: number;
+      rewards?: { yPoints: number; money: number; bonusDrops?: { name: string; count: number; icon: string }[] };
+    } = {
+      isRoomCleared: false,
+      nextWave: undefined,
+      specialRoomAppeared: null,
+      specialRoomLevel: undefined,
+      specialAppearance: undefined,
+      clearedRoomType: undefined,
+      clearedLevel: undefined,
+      rewards: undefined,
+    };
+
+    mutateAndSave(prev => {
+      const room = GATE_ROOM_TYPES.find(r => r.id === roomId) || GATE_ROOM_TYPES[0];
+      const roomType = room.roomType || 'normal';
+      
+      const normalLv = prev.gateNormalLevel || prev.gateLevel || 1;
+      const bossLv = prev.gateBossLevel || 1;
+      const rewardLv = prev.gateRewardLevel || 1;
+
+      const currentRoomLevel = roomType === 'boss' ? bossLv : (roomType === 'reward' ? rewardLv : normalLv);
+      const totalWaves = getGateRoomTotalWaves(roomType, currentRoomLevel);
+
+      if (wave < totalWaves) {
+        // 次のWaveへ進む（残りHPを引き継ぐ）
+        result.isRoomCleared = false;
+        result.nextWave = wave + 1;
+        return {
+          ...prev,
+          gateActiveRoom: roomId,
+          gateCurrentWave: wave + 1,
+          gatePlayerHp: Math.max(1, remainingHp),
+        };
+      } else {
+        // 間を完全制覇！
+        result.isRoomCleared = true;
+        result.clearedRoomType = roomType;
+        result.clearedLevel = currentRoomLevel;
+
+        const rewardScale = 1 + (currentRoomLevel - 1) * 0.25;
+        const rewardYp = Math.floor(room.rewardYp * rewardScale);
+        const rewardMoney = Math.floor(5000 * rewardScale);
+
+        result.rewards = {
+          yPoints: rewardYp,
+          money: rewardMoney,
+          bonusDrops: room.bonusDrops,
+        };
+
+        const newItems = { ...prev.items };
+        if (room.bonusDrops) {
+          room.bonusDrops.forEach(d => {
+            if (d.name.includes('秘伝書')) newItems.skillBook = (newItems.skillBook || 0) + d.count;
+            if (d.name.includes('大けいけんちだま') || d.name.includes('超けいけんちだま')) newItems.expLarge = (newItems.expLarge || 0) + d.count;
+            if (d.name.includes('神昇の秘石')) newItems.godAscensionStone = (newItems.godAscensionStone || 0) + d.count;
+          });
+        }
+
+        let newNormalLevel = normalLv;
+        let newBossLevel = bossLv;
+        let newRewardLevel = rewardLv;
+        let newBossOpen = prev.gateBossOpen || false;
+        let newRewardOpen = prev.gateRewardOpen || false;
+        let specialAppeared: 'boss' | 'reward' | null = null;
+        let specialLevel: number | undefined = undefined;
+
+        if (roomType === 'normal') {
+          // 通常の間クリア時：通常レベル+1
+          newNormalLevel = normalLv + 1;
+
+          // 確率判定: 10%でご褒美の間、35%で邪神の間
+          const roll = Math.random();
+          if (roll < 0.10) {
+            newRewardOpen = true;
+            specialAppeared = 'reward';
+            specialLevel = rewardLv;
+          } else if (roll < 0.10 + 0.35) { // 0.10 ~ 0.45 (35%)
+            newBossOpen = true;
+            specialAppeared = 'boss';
+            specialLevel = bossLv;
+          }
+        } else if (roomType === 'boss') {
+          // 邪神の間クリア時：邪神レベル+1 & 邪神の間消滅
+          newBossLevel = bossLv + 1;
+          newBossOpen = false;
+        } else if (roomType === 'reward') {
+          // ご褒美の間クリア時：ご褒美レベル+1 & ご褒美の間消滅
+          newRewardLevel = rewardLv + 1;
+          newRewardOpen = false;
+        }
+
+        result.specialRoomAppeared = specialAppeared;
+        result.specialRoomLevel = specialLevel;
+        result.specialAppearance = specialAppeared && specialLevel ? { type: specialAppeared, level: specialLevel } : undefined;
+
+        const maxTotalLevel = Math.max(newNormalLevel, newBossLevel, prev.gateLevel || 1);
+
+        return {
+          ...prev,
+          gateActiveRoom: null,
+          gateCurrentWave: 1,
+          gatePlayerHp: null,
+          gateLevel: maxTotalLevel,
+          gateNormalLevel: newNormalLevel,
+          gateBossLevel: newBossLevel,
+          gateRewardLevel: newRewardLevel,
+          gateBossOpen: newBossOpen,
+          gateRewardOpen: newRewardOpen,
+          yPoints: prev.yPoints + rewardYp,
+          money: prev.money + rewardMoney,
+          items: newItems,
+        };
+      }
+    });
+
+    return result;
+  };
+
+  const consumeKampoItem = () => {
+    let result = { success: false, message: '' };
+    mutateAndSave(prev => {
+      const currentKampo = prev.gateKampo || 0;
+      if (currentKampo <= 0) {
+        result = { success: false, message: '漢方がありません！' };
+        return prev;
+      }
+      result = { success: true, message: '漢方を使用してチームHPを全回復しました！' };
+      return {
+        ...prev,
+        gateKampo: currentKampo - 1,
+        gatePlayerHp: null, // 全回復
+      };
+    });
+    return result;
+  };
+
+  const claimGateReward = (rewardKey: string | number) => {
+    const keyStr = String(rewardKey);
+    let result = { success: false, message: '', reward: undefined as any };
+    mutateAndSave(prev => {
+      const claimed = new Set<string>((prev.gateClaimedRewards || []).map(r => String(r)));
+
+      if (claimed.has(keyStr)) {
+        result = { success: false, message: 'この報酬はすでに受取済みです。', reward: undefined };
+        return prev;
+      }
+
+      const rewardDef = GATE_LEVEL_REWARDS.find(r => r.key === keyStr || String(r.level) === keyStr);
+      if (!rewardDef) {
+        result = { success: false, message: '報酬が存在しません。', reward: undefined };
+        return prev;
+      }
+
+      const roomType = rewardDef.roomType || 'normal';
+      const userLevel = roomType === 'boss'
+        ? (prev.gateBossLevel || 1)
+        : (roomType === 'reward' ? (prev.gateRewardLevel || 1) : (prev.gateNormalLevel || prev.gateLevel || 1));
+
+      if (userLevel <= rewardDef.level) {
+        const roomName = roomType === 'boss' ? '邪神の間' : (roomType === 'reward' ? 'ご褒美の間' : '通常の間');
+        result = { success: false, message: `${roomName} Lv.${rewardDef.level}をクリアすると獲得できます！`, reward: undefined };
+        return prev;
+      }
+
+      claimed.add(keyStr);
+      result = { success: true, message: `Lv.${rewardDef.level}制覇報酬を獲得しました！`, reward: rewardDef };
+
+      const newItems = { ...prev.items };
+      if (rewardDef.specialReward?.name.includes('神昇の秘石')) {
+        newItems.godAscensionStone = (newItems.godAscensionStone || 0) + 1;
+      } else if (rewardDef.specialReward?.name.includes('秘伝書')) {
+        newItems.skillBook = (newItems.skillBook || 0) + 1;
+      } else if (rewardDef.specialReward?.name.includes('大けいけんちだま') || rewardDef.specialReward?.name.includes('超けいけんちだま')) {
+        newItems.expLarge = (newItems.expLarge || 0) + 1;
+      }
+
+      let extraKampo = 0;
+      if (rewardDef.specialReward?.name.includes('漢方')) {
+        extraKampo += 2;
+      }
+
+      const newChars = { ...prev.characters };
+      if (rewardDef.specialReward?.charId && !newChars[rewardDef.specialReward.charId]) {
+        newChars[rewardDef.specialReward.charId] = { level: 1, skillLevel: 1, limitBreak: 0, duplicates: 0 };
+      }
+
+      return {
+        ...prev,
+        yPoints: prev.yPoints + rewardDef.rewardYPoints,
+        gateClaimedRewards: Array.from(claimed) as any,
+        items: newItems,
+        gateKampo: (prev.gateKampo || 0) + extraKampo,
+        characters: newChars,
+      };
+    });
+    return result;
+  };
+
+  const claimFriendKampo = (friendId: string) => {
+    let result = { success: false, message: '' };
+    mutateAndSave(prev => {
+      const claimedFriends = new Set(prev.gateFriendGiftsClaimed || []);
+      if (claimedFriends.has(friendId)) {
+        result = { success: false, message: 'このフレンドからは本日すでに漢方を受け取っています。' };
+        return prev;
+      }
+      claimedFriends.add(friendId);
+      result = { success: true, message: 'フレンドから漢方（HP全回復薬）を1個受け取りました！' };
+      return {
+        ...prev,
+        gateKampo: (prev.gateKampo || 0) + 1,
+        gateFriendGiftsClaimed: Array.from(claimedFriends),
+      };
+    });
+    return result;
+  };
+
+  const resetGateRoom = () => {
+    mutateAndSave(prev => ({
+      ...prev,
+      gateActiveRoom: null,
+      gateCurrentWave: 1,
+      gatePlayerHp: null,
+    }));
+  };
+
+
+  // ---------- 超大型レイドボス（Raid Boss）ハンドラー ----------
+  const damageRaidBoss = (bossId: string, damage: number) => {
+    let result = {
+      currentHp: 0,
+      maxHp: 0,
+      isCleared: false,
+      rewardYPoints: 0,
+      rewardItemName: undefined as string | undefined,
+      rewardItemCount: undefined as number | undefined,
+    };
+
+    mutateAndSave(prev => {
+      const bossDef = RAID_BOSSES.find(b => b.id === bossId) || RAID_BOSSES[0];
+      const raidMap = { ...(prev.raidBossHp || {}) };
+      const currentHp = raidMap[bossId] ?? bossDef.maxHp;
+      const newHp = Math.max(0, currentHp - damage);
+      raidMap[bossId] = newHp;
+
+      result.currentHp = newHp;
+      result.maxHp = bossDef.maxHp;
+
+      const clearedList = new Set(prev.raidClearedBosses || []);
+
+      if (newHp <= 0 && !clearedList.has(bossId)) {
+        // 初討伐！
+        clearedList.add(bossId);
+        result.isCleared = true;
+        result.rewardYPoints = bossDef.rewardYPoints;
+        result.rewardItemName = bossDef.rewardItemName;
+        result.rewardItemCount = bossDef.rewardItemCount;
+
+        const newItems = { ...prev.items };
+        if (bossDef.rewardItemName === '超限界突破の書') {
+          newItems.superLimitBreakBook = (newItems.superLimitBreakBook || 0) + (bossDef.rewardItemCount || 1);
+        } else if (bossDef.rewardItemName === '神昇の秘石') {
+          newItems.godAscensionStone = (newItems.godAscensionStone || 0) + (bossDef.rewardItemCount || 1);
+        } else if (bossDef.rewardItemName === '神ひっさつの秘伝書') {
+          newItems.godSkillBook = (newItems.godSkillBook || 0) + (bossDef.rewardItemCount || 1);
+        }
+
+        const titles = new Set(prev.unlockedTitles || []);
+        if (bossId === 'raid_4') {
+          titles.add('創世の絶対討伐神');
+        }
+
+        return {
+          ...prev,
+          raidBossHp: raidMap,
+          raidClearedBosses: Array.from(clearedList),
+          yPoints: prev.yPoints + bossDef.rewardYPoints,
+          items: newItems,
+          unlockedTitles: Array.from(titles),
+        };
+      }
+
+      return {
+        ...prev,
+        raidBossHp: raidMap,
+      };
+    });
+
+    return result;
   };
 
   const exportRawPlayerData = (): PlayerData => {
@@ -1383,9 +2221,9 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       addYPoints,
       setMoney,
       setYPoints,
-      addSummerMedals,
       addBleachRings,
       unlockCharacter,
+      unlockKDeveloper,
       unlockAllCharacters,
       unlockAllStages,
       unlockEventStages,
@@ -1412,15 +2250,31 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       trackDailyMission,
       claimDailyMission,
       submitScoreAttackScore,
+      setScoreAttackConfiguredTime,
       recordGachaResult,
       redeemSerialCode,
-      convertYPointsToSummerMedals,
       convertYPointsToBleachRings,
       exchangeBleachRing,
       claimScoreMilestone,
       claimWeeklyReward,
+      advanceTowerFloor,
+      setTowerCurrentFloor,
+      claimTowerReward,
+      claimAllTowerRewards,
+      submitSpeedrunTime,
+      openGateRoom,
+      completeGateWave,
+      consumeKampoItem,
+      useKampoItem: consumeKampoItem,
+      claimGateReward,
+
+      claimFriendKampo,
+      resetGateRoom,
+      damageRaidBoss,
+      syncScoreAttackWithFirebase,
       exportRawPlayerData,
       importAllPlayerData,
+
     }}>
       {children}
     </GameContext.Provider>

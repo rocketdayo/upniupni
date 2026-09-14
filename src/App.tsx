@@ -16,12 +16,17 @@ import { BleachStageMap } from './screens/BleachStageMap';
 import { GodAscensionScreen } from './screens/GodAscensionScreen';
 import MissionList from './screens/MissionList';
 import ScoreAttack from './screens/ScoreAttack';
+import { Tower } from './screens/Tower';
+import { Speedrun } from './screens/Speedrun';
+import { GateScreen } from './screens/GateScreen';
+import { RaidBossScreen } from './screens/RaidBossScreen';
+
 import { DebugConsoleScreen } from './screens/NyankoDebugScene';
 import { SerialCodeModal } from './components/SerialCodeModal';
 import { Plus } from 'lucide-react';
 
 const App = () => {
-  const { loading, money, yPoints, summerMedals, bleachRings, items } = useGame();
+  const { loading, money, yPoints, bleachRings, items } = useGame();
   const [isSerialModalOpen, setIsSerialModalOpen] = React.useState(false);
 
   if (loading) {
@@ -84,12 +89,6 @@ const App = () => {
                   <div className="currency-icon" style={{ width: '22px', height: '22px', left: '-5px', background: 'linear-gradient(135deg, #ffd700, #f59e0b)', border: '1px solid #fff', fontSize: '0.8rem' }}>💎</div>
                   <span style={{ fontWeight: '900', color: '#fef08a' }}>{(items?.godAscensionStone || 0).toLocaleString()}</span>
                 </div>
-
-                {/* Summer Medals */}
-                <div className="currency-badge" style={{ display: 'flex', alignItems: 'center', gap: '2px', padding: '3px 8px 3px 22px', fontSize: '0.85rem', flexShrink: 0, background: 'linear-gradient(135deg, #0ea5e9, #0284c7)', borderColor: '#0284c7', color: '#fff' }}>
-                  <div className="currency-icon" style={{ width: '22px', height: '22px', left: '-5px', background: 'linear-gradient(135deg, #fde047, #ca8a04)', border: '1px solid #fff', fontSize: '0.8rem', color: '#000' }}>🏝️</div>
-                  <span style={{ fontWeight: '900' }}>{formatJapaneseNumber(summerMedals || 0)}</span>
-                </div>
               </div>
             </div>
             <SerialCodeModal isOpen={isSerialModalOpen} onClose={() => setIsSerialModalOpen(false)} />
@@ -106,6 +105,11 @@ const App = () => {
                 <Route path="/event/bleach" element={<BleachStageMap />} />
                 <Route path="/missions" element={<MissionList />} />
                 <Route path="/score_attack" element={<ScoreAttack />} />
+                <Route path="/tower" element={<Tower />} />
+                <Route path="/speedrun" element={<Speedrun />} />
+                <Route path="/gate" element={<GateScreen />} />
+                <Route path="/raid" element={<RaidBossScreen />} />
+
               </Routes>
             </div>
           </>

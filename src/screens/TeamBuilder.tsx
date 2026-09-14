@@ -5,13 +5,13 @@ import type { Rank } from '../data/characters';
 import { ArrowLeft, ArrowUpCircle, ChevronLeft, ChevronRight, Check, Star, Zap, Unlock, Award, Sparkles, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { CharacterAvatar } from '../components/CharacterAvatar';
-import { ALL_TITLES } from '../data/titles';
+import { getTitleInfo, getCompleteTitleList } from '../data/titles';
 
 const rankCostMultipliers: Record<Rank, number> = {
-  'ZZ': 50000, "Z'": 30000, 'Z': 10000, 'SSS': 1000, 'SS': 500, 'S': 300, 'A': 200, 'B': 150, 'C': 100, 'D': 80, 'E': 50
+  'K': 100000000, 'UZ+++': 100000, 'ZZ': 50000, "Z'": 30000, 'Z': 10000, 'SSS': 1000, 'SS': 500, 'S': 300, 'A': 200, 'B': 150, 'C': 100, 'D': 80, 'E': 50
 };
 const RANK_COLORS: Record<Rank, string> = {
-  'ZZ': '#ffd700', "Z'": '#ff3399', Z: '#00ffff', SSS: '#ffd700', SS: '#ff22ff', S: '#ff2222', A: '#ffaa00', B: '#ff88bb', C: '#cc6666', D: '#55bb55', E: '#88cc88'
+  'K': '#00ffcc', 'UZ+++': '#ff007f', 'ZZ': '#ffd700', "Z'": '#ff3399', Z: '#00ffff', SSS: '#ffd700', SS: '#ff22ff', S: '#ff2222', A: '#ffaa00', B: '#ff88bb', C: '#cc6666', D: '#55bb55', E: '#88cc88'
 };
 const CHARS_PER_PAGE = 12;
 
@@ -58,6 +58,8 @@ const TeamBuilder = () => {
   const [selectedCharId, setSelectedCharId] = useState<string | null>(null);
   const [showUnlockModal, setShowUnlockModal] = useState(false);
   const [showTitleModal, setShowTitleModal] = useState(false);
+  const [titleModalCategory, setTitleModalCategory] = useState<string>('ALL');
+  const [titleModalStatus, setTitleModalStatus] = useState<'ALL' | 'OWNED' | 'LOCKED'>('ALL');
   const [showRenameModal, setShowRenameModal] = useState(false);
   const [renameTargetIdx, setRenameTargetIdx] = useState<number>(0);
   const [renameInput, setRenameInput] = useState<string>('');
@@ -652,7 +654,7 @@ const TeamBuilder = () => {
           >
             ランク:全
           </button>
-          {(['ZZ', "Z'", 'Z', 'SSS', 'SS', 'S', 'A', 'B', 'C', 'D', 'E'] as Rank[]).map(r => (
+          {(['UZ+++', 'ZZ', "Z'", 'Z', 'SSS', 'SS', 'S', 'A', 'B', 'C', 'D', 'E'] as Rank[]).map(r => (
             <button
               key={r}
               onClick={() => { setSelectedRank(r); setCurrentPage(0); }}
@@ -660,7 +662,7 @@ const TeamBuilder = () => {
                 padding: '2px 8px', borderRadius: '10px', border: 'none', cursor: 'pointer',
                 fontSize: '0.7rem', fontWeight: 800, whiteSpace: 'nowrap',
                 background: selectedRank === r ? (RANK_COLORS[r] || '#ffd700') : 'rgba(255,255,255,0.1)',
-                color: selectedRank === r && (r === 'ZZ' || r === 'SSS' || r === 'Z') ? '#000' : '#fff'
+                color: selectedRank === r && (r === 'ZZ' || r === 'SSS' || r === 'Z' || r === 'UZ+++') ? '#000' : '#fff'
               }}
             >
               {r}
@@ -1038,60 +1040,154 @@ const TeamBuilder = () => {
             </div>
 
             {/* Current selected */}
-            <div style={{ padding: '12px 16px', background: 'rgba(0,0,0,0.3)', borderBottom: '1px solid rgba(255,255,255,0.05)', textAlign: 'center' }}>
-              <div style={{ fontSize: '0.72rem', color: '#aaa', marginBottom: '4px' }}>現在設定中の称号</div>
+            <div style={{ padding: '10px 16px', background: 'rgba(0,0,0,0.3)', borderBottom: '1px solid rgba(255,255,255,0.05)', textAlign: 'center' }}>
+              <div style={{ fontSize: '0.72rem', color: '#aaa', marginBottom: '2px' }}>現在設定中の称号</div>
               <div style={{
-                fontSize: '1.1rem', fontWeight: 950, color: '#fde047',
+                fontSize: '1.05rem', fontWeight: 950, color: '#fde047',
                 letterSpacing: '1px', textShadow: '0 0 10px rgba(234,179,8,0.5)'
               }}>
                 【{selectedTitle}】
               </div>
+              {(() => {
+                const curInfo = getTitleInfo(selectedTitle);
+                return curInfo ? (
+                  <div style={{ fontSize: '0.72rem', color: '#00ffcc', fontWeight: 800, marginTop: '2px' }}>
+                    ⚡ {curInfo.effect.specialDescription}
+                  </div>
+                ) : null;
+              })()}
+            </div>
+
+            {/* Filters */}
+            <div style={{ padding: '8px 12px', background: 'rgba(15, 23, 42, 0.6)', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              {/* Status filter */}
+              <div style={{ display: 'flex', gap: '4px' }}>
+                {[
+                  { id: 'ALL', label: 'すべて' },
+                  { id: 'OWNED', label: '獲得済み' },
+                  { id: 'LOCKED', label: '未開放' }
+                ].map(st => (
+                  <button
+                    key={st.id}
+                    onClick={() => setTitleModalStatus(st.id as any)}
+                    style={{
+                      flex: 1,
+                      padding: '4px 6px',
+                      borderRadius: '8px',
+                      border: 'none',
+                      fontSize: '0.7rem',
+                      fontWeight: 800,
+                      background: titleModalStatus === st.id ? '#3b82f6' : 'rgba(255,255,255,0.08)',
+                      color: '#fff',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    {st.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Category filter */}
+              <div style={{ display: 'flex', gap: '4px', overflowX: 'auto', paddingBottom: '2px', scrollbarWidth: 'thin' }}>
+                {['ALL', '伝説', 'スコアタ', 'イベント', '育成', 'バトル', '基本'].map(cat => (
+                  <button
+                    key={cat}
+                    onClick={() => setTitleModalCategory(cat)}
+                    style={{
+                      padding: '3px 8px',
+                      borderRadius: '8px',
+                      border: 'none',
+                      fontSize: '0.68rem',
+                      fontWeight: 800,
+                      background: titleModalCategory === cat ? '#a855f7' : 'rgba(255,255,255,0.08)',
+                      color: '#fff',
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap'
+                    }}
+                  >
+                    {cat === 'ALL' ? '全カテゴリ' : cat}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* List of titles */}
-            <div style={{ padding: '12px 16px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {ALL_TITLES.map(titleObj => {
-                const isUnlocked = unlockedTitles.includes(titleObj.name);
-                const isSelected = selectedTitle === titleObj.name;
+            <div style={{ padding: '12px 14px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {(() => {
+                const allTitles = getCompleteTitleList(unlockedTitles);
+                const unlockedSet = new Set(unlockedTitles);
+                const rarityOrder: Record<string, number> = { LEGEND: 6, UR: 5, SSR: 4, SR: 3, Rare: 2, Normal: 1 };
 
-                return (
-                  <div
-                    key={titleObj.id}
-                    onClick={() => {
-                      if (isUnlocked) {
-                        setSelectedTitle(titleObj.name);
-                        showToast(`称号を【${titleObj.name}】に変更しました！`);
-                      }
-                    }}
-                    style={{
-                      padding: '10px 12px',
-                      borderRadius: '12px',
-                      border: isSelected ? '2px solid #fde047' : isUnlocked ? '1px solid rgba(255,255,255,0.15)' : '1px dashed rgba(255,255,255,0.1)',
-                      background: isSelected ? 'rgba(234,179,8,0.25)' : isUnlocked ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.3)',
-                      opacity: isUnlocked ? 1 : 0.6,
-                      cursor: isUnlocked ? 'pointer' : 'not-allowed',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      gap: '8px',
-                      transition: 'all 0.2s ease'
-                    }}
-                  >
+                const filtered = allTitles.filter(t => {
+                  const isOwned = unlockedSet.has(t.name) || unlockedSet.has(t.id);
+                  if (titleModalStatus === 'OWNED' && !isOwned) return false;
+                  if (titleModalStatus === 'LOCKED' && isOwned) return false;
+                  if (titleModalCategory !== 'ALL' && t.category !== titleModalCategory) return false;
+                  return true;
+                }).sort((a, b) => {
+                  const aEquipped = selectedTitle === a.name || selectedTitle === a.id;
+                  const bEquipped = selectedTitle === b.name || selectedTitle === b.id;
+                  if (aEquipped) return -1;
+                  if (bEquipped) return 1;
+
+                  const aOwned = unlockedSet.has(a.name) || unlockedSet.has(a.id);
+                  const bOwned = unlockedSet.has(b.name) || unlockedSet.has(b.id);
+                  if (aOwned && !bOwned) return -1;
+                  if (!aOwned && bOwned) return 1;
+
+                  return (rarityOrder[b.rarity] || 1) - (rarityOrder[a.rarity] || 1);
+                });
+
+                if (filtered.length === 0) {
+                  return (
+                    <div style={{ textAlign: 'center', padding: '24px 0', color: '#888', fontSize: '0.8rem' }}>
+                      該当する称号がありません
+                    </div>
+                  );
+                }
+
+                return filtered.map(titleObj => {
+                  const isUnlocked = unlockedSet.has(titleObj.name) || unlockedSet.has(titleObj.id);
+                  const isSelected = selectedTitle === titleObj.name || selectedTitle === titleObj.id;
+
+                  return (
+                    <div
+                      key={titleObj.id || titleObj.name}
+                      onClick={() => {
+                        if (isUnlocked) {
+                          setSelectedTitle(titleObj.name);
+                          showToast(`称号を【${titleObj.name}】に変更しました！`);
+                        }
+                      }}
+                      style={{
+                        padding: '10px 12px',
+                        borderRadius: '12px',
+                        border: isSelected ? '2px solid #fde047' : isUnlocked ? '1px solid rgba(255,255,255,0.15)' : '1px dashed rgba(255,255,255,0.1)',
+                        background: isSelected ? 'rgba(234,179,8,0.25)' : isUnlocked ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.3)',
+                        opacity: isUnlocked ? 1 : 0.6,
+                        cursor: isUnlocked ? 'pointer' : 'not-allowed',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: '8px',
+                        transition: 'all 0.2s ease'
+                      }}
+                    >
                       <div style={{ flex: 1, overflow: 'hidden' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                           <span style={{
-                            fontSize: '0.65rem', padding: '1px 5px', borderRadius: '4px', fontWeight: 900,
-                            backgroundColor: titleObj.color, color: '#000'
+                            fontSize: '0.62rem', padding: '1px 5px', borderRadius: '4px', fontWeight: 900,
+                            backgroundColor: titleObj.color || '#9ca3af', color: '#000'
                           }}>
                             {titleObj.rarity}
                           </span>
-                          <span style={{ fontWeight: 900, fontSize: '0.95rem', color: isUnlocked ? '#fff' : '#888' }}>
+                          <span style={{ fontWeight: 900, fontSize: '0.92rem', color: isUnlocked ? '#fff' : '#888' }}>
                             【{titleObj.name}】
                           </span>
                         </div>
                         {/* アビリティ効果 */}
                         <div style={{ fontSize: '0.73rem', color: '#00ffcc', fontWeight: 800, marginTop: '3px' }}>
-                          ⚡ {titleObj.effect.specialDescription}
+                          ⚡ {titleObj.effect?.specialDescription || '全ステータス強化'}
                         </div>
                         {/* 入手条件 */}
                         <div style={{ fontSize: '0.68rem', color: isUnlocked ? '#aaa' : '#f59e0b', marginTop: '2px' }}>
@@ -1099,32 +1195,44 @@ const TeamBuilder = () => {
                         </div>
                       </div>
 
-                    <div>
-                      {isSelected ? (
-                        <span style={{
-                          fontSize: '0.72rem', background: '#fde047', color: '#000',
-                          padding: '2px 8px', borderRadius: '10px', fontWeight: 900
-                        }}>
-                          着用中
-                        </span>
-                      ) : isUnlocked ? (
-                        <button
-                          style={{
-                            background: 'rgba(255,255,255,0.15)', border: 'none', color: '#fff',
-                            fontSize: '0.75rem', padding: '4px 10px', borderRadius: '8px', fontWeight: 700, cursor: 'pointer'
-                          }}
-                        >
-                          設定
-                        </button>
-                      ) : (
-                        <span style={{ fontSize: '0.7rem', color: '#666', background: 'rgba(0,0,0,0.5)', padding: '2px 6px', borderRadius: '6px' }}>
-                          未開放
-                        </span>
-                      )}
+                      <div>
+                        {isSelected ? (
+                          <span style={{
+                            fontSize: '0.72rem', background: '#fde047', color: '#000',
+                            padding: '2px 8px', borderRadius: '10px', fontWeight: 900
+                          }}>
+                            着用中
+                          </span>
+                        ) : isUnlocked ? (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedTitle(titleObj.name);
+                              showToast(`称号を【${titleObj.name}】に変更しました！`);
+                            }}
+                            style={{
+                              background: 'rgba(0, 200, 83, 0.2)',
+                              border: '1px solid #00c853',
+                              color: '#00ff88',
+                              fontSize: '0.72rem',
+                              padding: '4px 10px',
+                              borderRadius: '8px',
+                              fontWeight: 800,
+                              cursor: 'pointer'
+                            }}
+                          >
+                            装着
+                          </button>
+                        ) : (
+                          <span style={{ fontSize: '0.68rem', color: '#666', background: 'rgba(0,0,0,0.5)', padding: '2px 6px', borderRadius: '6px' }}>
+                            未開放
+                          </span>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                });
+              })()}
             </div>
 
             {/* Footer */}

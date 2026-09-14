@@ -516,5 +516,46 @@ export const SCORE_ATTACK_STAGE: Stage = {
   areaName: 'スコアタ特設ステージ',
 };
 
-export const STAGES = [SCORE_ATTACK_STAGE, ...BLEACH_EVENT_STAGES, ...EVENT_SNOW_STAGES, ...generateStages(200)];
+import { SPEEDRUN_COURSES, getSpeedrunStage } from './speedrunData';
+import { getTowerFloorStage } from './towerData';
+import { getRaidStage } from './raidData';
+import { getGateStage } from './gateData';
+
+export const SPEEDRUN_STAGES: Stage[] = SPEEDRUN_COURSES.map(c => getSpeedrunStage(c.id)!);
+
+export const STAGES = [SCORE_ATTACK_STAGE, ...SPEEDRUN_STAGES, ...BLEACH_EVENT_STAGES, ...EVENT_SNOW_STAGES, ...generateStages(200)];
+
+// 塔の動的階層・レイドボス・きまぐれゲートを含めた安全なステージ取得関数（キャッシュで同一インスタンスを返却）
+const dynamicStageCache = new Map<string, Stage>();
+
+export const getStageById = (id: string | undefined): Stage | undefined => {
+  if (!id) return undefined;
+  if (dynamicStageCache.has(id)) {
+    return dynamicStageCache.get(id);
+  }
+  if (id.startsWith('tower_floor_')) {
+    const floorNum = parseInt(id.replace('tower_floor_', ''), 10);
+    if (!isNaN(floorNum) && floorNum > 0) {
+      const stage = getTowerFloorStage(floorNum);
+      dynamicStageCache.set(id, stage);
+      return stage;
+    }
+  }
+  if (id.startsWith('raid_')) {
+    const stage = getRaidStage(id);
+    dynamicStageCache.set(id, stage);
+    return stage;
+  }
+  if (id.startsWith('gate_')) {
+    const stage = getGateStage(id);
+    dynamicStageCache.set(id, stage);
+    return stage;
+  }
+  const found = STAGES.find(s => s.id === id);
+  if (found) {
+    dynamicStageCache.set(id, found);
+  }
+  return found;
+};
+
 

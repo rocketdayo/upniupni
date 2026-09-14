@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import { useGame } from '../store/GameContext';
 import { CHARACTERS } from '../data/characters';
 import type { Character, Rank } from '../data/characters';
-import { ArrowLeft, Info, ChevronLeft, ChevronRight, History, Crown, Sparkles } from 'lucide-react';
+import { ArrowLeft, Info, ChevronLeft, ChevronRight, History } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { CharacterAvatar } from '../components/CharacterAvatar';
 
@@ -11,64 +11,48 @@ const GACHA_COST_10 = 500;
 const GACHA_COST_100 = 5000;
 const GACHA_COST_500 = 25000;
 
-const RANK_ORDER: Record<Rank, number> = { ZZ: -4, "Z'": -3, Z: -2, SSS: -1, SS: 0, S: 1, A: 2, B: 3, C: 4, D: 5, E: 6 };
+const RANK_ORDER: Record<Rank, number> = { 'K': -6, 'UZ+++': -5, ZZ: -4, "Z'": -3, Z: -2, SSS: -1, SS: 0, S: 1, A: 2, B: 3, C: 4, D: 5, E: 6 };
 const RANK_COLORS: Record<Rank, string> = {
-  ZZ: '#ffd700', "Z'": '#ff3399', Z: '#00ffff', SSS: '#ffd700', SS: '#ff22ff', S: '#ff2222', A: '#ffaa00', B: '#ff88bb', C: '#cc6666', D: '#55bb55', E: '#88cc88'
+  'K': '#00ffcc', 'UZ+++': '#ff007f', ZZ: '#ffd700', "Z'": '#ff3399', Z: '#00ffff', SSS: '#ffd700', SS: '#ff22ff', S: '#ff2222', A: '#ffaa00', B: '#ff88bb', C: '#cc6666', D: '#55bb55', E: '#88cc88'
 };
 
 // 恒常ガシャ (Permanent)
 const normalRankWeights: Record<Rank, number> = {
-  ZZ: 0, "Z'": 0, 'Z': 0, 'SSS': 0, 'SS': 0, 'S': 2, 'A': 8, 'B': 20, 'C': 30, 'D': 25, 'E': 15
+  'K': 0, 'UZ+++': 0, ZZ: 0, "Z'": 0, 'Z': 0, 'SSS': 0.5, 'SS': 2.5, 'S': 7, 'A': 10, 'B': 20, 'C': 30, 'D': 18, 'E': 12
 };
 
-// イベントガシャ (Event)
+// イベントガシャ (Event): Z=0.5% (ユーザー指定), 合計100.0%
 const eventRankWeights: Record<Rank, number> = {
-  ZZ: 0, "Z'": 0, 'Z': 0, 'SSS': 0, 'SS': 1, 'S': 5, 'A': 10, 'B': 20, 'C': 24, 'D': 25, 'E': 15
-};
-
-// 超高級ガシャ (Ultra Luxury): 100連固定 / 天井なし / 0.2%で新キャラSSS1体
-const ultraLuxuryRankWeights: Record<Rank, number> = {
+  'K': 0,
+  'UZ+++': 0,
   ZZ: 0,
   "Z'": 0,
-  'Z': 0,
-  'SSS': 0.2,  // 0.2%
-  'SS': 2.0,   // 2.0%
-  'S': 8.0,    // 8.0%
-  'A': 20.0,   // 20.0%
-  'B': 30.0,   // 30.0%
-  'C': 20.0,   // 20.0%
-  'D': 12.8,   // 12.8%
+  'Z': 0.5,    // 0.5%
+  'SSS': 2.0,  // 2.0%
+  'SS': 6.0,   // 6.0%
+  'S': 12.0,   // 12.0%
+  'A': 18.0,   // 18.0%
+  'B': 21.5,   // 21.5%
+  'C': 18.0,   // 18.0%
+  'D': 15.0,   // 15.0%
   'E': 7.0     // 7.0%
-};
-
-// 超ウルトラガシャ (Ultra Super): 100連固定 / 天井なし / 0.2%で新キャラZ
-const ultraSuperRankWeights: Record<Rank, number> = {
-  ZZ: 0,
-  "Z'": 0,
-  'Z': 0.2,    // 0.2% (新キャラZ)
-  'SSS': 1.0,  // 1.0% (User specified SSS as 1%)
-  'SS': 8.0,   // 8.0%
-  'S': 15.0,   // 15.0%
-  'A': 25.0,   // 25.0%
-  'B': 25.0,   // 25.0%
-  'C': 15.0,   // 15.0%
-  'D': 10.8,   // 10.8%
-  'E': 0.0     // 0.0%
 };
 
 // ブリーチコラボガシャ (BLEACH Espada Gacha): 高価値ブリーチリング用 (Z: 1.0%, Z': 0.1%, SSS: 18.9%, SS: 39.5%, S: 40.5%)
 const bleachRankWeights: Record<Rank, number> = {
+  'K': 0,
+  'UZ+++': 0,
   ZZ: 0,
   "Z'": 0.1,   // 0.1% (十刃 & 崩玉藍染)
-  'Z': 1.0,    // 1.0% (新キャラZ)
+  'Z': 1.0,    // 1.0%
   'SSS': 18.9, // 18.9%
   'SS': 39.5,  // 39.5%
   'S': 40.5,   // 40.5%
   'A': 0, 'B': 0, 'C': 0, 'D': 0, 'E': 0
 };
 
-type GachaType = 'normal' | 'event' | 'ultra_luxury' | 'ultra_super' | 'bleach';
-const GACHA_TYPES: GachaType[] = ['bleach', 'normal', 'event', 'ultra_luxury', 'ultra_super'];
+type GachaType = 'bleach' | 'event' | 'normal';
+const GACHA_TYPES: GachaType[] = ['bleach', 'event', 'normal'];
 
 interface GachaCapsuleItem {
   id: number;
@@ -93,7 +77,7 @@ const CAPSULE_POSITIONS_10 = [
 ];
 
 const Gacha = () => {
-  const { yPoints, addYPoints, summerMedals, addSummerMedals, bleachRings, addBleachRings, convertYPointsToSummerMedals, convertYPointsToBleachRings, unlockCharacter, trackMission, pityCount, stepUpCount, gachaHistory, recordGachaResult } = useGame();
+  const { yPoints, addYPoints, bleachRings, addBleachRings, convertYPointsToBleachRings, unlockCharacter, trackMission, pityCount, stepUpCount, gachaHistory, recordGachaResult } = useGame();
   const navigate = useNavigate();
   const [results, setResults] = useState<Character[] | null>(null);
   const [capsuleStageItems, setCapsuleStageItems] = useState<GachaCapsuleItem[] | null>(null);
@@ -107,32 +91,23 @@ const Gacha = () => {
     let times = timesInput;
     let cost = GACHA_COST_1;
     const isBleach = currentGacha === 'bleach';
-    const isSummerCurrency = currentGacha === 'ultra_luxury' || currentGacha === 'ultra_super';
 
     if (isBleach) {
       if (times === 1) cost = 5;
       else if (times === 10) cost = 50;
       else cost = 500;
-    } else if (currentGacha === 'ultra_super') {
-      times = 100; // 100連固定
-      cost = 3000; // 3,000 サマーコイン
-    } else if (currentGacha === 'ultra_luxury') {
-      times = 100; // 100連固定
-      cost = 500; // 500 サマーコイン
     } else {
       if (times === 10) cost = GACHA_COST_10;
       if (times === 100) cost = GACHA_COST_100;
       if (times === 500) cost = GACHA_COST_500;
     }
 
-    const availableCurrency = isBleach ? (bleachRings || 0) : isSummerCurrency ? (summerMedals || 0) : yPoints;
+    const availableCurrency = isBleach ? (bleachRings || 0) : yPoints;
     if (availableCurrency < cost || isPulling) return;
     
     setIsPulling(true);
     if (isBleach) {
       addBleachRings(-cost);
-    } else if (isSummerCurrency) {
-      addSummerMedals(-cost);
     } else {
       addYPoints(-cost);
     }
@@ -142,21 +117,17 @@ const Gacha = () => {
       const pulledChars: Character[] = [];
       const weights = isBleach
         ? { ...bleachRankWeights }
-        : currentGacha === 'ultra_super'
-        ? { ...ultraSuperRankWeights }
-        : currentGacha === 'ultra_luxury'
-        ? { ...ultraLuxuryRankWeights }
         : { ...(currentGacha === 'event' ? eventRankWeights : normalRankWeights) };
       
       // Step Up Logic (恒常・イベントガシャ用)
-      if (currentGacha !== 'ultra_luxury' && currentGacha !== 'ultra_super' && !isBleach) {
+      if (!isBleach) {
         const stepUpBonus = Math.floor((stepUpCount || 0) / 10);
         if (weights['SS'] !== undefined) weights['SS'] += stepUpBonus * 0.5;
         if (weights['S'] !== undefined) weights['S'] += stepUpBonus * 1.5;
       }
 
       let newPityCount = pityCount ?? 100;
-      let newStepUpCount = (stepUpCount ?? 0) + (!isSummerCurrency && !isBleach ? times : 0);
+      let newStepUpCount = (stepUpCount ?? 0) + (!isBleach ? times : 0);
 
       const isBleachCharacter = (c: { id?: string; name: string }) => 
         (c.id && c.id.includes('bleach')) || 
@@ -165,8 +136,8 @@ const Gacha = () => {
       for (let i = 0; i < times; i++) {
         let pulledRank: Rank = 'E';
 
-        if (isBleach || isSummerCurrency) {
-          // 天井なし。確率計算
+        if (isBleach) {
+          // ブリーチガシャ: 固定確率抽選
           let rand = Math.random() * 100;
           const ranks: Rank[] = ["Z'", 'Z', 'SSS', 'SS', 'S', 'A', 'B', 'C', 'D', 'E'];
           for (const r of ranks) {
@@ -178,10 +149,13 @@ const Gacha = () => {
             rand -= w;
           }
         } else {
-          // 通常/イベントガシャ: PITY適用
+          // 通常/イベントガシャ: PITY適用 (100回でSSS以上確定)
           newPityCount--;
           if (newPityCount <= 0) {
-            pulledRank = 'SS'; // PITY GUARANTEE
+            // SSS以上確定: Z (20%) または SSS (80%)
+            pulledRank = Math.random() < 0.2 ? 'Z' : 'SSS';
+            newPityCount = 100;
+            newStepUpCount = 0;
           } else {
             let rand = Math.random() * 100;
             const ranks: Rank[] = ["Z'", 'Z', 'SSS', 'SS', 'S', 'A', 'B', 'C', 'D', 'E'];
@@ -194,10 +168,8 @@ const Gacha = () => {
               rand -= w;
             }
           }
-          
-          if (pulledRank === 'SS' && weights['SS'] === 0) pulledRank = 'S';
 
-          if (pulledRank === 'SS') {
+          if (['Z', 'SSS'].includes(pulledRank)) {
             newPityCount = 100;
             newStepUpCount = 0;
           }
@@ -292,25 +264,22 @@ const Gacha = () => {
     if (touchStartX.current === null) return;
     const diff = touchStartX.current - e.changedTouches[0].clientX;
     if (diff > 40) {
-      if (currentGacha === 'bleach') setCurrentGacha('normal');
-      else if (currentGacha === 'normal') setCurrentGacha('event');
-      else if (currentGacha === 'event') setCurrentGacha('ultra_luxury');
-      else if (currentGacha === 'ultra_luxury') setCurrentGacha('ultra_super');
-    } else if (diff < -40) {
-      if (currentGacha === 'ultra_super') setCurrentGacha('ultra_luxury');
-      else if (currentGacha === 'ultra_luxury') setCurrentGacha('event');
+      if (currentGacha === 'bleach') setCurrentGacha('event');
       else if (currentGacha === 'event') setCurrentGacha('normal');
       else if (currentGacha === 'normal') setCurrentGacha('bleach');
+    } else if (diff < -40) {
+      if (currentGacha === 'normal') setCurrentGacha('event');
+      else if (currentGacha === 'event') setCurrentGacha('bleach');
+      else if (currentGacha === 'bleach') setCurrentGacha('normal');
     }
     touchStartX.current = null;
   };
 
   const GachaButton = ({ times, cost, color }: { times: number, cost: number, color?: string }) => {
     const isBleach = currentGacha === 'bleach';
-    const isSummerCurrency = currentGacha === 'ultra_luxury' || currentGacha === 'ultra_super';
-    const currencyLabel = isBleach ? '個' : isSummerCurrency ? '枚' : ' Ypt';
-    const currencyIcon = isBleach ? '💍' : isSummerCurrency ? '🏝️' : <div className="currency-icon y-point-icon" style={{width: 14, height: 14, fontSize: '0.6rem'}}>y</div>;
-    const canAfford = isBleach ? (bleachRings || 0) >= cost : isSummerCurrency ? (summerMedals || 0) >= cost : yPoints >= cost;
+    const currencyLabel = isBleach ? '個' : ' Ypt';
+    const currencyIcon = isBleach ? '💍' : <div className="currency-icon y-point-icon" style={{width: 14, height: 14, fontSize: '0.6rem'}}>y</div>;
+    const canAfford = isBleach ? (bleachRings || 0) >= cost : yPoints >= cost;
 
     return (
       <button 
@@ -336,10 +305,6 @@ const Gacha = () => {
 
   const activeWeights = currentGacha === 'bleach'
     ? bleachRankWeights
-    : currentGacha === 'ultra_super'
-    ? ultraSuperRankWeights
-    : currentGacha === 'ultra_luxury'
-    ? ultraLuxuryRankWeights
     : (currentGacha === 'event' ? eventRankWeights : normalRankWeights);
 
   return (
@@ -347,23 +312,23 @@ const Gacha = () => {
       {/* Rates Modal */}
       {showRates && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div className="glass-panel" style={{ width: '85%', maxWidth: '400px', padding: '20px', position: 'relative', border: `2px solid ${currentGacha === 'ultra_super' ? '#00ffff' : '#ffd700'}` }}>
+          <div className="glass-panel" style={{ width: '85%', maxWidth: '400px', padding: '20px', position: 'relative', border: `2px solid ${currentGacha === 'bleach' ? '#ff3399' : '#ffd700'}` }}>
             <button onClick={() => setShowRates(false)} style={{ position: 'absolute', top: 10, right: 10, background: 'none', border: 'none', color: 'white', cursor: 'pointer', fontSize: '1.2rem' }}>
               ✕
             </button>
-            <h3 style={{ margin: '0 0 15px', textAlign: 'center', color: currentGacha === 'ultra_super' ? '#00ffff' : currentGacha === 'bleach' ? '#ff3399' : '#ffd700' }}>
-              {currentGacha === 'ultra_super' ? '🌌 超ウルトラガシャ' : currentGacha === 'ultra_luxury' ? '👑 超高級ガシャ' : currentGacha === 'event' ? 'イベントガシャ' : currentGacha === 'bleach' ? '⚔️ ブリーチコラボガシャ' : '恒常ガシャ'} 提供割合
+            <h3 style={{ margin: '0 0 15px', textAlign: 'center', color: currentGacha === 'bleach' ? '#ff3399' : '#ffd700' }}>
+              {currentGacha === 'event' ? 'イベントガシャ' : currentGacha === 'bleach' ? '⚔️ ブリーチコラボガシャ' : '恒常ガシャ'} 提供割合
             </h3>
             <div style={{ display: 'grid', gap: '8px' }}>
               {Object.entries(activeWeights)
                 .sort((a, b) => RANK_ORDER[a[0] as Rank] - RANK_ORDER[b[0] as Rank])
                 .map(([rank, weight]) => {
                   const total = Object.values(activeWeights).reduce((a, b) => a + b, 0);
-                  const isNoPity = currentGacha === 'ultra_luxury' || currentGacha === 'ultra_super';
-                  const stepUpBonus = !isNoPity ? Math.floor((stepUpCount || 0) / 10) : 0;
+                  const isBleach = currentGacha === 'bleach';
+                  const stepUpBonus = !isBleach ? Math.floor((stepUpCount || 0) / 10) : 0;
                   let finalWeight = weight;
-                  if (rank === 'SS' && !isNoPity) finalWeight += stepUpBonus * 0.5;
-                  if (rank === 'S' && !isNoPity) finalWeight += stepUpBonus * 1.5;
+                  if (rank === 'SS' && !isBleach) finalWeight += stepUpBonus * 0.5;
+                  if (rank === 'S' && !isBleach) finalWeight += stepUpBonus * 1.5;
                   
                   const isZ = rank === 'Z';
                   const isZPrime = rank === "Z'";
@@ -388,21 +353,13 @@ const Gacha = () => {
                     }}>
                       <span className="rank-badge" style={{ backgroundColor: RANK_COLORS[rank as Rank], minWidth: '36px', textAlign: 'center', fontWeight: 'bold' }}>{rank}</span>
                       <span style={{ fontWeight: 'bold', color: isZ ? '#00ffff' : isZPrime ? '#ff3399' : isSSS ? '#ffd700' : '#fff' }}>
-                        {pct}% {isZ ? '(超越新キャラZ降臨！)' : isZPrime ? '(十刃＆藍染 Z\'降臨！)' : isSSS ? '(新キャラSSS降臨！)' : ''}
+                        {pct}% {isZPrime ? '(十刃＆藍染 Z\'降臨！)' : ''}
                       </span>
                     </div>
                   );
                 })}
             </div>
-            {currentGacha === 'ultra_super' ? (
-              <p style={{ textAlign: 'center', fontSize: '0.8rem', color: '#00ffff', marginTop: '15px', fontWeight: 'bold' }}>
-                ※100連固定 (3,000 サマーコイン) / 天井なし固定確率抽選です
-              </p>
-            ) : currentGacha === 'ultra_luxury' ? (
-              <p style={{ textAlign: 'center', fontSize: '0.8rem', color: '#ffd700', marginTop: '15px', fontWeight: 'bold' }}>
-                ※100連固定 (500 サマーコイン) / 天井なし固定確率抽選です
-              </p>
-            ) : stepUpCount && stepUpCount >= 10 ? (
+            {stepUpCount && stepUpCount >= 10 ? (
               <p style={{ textAlign: 'center', fontSize: '0.8rem', color: '#ff2255', marginTop: '15px' }}>※ステップアップボーナス適用中の確率です</p>
             ) : null}
           </div>
@@ -466,7 +423,7 @@ const Gacha = () => {
               width: '300px',
               height: '300px',
               borderRadius: '50%',
-              background: currentGacha === 'ultra_luxury' || currentGacha === 'bleach'
+              background: currentGacha === 'bleach'
                 ? 'radial-gradient(circle, rgba(255, 51, 153, 0.4) 0%, rgba(0,0,0,0) 70%)'
                 : 'radial-gradient(circle, rgba(255, 170, 0, 0.4) 0%, rgba(0,0,0,0) 70%)',
               animation: 'pulse 0.8s ease-in-out infinite'
@@ -476,7 +433,7 @@ const Gacha = () => {
             <div className="animate-shake" style={{
               width: '260px',
               height: '330px',
-              background: currentGacha === 'ultra_luxury' || currentGacha === 'bleach'
+              background: currentGacha === 'bleach'
                 ? 'linear-gradient(180deg, #ff3399 0%, #881337 50%, #1e1b4b 100%)'
                 : 'linear-gradient(180deg, #ffaa00 0%, #bb4400 50%, #224422 100%)',
               borderRadius: '24px 24px 16px 16px',
@@ -749,8 +706,8 @@ const Gacha = () => {
           </div>
         ) : results ? (
           <div style={{ flex: 1, overflowY: 'auto', textAlign: 'center', width: '100%', padding: '30px 0 40px' }}>
-            <h2 className="text-outline" style={{ marginBottom: '16px', fontSize: '2rem', color: results.some(r => r.rank === "Z'") ? '#ff3399' : results.some(r => r.rank === 'Z') ? '#00ffff' : results.some(r => r.rank === 'SSS') ? '#ffd700' : '#fff' }}>
-              {results.some(r => r.rank === "Z'") ? '⚔️ 虚圏十刃 Z\' 降臨！！！ ⚔️' : results.some(r => r.rank === 'Z') ? '✨ 超越神 Z 降臨！！！ ✨' : results.some(r => r.rank === 'SSS') ? '✨ SSS降臨！！！ ✨' : 'ガシャ結果！'}
+            <h2 className="text-outline" style={{ marginBottom: '16px', fontSize: '2rem', color: results.some(r => r.rank === "Z'") ? '#ff3399' : '#fff' }}>
+              {results.some(r => r.rank === "Z'") ? '⚔️ 虚圏十刃 Z\' 降臨！！！ ⚔️' : 'ガシャ結果！'}
             </h2>
             
             {/* Z'が出た場合の十刃降臨超豪華巨大ピックアップ表示 */}
@@ -818,225 +775,6 @@ const Gacha = () => {
                         </div>
                         <div style={{ fontSize: '0.75rem', fontWeight: 900, color: '#00ffff', background: 'rgba(0,0,0,0.8)', padding: '3px 10px', borderRadius: '10px', marginTop: '4px', border: '1px solid #d946ef' }}>
                           ⚡ HP・ATK Zの2倍 ＆ イベント攻撃力50倍超特効！
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* Z'が出た場合の十刃降臨超豪華巨大ピックアップ表示 */}
-            {results.filter(r => r.rank === "Z'").length > 0 && (
-              <div style={{
-                width: '92%',
-                maxWidth: '420px',
-                margin: '0 auto 24px',
-                background: '#881337',
-                border: '3px solid #ff3399',
-                borderRadius: '16px',
-                padding: '16px 12px',
-                boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                position: 'relative'
-              }}>
-                <div style={{
-                  background: '#ff3399',
-                  color: '#ffffff',
-                  fontSize: '0.9rem',
-                  fontWeight: 900,
-                  padding: '4px 18px',
-                  borderRadius: '20px',
-                  border: '1px solid #fff',
-                  marginBottom: '12px'
-                }}>
-                  ⚔️ 虚圏十刃・崩玉藍染 Z' 降臨！ ⚔️
-                </div>
-
-                <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', justifyContent: 'center' }}>
-                  {Array.from(new Set(results.filter(r => r.rank === "Z'").map(c => c.id))).map(zPrimeId => {
-                    const zPrimeChar = results.find(c => c.id === zPrimeId)!;
-                    const count = results.filter(c => c.id === zPrimeId).length;
-                    return (
-                      <div key={zPrimeId} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                        <div style={{
-                          position: 'relative',
-                          padding: '4px',
-                          borderRadius: '50%',
-                          background: '#4c0519',
-                          border: '2px solid #ff3399'
-                        }}>
-                          <CharacterAvatar character={zPrimeChar} size={120} />
-                          {count > 1 && (
-                            <div style={{
-                              position: 'absolute',
-                              bottom: '2px',
-                              right: '2px',
-                              background: '#db2777',
-                              color: '#fff',
-                              fontSize: '0.85rem',
-                              fontWeight: 900,
-                              padding: '2px 8px',
-                              borderRadius: '10px',
-                              border: '1px solid #fff'
-                            }}>
-                              x{count}
-                            </div>
-                          )}
-                        </div>
-                        <div style={{ fontSize: '1.2rem', fontWeight: 900, color: '#fbcfe8', marginTop: '8px' }}>
-                          {zPrimeChar.name}
-                        </div>
-                        <div style={{ fontSize: '0.75rem', fontWeight: 900, color: '#ff3399', background: 'rgba(0,0,0,0.8)', padding: '3px 10px', borderRadius: '10px', marginTop: '4px', border: '1px solid #ff3399' }}>
-                          ⚡ 虚圏イベント特効 ＆ 圧倒的超強力必殺技！
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-            
-            {/* Zが出た場合の超々々豪華巨大ピックアップ表示 */}
-            {results.filter(r => r.rank === 'Z').length > 0 && (
-              <div style={{
-                width: '92%',
-                maxWidth: '420px',
-                margin: '0 auto 24px',
-                background: '#111827',
-                border: '3px solid #00ffff',
-                borderRadius: '16px',
-                padding: '16px 12px',
-                boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                position: 'relative'
-              }}>
-                <div style={{
-                  background: '#00ffff',
-                  color: '#000',
-                  fontSize: '0.9rem',
-                  fontWeight: 900,
-                  padding: '4px 18px',
-                  borderRadius: '20px',
-                  border: '1px solid #fff',
-                  marginBottom: '12px'
-                }}>
-                  🌀 超越神化 Z 降臨！ 🌀
-                </div>
-
-                <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', justifyContent: 'center' }}>
-                  {Array.from(new Set(results.filter(r => r.rank === 'Z').map(c => c.id))).map(zId => {
-                    const zChar = results.find(c => c.id === zId)!;
-                    const count = results.filter(c => c.id === zId).length;
-                    return (
-                      <div key={zId} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                        <div style={{
-                          position: 'relative',
-                          padding: '4px',
-                          borderRadius: '50%',
-                          background: '#042f2e',
-                          border: '2px solid #00ffff'
-                        }}>
-                          <CharacterAvatar character={zChar} size={120} />
-                          {count > 1 && (
-                            <div style={{
-                              position: 'absolute',
-                              bottom: '2px',
-                              right: '2px',
-                              background: '#0d9488',
-                              color: '#fff',
-                              fontSize: '0.85rem',
-                              fontWeight: 900,
-                              padding: '2px 8px',
-                              borderRadius: '10px',
-                              border: '1px solid #fff'
-                            }}>
-                              x{count}
-                            </div>
-                          )}
-                        </div>
-                        <div style={{ fontSize: '1.2rem', fontWeight: 900, color: '#00ffff', marginTop: '8px' }}>
-                          {zChar.name}
-                        </div>
-                        <div style={{ fontSize: '0.75rem', fontWeight: 900, color: '#a5f3fc', background: 'rgba(0,0,0,0.8)', padding: '3px 10px', borderRadius: '10px', marginTop: '4px', border: '1px solid #00ffff' }}>
-                          ⚡ HP・ATK SSSの10倍 ＆ 攻撃力30倍超特効！
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* SSSが出た場合の超豪華巨大ピックアップ表示（ブリーチコラボガチャ以外） */}
-            {currentGacha !== 'bleach' && results.filter(r => r.rank === 'SSS').length > 0 && results.filter(r => r.rank === 'Z').length === 0 && currentGacha !== 'ultra_super' && (
-              <div style={{
-                width: '92%',
-                maxWidth: '420px',
-                margin: '0 auto 24px',
-                background: '#3b0764',
-                border: '3px solid #ffd700',
-                borderRadius: '16px',
-                padding: '16px 12px',
-                boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                position: 'relative'
-              }}>
-                <div style={{
-                  background: '#ffd700',
-                  color: '#000',
-                  fontSize: '0.9rem',
-                  fontWeight: 900,
-                  padding: '4px 18px',
-                  borderRadius: '20px',
-                  border: '1px solid #fff',
-                  marginBottom: '12px'
-                }}>
-                  👑 究極超激レア SSS 降臨！ 👑
-                </div>
-
-                <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', justifyContent: 'center' }}>
-                  {Array.from(new Set(results.filter(r => r.rank === 'SSS').map(c => c.id))).map(sssId => {
-                    const sssChar = results.find(c => c.id === sssId)!;
-                    const count = results.filter(c => c.id === sssId).length;
-                    return (
-                      <div key={sssId} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                        <div style={{
-                          position: 'relative',
-                          padding: '4px',
-                          borderRadius: '50%',
-                          background: '#581c87',
-                          border: '2px solid #ffd700'
-                        }}>
-                          <CharacterAvatar character={sssChar} size={120} />
-                          {count > 1 && (
-                            <div style={{
-                              position: 'absolute',
-                              bottom: '2px',
-                              right: '2px',
-                              background: '#ff007f',
-                              color: '#fff',
-                              fontSize: '0.85rem',
-                              fontWeight: 900,
-                              padding: '2px 8px',
-                              borderRadius: '10px',
-                              border: '1px solid #fff'
-                            }}>
-                              x{count}
-                            </div>
-                          )}
-                        </div>
-                        <div style={{ fontSize: '1.2rem', fontWeight: 900, color: '#ffd700', marginTop: '8px' }}>
-                          {sssChar.name}
-                        </div>
-                        <div style={{ fontSize: '0.75rem', fontWeight: 900, color: '#fef08a', background: 'rgba(0,0,0,0.8)', padding: '3px 10px', borderRadius: '10px', marginTop: '4px', border: '1px solid #ffd700' }}>
-                          ⚡ 攻撃力10倍 イベント爆発特効！
                         </div>
                       </div>
                     );
@@ -1170,54 +908,6 @@ const Gacha = () => {
                   <div style={{ position: 'absolute', bottom: 30, left: '50%', transform: 'translateX(-50%)', width: 50, height: 50, background: '#550011', borderRadius: '50%', border: '4px solid #333' }}></div>
                 </div>
               )}
-
-              {currentGacha === 'ultra_luxury' && (
-                <div className="animate-pulse" style={{ 
-                  width: '240px', height: '260px', background: 'linear-gradient(180deg, #ffd700 0%, #d97706 40%, #7f1d1d 100%)', borderRadius: '20px 20px 10px 10px', border: '6px solid #ffd700', boxShadow: '0 15px 0 rgba(0,0,0,0.4), 0 0 35px rgba(255,215,0,0.8)', position: 'relative', marginTop: '10px'
-                }}>
-                  <div style={{ 
-                    position: 'absolute', top: '-25px', left: '50%', transform: 'translateX(-50%)',
-                    background: 'linear-gradient(135deg, #ffd700, #ff007f)', border: '3px solid #ffffff',
-                    padding: '5px 16px', borderRadius: '20px', color: '#000', fontWeight: 900, whiteSpace: 'nowrap',
-                    boxShadow: '0 4px 10px rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', gap: '4px'
-                  }}>
-                    <Crown size={18} fill="#000" color="#000" />
-                    超高級ガシャ
-                  </div>
-                  <div style={{ position: 'absolute', top: 30, left: 15, right: 15, height: 110, background: 'rgba(0,0,0,0.3)', borderRadius: 10, border: '3px solid #ffd700', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                    <div style={{ fontSize: '2.8rem', lineHeight: 1 }}>👑✨</div>
-                    <div style={{ fontSize: '0.75rem', color: '#ffd700', fontWeight: 'bold', marginTop: '4px' }}>【100連固定】500 サマーコイン</div>
-                    <div style={{ fontSize: '0.7rem', color: '#fff', fontWeight: '900' }}>0.2%で新キャラSSS降臨！</div>
-                  </div>
-                  <div style={{ position: 'absolute', bottom: 25, left: '50%', transform: 'translateX(-50%)', width: 50, height: 50, background: '#4c0519', borderRadius: '50%', border: '4px solid #ffd700', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <span style={{ fontSize: '1.2rem' }}>💎</span>
-                  </div>
-                </div>
-              )}
-
-              {currentGacha === 'ultra_super' && (
-                <div className="animate-pulse" style={{ 
-                  width: '240px', height: '260px', background: 'linear-gradient(180deg, #00ffff 0%, #0d9488 40%, #111827 100%)', borderRadius: '20px 20px 10px 10px', border: '6px solid #00ffff', boxShadow: '0 15px 0 rgba(0,0,0,0.4), 0 0 35px rgba(0,255,255,0.8)', position: 'relative', marginTop: '10px'
-                }}>
-                  <div style={{ 
-                    position: 'absolute', top: '-25px', left: '50%', transform: 'translateX(-50%)',
-                    background: 'linear-gradient(135deg, #00ffff, #0d9488)', border: '3px solid #ffffff',
-                    padding: '5px 16px', borderRadius: '20px', color: '#000', fontWeight: 900, whiteSpace: 'nowrap',
-                    boxShadow: '0 4px 10px rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', gap: '4px'
-                  }}>
-                    <Sparkles size={18} fill="#000" color="#000" />
-                    超ウルトラガシャ
-                  </div>
-                  <div style={{ position: 'absolute', top: 30, left: 15, right: 15, height: 110, background: 'rgba(0,0,0,0.4)', borderRadius: 10, border: '3px solid #00ffff', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                    <div style={{ fontSize: '2.8rem', lineHeight: 1 }}>🌀🌌⚡</div>
-                    <div style={{ fontSize: '0.72rem', color: '#00ffff', fontWeight: 'bold', marginTop: '4px' }}>【100連固定】3,000 サマーコイン</div>
-                    <div style={{ fontSize: '0.7rem', color: '#fff', fontWeight: '900' }}>0.2%で超越新キャラZ降臨！</div>
-                  </div>
-                  <div style={{ position: 'absolute', bottom: 25, left: '50%', transform: 'translateX(-50%)', width: 50, height: 50, background: '#111827', borderRadius: '50%', border: '4px solid #00ffff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <span style={{ fontSize: '1.2rem' }}>🌀</span>
-                  </div>
-                </div>
-              )}
             </div>
 
             {/* Pagination dots */}
@@ -1228,7 +918,7 @@ const Gacha = () => {
                   onClick={() => setCurrentGacha(type)} 
                   style={{ 
                     width: 12, height: 12, borderRadius: '50%', 
-                    background: currentGacha === type ? (type === 'bleach' ? '#e11d48' : type === 'ultra_luxury' ? '#ffd700' : type === 'ultra_super' ? '#00ffff' : '#fff') : 'rgba(255,255,255,0.3)', 
+                    background: currentGacha === type ? (type === 'bleach' ? '#e11d48' : type === 'event' ? '#ff3366' : '#fff') : 'rgba(255,255,255,0.3)', 
                     border: '2px solid rgba(0,0,0,0.3)', cursor: 'pointer' 
                   }} 
                 />
@@ -1239,20 +929,12 @@ const Gacha = () => {
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px', marginBottom: '15px' }}>
               {currentGacha === 'bleach' ? (
                 <div style={{ background: 'linear-gradient(90deg, rgba(225,29,72,0.9), rgba(147,51,234,0.9))', padding: '6px 16px', borderRadius: '20px', fontSize: '0.82rem', color: '#fff', fontWeight: '900', border: '1px solid #00ffff', boxShadow: '0 0 10px rgba(225,29,72,0.5)' }}>
-                  ⚔️ ブリーチガシャ: ランクZ【崩玉藍染】&【十刃】全降臨！(1連=💍5個)
-                </div>
-              ) : currentGacha === 'ultra_super' ? (
-                <div style={{ background: 'linear-gradient(90deg, rgba(0,255,255,0.9), rgba(13,148,136,0.9))', padding: '6px 16px', borderRadius: '20px', fontSize: '0.82rem', color: '#000', fontWeight: '900', border: '1px solid #fff', boxShadow: '0 0 10px rgba(0,255,255,0.5)' }}>
-                  🌀 超ウルトラガシャ: 天井なし（100連3,000 サマーコイン / 0.2%で超越新キャラZ！）
-                </div>
-              ) : currentGacha === 'ultra_luxury' ? (
-                <div style={{ background: 'linear-gradient(90deg, rgba(255,215,0,0.9), rgba(255,0,128,0.9))', padding: '6px 16px', borderRadius: '20px', fontSize: '0.82rem', color: '#000', fontWeight: '900', border: '1px solid #fff', boxShadow: '0 0 10px rgba(255,215,0,0.5)' }}>
-                  👑 超高級ガシャ: 天井なし（100連500 サマーコイン / 0.2%で新キャラSSS！）
+                  ⚔️ ブリーチガシャ: ランクZ'【崩玉藍染】&【十刃】全降臨！(1連=💍5個)
                 </div>
               ) : (
                 <>
                   <div style={{ background: 'rgba(255,255,255,0.2)', padding: '5px 15px', borderRadius: '20px', fontSize: '0.8rem', color: '#ffcc00', border: '1px solid rgba(255,255,255,0.3)' }}>
-                    SS確定まで あと <strong style={{ fontSize: '1.2rem', color: '#fff' }}>{pityCount ?? 100}</strong> 回
+                    SSS以上確定まで あと <strong style={{ fontSize: '1.2rem', color: '#fff' }}>{pityCount ?? 100}</strong> 回
                   </div>
                   {currentGacha === 'event' && (stepUpCount ?? 0) >= 10 && (
                     <div style={{ background: 'rgba(255,34,85,0.8)', padding: '4px 10px', borderRadius: '15px', fontSize: '0.75rem', color: 'white', fontWeight: 'bold' }}>
@@ -1276,72 +958,6 @@ const Gacha = () => {
                   {(bleachRings || 0) < 5 && (
                     <p className="text-outline" style={{ color: '#ff2255', textAlign: 'center', margin: 0, fontSize: '0.9rem', fontWeight: 'bold' }}>
                       ブリーチリングが足りません！（5個〜500個必要）
-                    </p>
-                  )}
-                </div>
-              ) : currentGacha === 'ultra_super' ? (
-                /* 超ウルトラガシャ用: 100連3000サマーコイン固定ボタン */
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  <button 
-                    className="btn"
-                    onClick={() => pullGacha(100)}
-                    disabled={(summerMedals || 0) < 3000}
-                    style={{ 
-                      width: '100%',
-                      padding: '16px',
-                      flexDirection: 'column',
-                      gap: '4px',
-                      borderRadius: '30px',
-                      background: 'linear-gradient(135deg, #00ffff 0%, #0d9488 100%)',
-                      color: '#ffffff',
-                      textShadow: '0 2px 4px rgba(0,0,0,0.8)',
-                      border: '3px solid #ffffff',
-                      boxShadow: '0 8px 20px rgba(0,255,255,0.4)'
-                    }}
-                  >
-                    <span style={{ fontSize: '1.35rem', fontWeight: 900 }}>🌀 超ウルトラ100連ガシャをまわす！</span>
-                    <span style={{ 
-                      background: 'rgba(0,0,0,0.6)', padding: '4px 12px', borderRadius: '20px', fontSize: '0.95rem', border: '1px solid #00ffff', display: 'inline-flex', alignItems: 'center', gap: '6px'
-                    }}>
-                      🏝️ 3,000 サマーコイン
-                    </span>
-                  </button>
-                  {(summerMedals || 0) < 3000 && (
-                    <p className="text-outline" style={{ color: '#ff2255', textAlign: 'center', margin: 0, fontSize: '0.95rem', fontWeight: 'bold' }}>
-                      サマーコインが足りません！(必要: 3,000枚)
-                    </p>
-                  )}
-                </div>
-              ) : currentGacha === 'ultra_luxury' ? (
-                /* 超高級ガシャ用: 100連500サマーコイン固定ボタン */
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  <button 
-                    className="btn"
-                    onClick={() => pullGacha(100)}
-                    disabled={(summerMedals || 0) < 500}
-                    style={{ 
-                      width: '100%',
-                      padding: '16px',
-                      flexDirection: 'column',
-                      gap: '4px',
-                      borderRadius: '30px',
-                      background: 'linear-gradient(135deg, #ffd700 0%, #ff007f 100%)',
-                      color: '#ffffff',
-                      textShadow: '0 2px 4px rgba(0,0,0,0.8)',
-                      border: '3px solid #ffffff',
-                      boxShadow: '0 8px 20px rgba(255,215,0,0.4)'
-                    }}
-                  >
-                    <span style={{ fontSize: '1.35rem', fontWeight: 900 }}>👑 超高級100連ガシャをまわす！</span>
-                    <span style={{ 
-                      background: 'rgba(0,0,0,0.6)', padding: '4px 12px', borderRadius: '20px', fontSize: '0.95rem', border: '1px solid #ffd700', display: 'inline-flex', alignItems: 'center', gap: '6px'
-                    }}>
-                      🏝️ 500 サマーコイン
-                    </span>
-                  </button>
-                  {(summerMedals || 0) < 500 && (
-                    <p className="text-outline" style={{ color: '#ff2255', textAlign: 'center', margin: 0, fontSize: '0.95rem', fontWeight: 'bold' }}>
-                      サマーコインが足りません！(必要: 500枚)
                     </p>
                   )}
                 </div>
@@ -1376,22 +992,11 @@ const Gacha = () => {
                 <p style={{ color: '#e2e8f0', textAlign: 'center', fontSize: '0.8rem', marginBottom: '12px', lineHeight: 1.4 }}>
                   5,000 Ypt → 💍 1個（1連分） / 50,000 Ypt → 💍 10個
                 </p>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '16px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                   <button onClick={() => { const res = convertYPointsToBleachRings(5000); if(res.message) alert(res.message); }} style={{ background: '#881337', color: 'white', padding: '10px 4px', borderRadius: '12px', border: '1px solid #00ffff', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 'bold' }}>5,000 Yp (💍1個)</button>
                   <button onClick={() => { const res = convertYPointsToBleachRings(50000); if(res.message) alert(res.message); }} style={{ background: '#881337', color: 'white', padding: '10px 4px', borderRadius: '12px', border: '1px solid #00ffff', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 'bold' }}>5万 Yp (💍10個)</button>
                   <button onClick={() => { const res = convertYPointsToBleachRings(500000); if(res.message) alert(res.message); }} style={{ background: '#881337', color: 'white', padding: '10px 4px', borderRadius: '12px', border: '1px solid #00ffff', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 'bold' }}>50万 Yp (💍100個)</button>
                   <button onClick={() => { const res = convertYPointsToBleachRings(5000000); if(res.message) alert(res.message); }} style={{ background: '#881337', color: 'white', padding: '10px 4px', borderRadius: '12px', border: '1px solid #00ffff', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 'bold' }}>500万 Yp (💍1000個)</button>
-                </div>
-
-                <div style={{ borderTop: '1px dashed rgba(255,255,255,0.2)', paddingTop: '12px' }}>
-                  <h4 style={{ color: '#fff', textAlign: 'center', marginBottom: '8px', fontSize: '0.95rem', fontWeight: 'bold' }}>
-                    🏝️ ビーチ両替所
-                  </h4>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px' }}>
-                    <button onClick={() => { const res = convertYPointsToSummerMedals(10000); if(res.message) alert(res.message); }} style={{ background: '#0c4a6e', color: 'white', padding: '8px 4px', borderRadius: '10px', border: '1px solid #38bdf8', cursor: 'pointer', fontSize: '0.72rem', fontWeight: 'bold' }}>1万 (3枚)</button>
-                    <button onClick={() => { const res = convertYPointsToSummerMedals(100000); if(res.message) alert(res.message); }} style={{ background: '#0c4a6e', color: 'white', padding: '8px 4px', borderRadius: '10px', border: '1px solid #38bdf8', cursor: 'pointer', fontSize: '0.72rem', fontWeight: 'bold' }}>10万 (30枚)</button>
-                    <button onClick={() => { const res = convertYPointsToSummerMedals(1000000); if(res.message) alert(res.message); }} style={{ background: '#0c4a6e', color: 'white', padding: '8px 4px', borderRadius: '10px', border: '1px solid #38bdf8', cursor: 'pointer', fontSize: '0.72rem', fontWeight: 'bold' }}>100万 (300枚)</button>
-                  </div>
                 </div>
               </div>
             </div>

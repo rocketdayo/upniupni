@@ -16,7 +16,7 @@ export interface SavedTeam {
 export interface PlayerData {
   money: number;
   yPoints: number;
-  summerMedals: number;
+  summerMedals?: number;
   bleachRings?: number; // ブリーチ特設通貨「ブリーチリング 💍」
   characters: Record<string, CharacterSaveData>;
   team: string[];
@@ -44,18 +44,46 @@ export interface PlayerData {
   gachaHistory?: { timestamp: number; charId: string }[];
   usedSerialCodes?: string[];
   scoreAttackHighScore?: number;
+  scoreAttackHighScoreTimeLimit?: number; // 今週のハイスコア達成時の設定時間
+  allTimeScoreAttackHighScore?: number;   // 歴代最高スコア
+  allTimeScoreAttackTimeLimit?: number;   // 歴代最高スコア時の設定時間
+  scoreAttackConfiguredTime?: number;     // スコアタ設定時間（デフォルト60秒）
+  lastScoreAttackWeekKey?: string; // 毎週日曜23:59リセット用週識別キー
   lastClaimedWeeklyRewardWeek?: string;
   scoreAttackClaimedMilestones?: string[]; // スコアタ到達報酬受取済みリスト
   bleachRingExchanges?: Record<string, number>; // BLEACHリング交換所 購入済み回数
   dailyMissionsProgress?: Record<string, number>;
   dailyMissionsCompleted?: string[];
   lastDailyResetTime?: number;
+  // 無限の試練の塔（Tower of Trials）
+  towerHighestFloor?: number; // 最高到達階層
+  towerCurrentFloor?: number; // 現在挑戦階層
+  towerClaimedRewards?: number[]; // 受取済み節目階層リスト [5, 10, 15, ...]
+  towerArtifacts?: string[]; // 獲得中の塔専用アーティファクトIDリスト
+  // 最速討伐タイムアタック（Speedrun Time Attack）
+  speedrunRecords?: Record<string, { timeMs: number; clearedAt: number; team: string[] }>; // courseId -> record
+  // きまぐれゲート（異次元サバイバルパズル Gate of Caprice）
+  gateLevel?: number; // 互換性・総進捗用
+  gateNormalLevel?: number; // 通常の間レベル
+  gateBossLevel?: number; // 邪神の間レベル
+  gateRewardLevel?: number; // ご褒美の間レベル
+  gateBossOpen?: boolean; // 邪神の間 出現中フラグ
+  gateRewardOpen?: boolean; // ご褒美の間 出現中フラグ
+  gateActiveRoom?: string | null;
+  gateCurrentWave?: number;
+  gatePlayerHp?: number | null;
+  gateKampo?: number;
+  gateClaimedRewards?: number[];
+  gateFriendGiftsClaimed?: string[];
+  // 超大型レイドボス（Raid Boss）
+
+  raidBossHp?: Record<string, number>;
+  raidClearedBosses?: string[];
 }
 
 const DEFAULT_DATA: PlayerData = {
   money: 0,
   yPoints: 50,
-  summerMedals: 0,
   bleachRings: 10,
   characters: {
     'char_e_1': { level: 1, skillLevel: 1, limitBreak: 0, duplicates: 0 },
@@ -85,6 +113,11 @@ const DEFAULT_DATA: PlayerData = {
   minRequiredTeamSize: 5,
   gachaHistory: [],
   usedSerialCodes: [],
+  towerHighestFloor: 0,
+  towerCurrentFloor: 1,
+  towerClaimedRewards: [],
+  towerArtifacts: [],
+  speedrunRecords: {},
 };
 
 // Simple encryption using XOR cipher & standard Base64 to prevent easy reading/editing

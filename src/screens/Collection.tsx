@@ -1,18 +1,118 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, ChevronLeft, ChevronRight, Award, BookOpen, Check, Lock, Zap, Key, X, Sparkles } from 'lucide-react';
+import { ArrowLeft, ChevronLeft, ChevronRight, Award, BookOpen, Check, Lock, Zap, Key, X, Sparkles, Package } from 'lucide-react';
 import { useGame } from '../store/GameContext';
 import { CHARACTERS, TRIBES, getSkillDetails } from '../data/characters';
 import type { Rank, Character } from '../data/characters';
 import { CharacterAvatar } from '../components/CharacterAvatar';
-import { ALL_TITLES, getTitleInfo } from '../data/titles';
+import { ALL_TITLES, getTitleInfo, getCompleteTitleList } from '../data/titles';
 import type { TitleInfo } from '../data/titles';
 
-const RANKS: Rank[] = ['ZZ', "Z'", 'Z', 'SSS', 'SS', 'S', 'A', 'B', 'C', 'D', 'E'];
+const RANKS: Rank[] = ['K', 'UZ+++', 'ZZ', "Z'", 'Z', 'SSS', 'SS', 'S', 'A', 'B', 'C', 'D', 'E'];
 const RANK_COLORS: Record<Rank, string> = {
-  'ZZ': '#ffd700', "Z'": '#ff3399', Z: '#00ffff', SSS: '#ffd700', SS: '#ff22ff', S: '#ff2222', A: '#ffaa00', B: '#ff88bb', C: '#cc6666', D: '#55bb55', E: '#88cc88'
+  'K': '#00ffcc', 'UZ+++': '#ff007f', 'ZZ': '#ffd700', "Z'": '#ff3399', Z: '#00ffff', SSS: '#ffd700', SS: '#ff22ff', S: '#ff2222', A: '#ffaa00', B: '#ff88bb', C: '#cc6666', D: '#55bb55', E: '#88cc88'
 };
 const PER_PAGE = 20;
+
+export interface GameItemDoc {
+  id: string;
+  name: string;
+  category: '秘石・神昇' | '秘伝書' | 'けいけんち' | 'イベント限定';
+  rarity: 'LEGEND' | 'UR' | 'SSR' | 'SR' | 'Normal';
+  iconEmoji: string;
+  color: string;
+  description: string;
+  effectText: string;
+  howToGet: string;
+  getCount: (items: any) => number;
+}
+
+const GAME_ITEMS_DICTIONARY: GameItemDoc[] = [
+  {
+    id: 'godAscensionStone',
+    name: '神昇の秘石',
+    category: '秘石・神昇',
+    rarity: 'LEGEND',
+    iconEmoji: '💎',
+    color: '#ffd700',
+    description: '神代のエネルギーを宿した至高の秘石。Z\'ランクの妖怪を極限の【ZZランク】へと神昇進化させることができる。',
+    effectText: '神昇の祭壇にてZ\'ランクキャラをZZランクへ神昇覚醒（ステータス大幅増＋第2スキル解放）',
+    howToGet: 'ウラステージの強敵ボス撃破、スコアアタック上位報酬・大台突破報酬、シリアルコードなど',
+    getCount: (items) => items?.godAscensionStone || 0
+  },
+  {
+    id: 'superLimitBreakBook',
+    name: '超限界突破の書',
+    category: '秘伝書',
+    rarity: 'LEGEND',
+    iconEmoji: '📖',
+    color: '#e11d48',
+    description: 'キャラクターの限界突破上限をさらに開放する至高の秘伝の書物。',
+    effectText: 'キャラクターの限界突破レベル（最大+10）を+1強化し全ステータスを大幅増強',
+    howToGet: 'スコアアタック1000兆pt・100京pt突破報酬、全国ランキング上位報酬、イベント限定報酬',
+    getCount: (items) => items?.superLimitBreakBook || 0
+  },
+  {
+    id: 'godSkillBook',
+    name: '神ひっさつの秘伝書',
+    category: '秘伝書',
+    rarity: 'UR',
+    iconEmoji: '📜',
+    color: '#38bdf8',
+    description: '神々の技の極意が記された神聖な書物。',
+    effectText: '使用した妖怪のひっさつ技レベルを一気にMAX(Lv.7)まで引き上げる',
+    howToGet: 'スコアアタック1000億pt・10兆pt突破報酬、全国ランキング入賞、ミッション報酬',
+    getCount: (items) => items?.godSkillBook || 0
+  },
+  {
+    id: 'skillBook',
+    name: 'ひっさつの秘伝書',
+    category: '秘伝書',
+    rarity: 'SSR',
+    iconEmoji: '📘',
+    color: '#ec4899',
+    description: '妖怪の必殺技の威力を磨き上げる秘伝の巻物。',
+    effectText: 'キャラクターの必殺技レベルを +1 上昇させる',
+    howToGet: 'ステージクリアドロップ、スコアタ1億pt突破報酬、ミッション報酬',
+    getCount: (items) => items?.skillBook || 0
+  },
+  {
+    id: 'expLarge',
+    name: '超けいけんちだま',
+    category: 'けいけんち',
+    rarity: 'UR',
+    iconEmoji: '🟣',
+    color: '#a855f7',
+    description: '膨大なる経験値が濃縮された最高級の霊魂玉。',
+    effectText: 'キャラクターに膨大な経験値（+2,000 EXP）を付与',
+    howToGet: '高難易度ウラステージクリア、スコアタ報酬、イベント報酬',
+    getCount: (items) => items?.expLarge || 0
+  },
+  {
+    id: 'expSmall',
+    name: '小けいけんちだま',
+    category: 'けいけんち',
+    rarity: 'Normal',
+    iconEmoji: '🟢',
+    color: '#22c55e',
+    description: '初心者にぴったりの小さなけいけんちだま。',
+    effectText: 'キャラクターに経験値（+100 EXP）を付与',
+    howToGet: '通常ステージドロップ、ログインボーナス',
+    getCount: (items) => items?.expSmall || 0
+  },
+  {
+    id: 'bleachRings',
+    name: '死神の指輪 (ソウルリング)',
+    category: 'イベント限定',
+    rarity: 'UR',
+    iconEmoji: '⚔️',
+    color: '#8b5cf6',
+    description: '霊圧を極限まで高める異世界の霊具。BLEACHコラボ特別装備品。',
+    effectText: '死神たちの潜在能力を引き出し、コラボ限定称号や報酬を解禁',
+    howToGet: 'BLEACHコラボイベントマップ各ステージ撃破',
+    getCount: (items) => items?.bleachRings || 0
+  }
+];
 
 const RARITY_ORDER: Record<TitleInfo['rarity'], number> = {
   LEGEND: 6,
@@ -42,7 +142,7 @@ const Collection = () => {
     setSelectedTitle,
   } = useGame();
 
-  const [activeTab, setActiveTab] = useState<'characters' | 'titles'>('characters');
+  const [activeTab, setActiveTab] = useState<'characters' | 'titles' | 'items'>('characters');
 
   // 妖怪図鑑の状態
   const [filterRank, setFilterRank] = useState<Rank | 'ALL'>('ALL');
@@ -54,6 +154,10 @@ const Collection = () => {
   const [titleCategory, setTitleCategory] = useState<string>('ALL');
   const [titleRarity, setTitleRarity] = useState<string>('ALL');
   const [titleStatus, setTitleStatus] = useState<'ALL' | 'OWNED' | 'LOCKED'>('ALL');
+
+  // アイテム・装備図鑑の状態
+  const [itemCategory, setItemCategory] = useState<string>('ALL');
+  const [itemRarity, setItemRarity] = useState<string>('ALL');
 
   // --- 妖怪図鑑フィルタ計算 ---
   const filteredChars = CHARACTERS.filter(c => {
@@ -67,8 +171,9 @@ const Collection = () => {
   const ownedCount = CHARACTERS.filter(c => characters[c.id]).length;
 
   // --- 称号図鑑フィルタ計算 ---
+  const allAvailableTitles = getCompleteTitleList(unlockedTitles);
   const unlockedTitleSet = new Set(unlockedTitles);
-  const filteredTitles = ALL_TITLES.filter(t => {
+  const filteredTitles = allAvailableTitles.filter(t => {
     const isOwned = unlockedTitleSet.has(t.name) || unlockedTitleSet.has(t.id);
     if (titleStatus === 'OWNED' && !isOwned) return false;
     if (titleStatus === 'LOCKED' && isOwned) return false;
@@ -87,10 +192,10 @@ const Collection = () => {
     if (aOwned && !bOwned) return -1;
     if (!aOwned && bOwned) return 1;
 
-    return RARITY_ORDER[b.rarity] - RARITY_ORDER[a.rarity];
+    return (RARITY_ORDER[b.rarity] || 1) - (RARITY_ORDER[a.rarity] || 1);
   });
 
-  const ownedTitleCount = ALL_TITLES.filter(t => unlockedTitleSet.has(t.name) || unlockedTitleSet.has(t.id)).length;
+  const ownedTitleCount = allAvailableTitles.filter(t => unlockedTitleSet.has(t.name) || unlockedTitleSet.has(t.id)).length;
   const currentEquippedInfo = getTitleInfo(selectedTitle);
 
   const handleRankFilterChange = (rank: Rank | 'ALL') => {
@@ -118,7 +223,7 @@ const Collection = () => {
             {activeTab === 'characters'
               ? `妖怪収集: ${ownedCount} / ${CHARACTERS.length} 体`
               : activeTab === 'titles'
-              ? `称号獲得: ${ownedTitleCount} / ${ALL_TITLES.length} 個`
+              ? `称号獲得: ${ownedTitleCount} / ${allAvailableTitles.length} 個`
               : `神昇の秘石: ${items?.godAscensionStone || 0} 個`}
           </div>
         </div>
@@ -165,7 +270,7 @@ const Collection = () => {
           onClick={() => setActiveTab('characters')}
           style={{
             flex: 1,
-            padding: '8px 6px',
+            padding: '8px 4px',
             borderRadius: '12px',
             border: 'none',
             background: activeTab === 'characters'
@@ -173,19 +278,19 @@ const Collection = () => {
               : 'transparent',
             color: '#ffffff',
             fontWeight: 900,
-            fontSize: '0.78rem',
+            fontSize: '0.74rem',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            gap: '4px',
+            gap: '3px',
             boxShadow: activeTab === 'characters' ? '0 2px 10px rgba(255,0,127,0.4)' : 'none',
             transition: 'all 0.2s'
           }}
         >
-          <BookOpen size={14} color="#ffd700" />
-          <span>妖怪大辞典</span>
-          <span style={{ fontSize: '0.65rem', opacity: 0.8, background: 'rgba(0,0,0,0.3)', padding: '1px 5px', borderRadius: '10px' }}>
+          <BookOpen size={13} color="#ffd700" />
+          <span>妖怪</span>
+          <span style={{ fontSize: '0.62rem', opacity: 0.8, background: 'rgba(0,0,0,0.3)', padding: '1px 4px', borderRadius: '8px' }}>
             {ownedCount}
           </span>
         </button>
@@ -193,7 +298,7 @@ const Collection = () => {
           onClick={() => setActiveTab('titles')}
           style={{
             flex: 1,
-            padding: '8px 6px',
+            padding: '8px 4px',
             borderRadius: '12px',
             border: 'none',
             background: activeTab === 'titles'
@@ -201,20 +306,48 @@ const Collection = () => {
               : 'transparent',
             color: '#ffffff',
             fontWeight: 900,
-            fontSize: '0.78rem',
+            fontSize: '0.74rem',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            gap: '4px',
+            gap: '3px',
             boxShadow: activeTab === 'titles' ? '0 2px 10px rgba(0,200,83,0.4)' : 'none',
             transition: 'all 0.2s'
           }}
         >
-          <Award size={14} color="#00ffff" />
-          <span>称号大辞典</span>
-          <span style={{ fontSize: '0.65rem', opacity: 0.8, background: 'rgba(0,0,0,0.3)', padding: '1px 5px', borderRadius: '10px' }}>
+          <Award size={13} color="#00ffff" />
+          <span>称号</span>
+          <span style={{ fontSize: '0.62rem', opacity: 0.8, background: 'rgba(0,0,0,0.3)', padding: '1px 4px', borderRadius: '8px' }}>
             {ownedTitleCount}
+          </span>
+        </button>
+        <button
+          onClick={() => setActiveTab('items')}
+          style={{
+            flex: 1,
+            padding: '8px 4px',
+            borderRadius: '12px',
+            border: 'none',
+            background: activeTab === 'items'
+              ? 'linear-gradient(135deg, #f59e0b 0%, #ea580c 100%)'
+              : 'transparent',
+            color: '#ffffff',
+            fontWeight: 900,
+            fontSize: '0.74rem',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '3px',
+            boxShadow: activeTab === 'items' ? '0 2px 10px rgba(245,158,11,0.4)' : 'none',
+            transition: 'all 0.2s'
+          }}
+        >
+          <Package size={13} color="#ffd700" />
+          <span>装備・道具</span>
+          <span style={{ fontSize: '0.62rem', opacity: 0.8, background: 'rgba(0,0,0,0.3)', padding: '1px 4px', borderRadius: '8px' }}>
+            {GAME_ITEMS_DICTIONARY.length}
           </span>
         </button>
       </div>
@@ -674,6 +807,191 @@ const Collection = () => {
             })}
           </div>
 
+        </div>
+      )}
+
+      {/* ─── TAB 3: 装備・アイテム大辞典 ─── */}
+      {activeTab === 'items' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', flexShrink: 0 }}>
+          {/* Summary Banner */}
+          <div style={{
+            background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.15) 0%, rgba(234, 88, 12, 0.15) 100%)',
+            border: '1px solid rgba(245, 158, 11, 0.4)',
+            borderRadius: '14px',
+            padding: '10px 14px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between'
+          }}>
+            <div>
+              <div style={{ fontSize: '0.88rem', fontWeight: 900, color: '#ffd700' }}>
+                🎒 装備・アイテム大辞典
+              </div>
+              <div style={{ fontSize: '0.72rem', color: '#cbd5e1', marginTop: '2px' }}>
+                秘石・秘伝書・育成アイテム・イベント限定装備の全効果と入手先
+              </div>
+            </div>
+          </div>
+
+          {/* フィルターバー */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            {/* カテゴリ */}
+            <div style={{ display: 'flex', gap: '4px', overflowX: 'auto', paddingBottom: '2px', scrollbarWidth: 'thin' }}>
+              {['ALL', '秘石・神昇', '秘伝書', 'けいけんち', 'イベント限定'].map(cat => (
+                <button
+                  key={cat}
+                  onClick={() => setItemCategory(cat)}
+                  style={{
+                    padding: '3px 8px',
+                    borderRadius: '10px',
+                    border: 'none',
+                    fontSize: '0.7rem',
+                    fontWeight: 800,
+                    background: itemCategory === cat ? '#f59e0b' : 'rgba(255,255,255,0.08)',
+                    color: '#ffffff',
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap'
+                  }}
+                >
+                  {cat === 'ALL' ? 'カテゴリ:すべて' : cat}
+                </button>
+              ))}
+            </div>
+
+            {/* レアリティ */}
+            <div style={{ display: 'flex', gap: '4px', overflowX: 'auto', paddingBottom: '2px', scrollbarWidth: 'thin' }}>
+              {['ALL', 'LEGEND', 'UR', 'SSR', 'SR', 'Normal'].map(rarity => (
+                <button
+                  key={rarity}
+                  onClick={() => setItemRarity(rarity)}
+                  style={{
+                    padding: '3px 8px',
+                    borderRadius: '10px',
+                    border: 'none',
+                    fontSize: '0.7rem',
+                    fontWeight: 800,
+                    background: itemRarity === rarity ? '#ea580c' : 'rgba(255,255,255,0.08)',
+                    color: '#ffffff',
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap'
+                  }}
+                >
+                  {rarity === 'ALL' ? 'レア:すべて' : rarity}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* アイテムカードリスト */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', paddingRight: '2px' }}>
+            {GAME_ITEMS_DICTIONARY.filter(item => {
+              if (itemCategory !== 'ALL' && item.category !== itemCategory) return false;
+              if (itemRarity !== 'ALL' && item.rarity !== itemRarity) return false;
+              return true;
+            }).map(item => {
+              const count = item.getCount(items);
+              const hasItem = count > 0;
+              const rarityTheme = RARITY_COLORS[item.rarity] || RARITY_COLORS.Normal;
+
+              return (
+                <div
+                  key={item.id}
+                  style={{
+                    background: hasItem ? 'rgba(30, 41, 59, 0.75)' : 'rgba(15, 23, 42, 0.45)',
+                    borderRadius: '16px',
+                    border: hasItem ? `1px solid ${item.color}` : '1px solid rgba(255, 255, 255, 0.1)',
+                    padding: '12px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '8px',
+                    boxShadow: hasItem ? `0 2px 10px ${item.color}22` : 'none',
+                    opacity: hasItem ? 1 : 0.7
+                  }}
+                >
+                  {/* ヘッダー: アイコン、名前、レアリティ、所持数 */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1 }}>
+                      <span style={{ fontSize: '1.4rem', flexShrink: 0 }}>{item.iconEmoji}</span>
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span style={{
+                            background: rarityTheme.bg,
+                            color: rarityTheme.text,
+                            fontSize: '0.62rem',
+                            fontWeight: 900,
+                            padding: '2px 6px',
+                            borderRadius: '6px'
+                          }}>
+                            {item.rarity}
+                          </span>
+                          <span style={{ fontSize: '0.68rem', color: '#94a3b8', fontWeight: 800 }}>
+                            {item.category}
+                          </span>
+                        </div>
+                        <h3 style={{ margin: '2px 0 0 0', fontSize: '0.95rem', color: '#ffffff', fontWeight: 900 }}>
+                          {item.name}
+                        </h3>
+                      </div>
+                    </div>
+
+                    {/* 所持数バッジ */}
+                    <div style={{
+                      background: hasItem ? 'rgba(234, 179, 8, 0.2)' : 'rgba(255,255,255,0.05)',
+                      border: hasItem ? '1px solid #eab308' : '1px solid rgba(255,255,255,0.1)',
+                      borderRadius: '12px',
+                      padding: '4px 10px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      flexShrink: 0
+                    }}>
+                      <span style={{ fontSize: '0.62rem', color: hasItem ? '#fde047' : '#64748b', fontWeight: 800 }}>所持数</span>
+                      <span style={{ fontSize: '0.95rem', color: hasItem ? '#ffffff' : '#94a3b8', fontWeight: 900 }}>
+                        {count.toLocaleString()} 個
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* 効果説明 */}
+                  <div style={{
+                    background: 'rgba(0, 0, 0, 0.3)',
+                    borderRadius: '10px',
+                    padding: '6px 10px',
+                    border: '1px solid rgba(234, 179, 8, 0.25)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}>
+                    <Sparkles size={14} color="#ffd700" style={{ flexShrink: 0 }} />
+                    <span style={{ fontSize: '0.78rem', color: '#fde047', fontWeight: 900, lineHeight: 1.3 }}>
+                      {item.effectText}
+                    </span>
+                  </div>
+
+                  {/* 入手方法 */}
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: '6px',
+                    fontSize: '0.73rem',
+                    color: '#cbd5e1',
+                    lineHeight: 1.35
+                  }}>
+                    <Key size={13} color="#f59e0b" style={{ flexShrink: 0, marginTop: '2px' }} />
+                    <div>
+                      <span style={{ fontWeight: 800, marginRight: '4px', color: '#f59e0b' }}>入手場所:</span>
+                      <span>{item.howToGet}</span>
+                    </div>
+                  </div>
+
+                  {/* フレーバー説明 */}
+                  <div style={{ fontSize: '0.7rem', color: '#64748b', fontStyle: 'italic' }}>
+                    "{item.description}"
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
 

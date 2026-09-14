@@ -1,0 +1,149 @@
+{
+  "entities": {
+    "ScoreAttackRecord": {
+      "title": "ScoreAttackRecord",
+      "description": "Real-time Score Attack online ranking entry for each player",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "maxLength": 128,
+          "description": "Unique identifier of the player"
+        },
+        "playerName": {
+          "type": "string",
+          "maxLength": 100,
+          "description": "Display name of the player"
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 100,
+          "description": "Equipped title of the player"
+        },
+        "score": {
+          "type": "number",
+          "description": "High score achieved by the player"
+        },
+        "team": {
+          "type": "array",
+          "description": "Character IDs of the player's active team"
+        },
+        "weekKey": {
+          "type": "string",
+          "maxLength": 64,
+          "description": "Weekly cycle identifier (e.g. week_ending_20260913) for Sunday 23:59 reset"
+        },
+        "timeLimit": {
+          "type": "number",
+          "description": "Configured battle time in seconds for the score"
+        },
+        "allTimeScore": {
+          "type": "number",
+          "description": "All-time highest score achieved by the player"
+        },
+        "allTimeLimit": {
+          "type": "number",
+          "description": "Configured battle time in seconds for all-time highest score"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "ISO timestamp of the latest score update"
+        }
+      },
+      "required": ["userId", "playerName", "title", "score", "updatedAt"]
+    },
+    "TowerRecord": {
+      "title": "TowerRecord",
+      "description": "Real-time Infinite Tower leaderboard entry for each player",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "maxLength": 128,
+          "description": "Unique identifier of the player"
+        },
+        "playerName": {
+          "type": "string",
+          "maxLength": 100,
+          "description": "Display name of the player"
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 100,
+          "description": "Equipped title of the player"
+        },
+        "floor": {
+          "type": "number",
+          "description": "Highest floor reached in the Tower"
+        },
+        "team": {
+          "type": "array",
+          "description": "Character IDs of the active team"
+        },
+        "artifactsCount": {
+          "type": "number",
+          "description": "Number of tower artifacts collected"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "ISO timestamp of the latest record update"
+        }
+      },
+      "required": ["userId", "playerName", "title", "floor", "updatedAt"]
+    },
+    "SpeedrunRecord": {
+      "title": "SpeedrunRecord",
+      "description": "Real-time Speedrun clear time record for each player and course",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "maxLength": 128,
+          "description": "Unique identifier of the player"
+        },
+        "courseId": {
+          "type": "string",
+          "maxLength": 64,
+          "description": "Identifier of the speedrun course"
+        },
+        "playerName": {
+          "type": "string",
+          "maxLength": 100,
+          "description": "Display name of the player"
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 100,
+          "description": "Equipped title of the player"
+        },
+        "timeMs": {
+          "type": "number",
+          "description": "Clear time in milliseconds"
+        },
+        "team": {
+          "type": "array",
+          "description": "Character IDs of the team used"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "ISO timestamp of the latest clear update"
+        }
+      },
+      "required": ["userId", "courseId", "playerName", "title", "timeMs", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/score_attack_scores/{userId}": {
+      "schema": "ScoreAttackRecord",
+      "description": "Leaderboard scores submitted by players in Score Attack mode"
+    },
+    "/tower_records/{userId}": {
+      "schema": "TowerRecord",
+      "description": "Leaderboard records submitted by players in Infinite Tower mode"
+    },
+    "/speedrun_records/{recordId}": {
+      "schema": "SpeedrunRecord",
+      "description": "Clear time records submitted by players in Speedrun mode"
+    }
+  }
+}

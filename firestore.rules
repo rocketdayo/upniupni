@@ -1,0 +1,72 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default Deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128;
+    }
+
+    function isValidScoreRecord(data) {
+      return data.userId is string && data.userId.size() > 0 && data.userId.size() <= 128
+        && data.playerName is string && data.playerName.size() > 0 && data.playerName.size() <= 100
+        && data.title is string && data.title.size() <= 100
+        && data.score is number && data.score >= 0
+        && (!('team' in data) || (data.team is list && data.team.size() <= 10))
+        && (!('weekKey' in data) || (data.weekKey is string && data.weekKey.size() <= 64))
+        && (!('timeLimit' in data) || (data.timeLimit is number && data.timeLimit > 0 && data.timeLimit <= 3600))
+        && (!('allTimeScore' in data) || (data.allTimeScore is number && data.allTimeScore >= 0))
+        && (!('allTimeLimit' in data) || (data.allTimeLimit is number && data.allTimeLimit > 0 && data.allTimeLimit <= 3600))
+        && data.updatedAt is string && data.updatedAt.size() <= 64;
+    }
+
+    // Score Attack global leaderboard records
+    match /score_attack_scores/{userId} {
+      allow read: if true;
+      allow create, update: if isValidId(userId)
+        && request.resource.data.userId == userId
+        && isValidScoreRecord(request.resource.data);
+      allow delete: if isValidId(userId);
+    }
+
+    function isValidTowerRecord(data) {
+      return data.userId is string && data.userId.size() > 0 && data.userId.size() <= 128
+        && data.playerName is string && data.playerName.size() > 0 && data.playerName.size() <= 100
+        && data.title is string && data.title.size() <= 100
+        && data.floor is number && data.floor >= 0 && data.floor <= 100000
+        && (!('team' in data) || (data.team is list && data.team.size() <= 10))
+        && (!('artifactsCount' in data) || data.artifactsCount is number)
+        && data.updatedAt is string && data.updatedAt.size() <= 64;
+    }
+
+    // Infinite Tower online leaderboard records
+    match /tower_records/{userId} {
+      allow read: if true;
+      allow create, update: if isValidId(userId)
+        && request.resource.data.userId == userId
+        && isValidTowerRecord(request.resource.data);
+      allow delete: if isValidId(userId);
+    }
+
+    function isValidSpeedrunRecord(data) {
+      return data.userId is string && data.userId.size() > 0 && data.userId.size() <= 128
+        && data.courseId is string && data.courseId.size() <= 64
+        && data.playerName is string && data.playerName.size() > 0 && data.playerName.size() <= 100
+        && data.title is string && data.title.size() <= 100
+        && data.timeMs is number && data.timeMs > 0
+        && (!('team' in data) || (data.team is list && data.team.size() <= 10))
+        && data.updatedAt is string && data.updatedAt.size() <= 64;
+    }
+
+    // Speedrun online records
+    match /speedrun_records/{recordId} {
+      allow read: if true;
+      allow create, update: if isValidId(recordId)
+        && isValidSpeedrunRecord(request.resource.data);
+      allow delete: if isValidId(recordId);
+    }
+  }
+}

@@ -1,16 +1,19 @@
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import Matter from 'matter-js';
 import { useGame } from '../store/GameContext';
-import { STAGES } from '../data/stages';
+import { getStageById } from '../data/stages';
 import { CHARACTERS, getPublicUrl, createPuniSvgDataUrl, getTribeMultiplier, TRIBES } from '../data/characters';
 import type { Character, SkillType } from '../data/characters';
-import { Zap, Pause, Play, RotateCcw, ArrowLeft } from 'lucide-react';
+import { Zap, Pause, Play, RotateCcw, ArrowLeft, Home, Trophy, Swords, Timer } from 'lucide-react';
 import { CharacterAvatar } from '../components/CharacterAvatar';
 import type { StageDropReward } from '../store/GameContext';
 import { StageResultModal } from '../components/StageResultModal';
 import { SkillParticleEffect } from '../components/SkillParticleEffect';
 import { getTitleEffect } from '../data/titles';
+import { TOWER_ARTIFACTS, type TowerArtifact } from '../data/towerData';
+import { SPEEDRUN_COURSES } from '../data/speedrunData';
+import { RAID_BOSSES } from '../data/raidData';
 
 const PUNI_RADIUS      = 23;
 const BIG_PUNI_MULT    = 1.5;
@@ -230,7 +233,38 @@ interface PuniData { charId: string; size: number; level: number; }
 const GameScene = () => {
   const { stageId } = useParams();
   const navigate    = useNavigate();
-  const { team, characters, clearStage, trackMission, submitScoreAttackScore, selectedTitle = '新米妖怪レーサー' } = useGame();
+  const location    = useLocation();
+  const {
+    team,
+    characters,
+    clearStage,
+    trackMission,
+    submitScoreAttackScore,
+    addYPoints,
+    addMoney,
+    selectedTitle = '新米妖怪レーサー',
+    towerArtifacts = [],
+    advanceTowerFloor,
+    submitSpeedrunTime,
+    damageRaidBoss,
+    raidBossHp = {},
+    gatePlayerHp,
+    gateKampo = 0,
+    completeGateWave,
+    consumeKampoItem,
+  } = useGame();
+
+
+
+  const [activeRival] = useState<any>(() => {
+    try {
+      const raw = sessionStorage.getItem('activeScoreAttackRival');
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [rivalDefeatBonusAwarded, setRivalDefeatBonusAwarded] = useState(false);
 
   const titleEffect = useMemo(() => getTitleEffect(selectedTitle), [selectedTitle]);
 
@@ -241,7 +275,7 @@ const GameScene = () => {
   }, []);
 
   // Helper to get individual character's event boost multiplier（特攻はなし）
-  const getCharBoostMultiplier = (_c?: Character): number => 1;
+  const getCharBoostMultiplier = useCallback((_c?: Character): number => 1, []);
 
   // チーム内の同じ種族の数を集計
   const tribeCounts = useMemo(() => {
@@ -263,6 +297,12 @@ const GameScene = () => {
     let connectRangeMult = 1.0;
     let teamDamageUpPct = 0;
     let tribeBoostPct = 0;
+    let ypointMult = 1;
+    let scoreMult = 1;
+    let moneyMult = 1;
+    let feverGaugeCharge = 0;
+    let hasReviveShield = false;
+    let dropRateBoostPct = 0;
     const charStartGauges: Record<string, number> = {};
 
     team.forEach(charId => {
@@ -270,7 +310,7 @@ const GameScene = () => {
       if (!cd || !cd.passiveSkills) return;
       cd.passiveSkills.forEach(ps => {
         if (ps.type === 'damage_cut') {
-          damageCutPct = Math.min(80, damageCutPct + (ps.value || 15));
+          damageCutPct = Math.min(99.9, damageCutPct + (ps.value || 15));
         } else if (ps.type === 'fever_boost') {
           feverBoostPct += (ps.value || 25);
         } else if (ps.type === 'gauge_boost') {
@@ -282,7 +322,23 @@ const GameScene = () => {
         } else if (ps.type === 'tribe_boost') {
           tribeBoostPct += (ps.value || 20);
         } else if (ps.type === 'gauge_start') {
-          charStartGauges[charId] = Math.max(charStartGauges[charId] || 0, ps.value || 50);
+          if (ps.value && ps.value >= 1000) {
+            team.forEach(tId => { charStartGauges[tId] = 100; });
+          } else {
+            charStartGauges[charId] = Math.max(charStartGauges[charId] || 0, ps.value || 50);
+          }
+        } else if (ps.type === 'ypoint_boost') {
+          ypointMult *= (ps.value || 1000);
+        } else if (ps.type === 'score_boost') {
+          scoreMult *= (ps.value || 1000);
+        } else if (ps.type === 'money_boost') {
+          moneyMult *= (ps.value || 1000);
+        } else if (ps.type === 'fever_gauge_charge') {
+          feverGaugeCharge += (ps.value || 40);
+        } else if (ps.type === 'revive_shield') {
+          hasReviveShield = true;
+        } else if (ps.type === 'drop_rate_boost') {
+          dropRateBoostPct += (ps.value || 25);
         }
       });
     });
@@ -294,6 +350,12 @@ const GameScene = () => {
       connectRangeMult,
       teamDamageUpPct,
       tribeBoostPct,
+      ypointMult,
+      scoreMult,
+      moneyMult,
+      feverGaugeCharge,
+      hasReviveShield,
+      dropRateBoostPct,
       charStartGauges
     };
   }, [team]);
@@ -354,10 +416,112 @@ const GameScene = () => {
     if (permanentAtkBonusPct > 0) {
       rawAtk = Math.floor(rawAtk * (1 + permanentAtkBonusPct / 100));
     }
-    return rawAtk;
-  }, [team, characters, titleEffect, permanentAtkBonusPct, teamPassiveEffects.teamDamageUpPct]);
+    // 塔専用アーティファクト攻撃力アップ
+    const isTower = Boolean(stageId?.startsWith('tower_floor_'));
+    if (isTower) {
+      towerArtifacts.forEach(artId => {
+        const art = TOWER_ARTIFACTS.find(a => a.id === artId);
+        if (art && art.effectType === 'atk') {
+          rawAtk = Math.floor(rawAtk * (1 + art.value / 100));
+        }
+      });
+    }
 
-  const stage = STAGES.find(s => s.id === stageId);
+    // 超大型レイドボス特効倍率＆ダメージスケールアップ
+    const isRaid = Boolean(stageId?.startsWith('raid_'));
+    if (isRaid) {
+      const boss = RAID_BOSSES.find(b => b.id === stageId);
+      if (boss) {
+        let raidMult = 1.0;
+        team.forEach(charId => {
+          const c = CHARACTERS.find(x => x.id === charId);
+          if (!c) return;
+          boss.traits.forEach(trait => {
+            if (trait.tribeBoost && c.tribe === trait.tribeBoost.tribe) {
+              raidMult += trait.tribeBoost.multiplier;
+            }
+            if (trait.specificCharBoost && trait.specificCharBoost.charIds.includes(c.id)) {
+              raidMult += trait.specificCharBoost.multiplier;
+            }
+          });
+        });
+        // 兆・京単位のレイドボスHPと戦うためのパズルダメージスケール
+        rawAtk = Math.floor(rawAtk * raidMult * 2000000);
+      }
+    }
+    return rawAtk;
+  }, [team, characters, titleEffect, permanentAtkBonusPct, teamPassiveEffects.teamDamageUpPct, stageId, towerArtifacts]);
+
+  // 物理エンジンが頻繁にリセットされるのを防ぐため最新値をRefで保持
+  const totalTeamAtkRef = useRef<number>(totalTeamAtk);
+  useEffect(() => { totalTeamAtkRef.current = totalTeamAtk; }, [totalTeamAtk]);
+
+  const teamPassiveEffectsRef = useRef(teamPassiveEffects);
+  useEffect(() => { teamPassiveEffectsRef.current = teamPassiveEffects; }, [teamPassiveEffects]);
+
+  const getCharTribeMultiplierRef = useRef(getCharTribeMultiplier);
+  useEffect(() => { getCharTribeMultiplierRef.current = getCharTribeMultiplier; }, [getCharTribeMultiplier]);
+
+  const getCharBoostMultiplierRef = useRef(getCharBoostMultiplier);
+  useEffect(() => { getCharBoostMultiplierRef.current = getCharBoostMultiplier; }, [getCharBoostMultiplier]);
+
+  const lastSceneDimensionsRef = useRef<{ w: number; h: number }>({ w: 0, h: 0 });
+
+  const stage = useMemo(() => getStageById(stageId), [stageId]);
+
+  // 塔モード・スピードランモード・レイドモード・ゲートモード判定
+  const isTowerStage = Boolean(stageId?.startsWith('tower_floor_'));
+  const towerFloorNum = isTowerStage ? parseInt(stageId!.replace('tower_floor_', ''), 10) : 0;
+  const isSpeedrunStage = Boolean(stageId?.startsWith('speedrun_'));
+  const speedrunCourse = isSpeedrunStage ? SPEEDRUN_COURSES.find(c => c.id === stageId) : null;
+  const isRaidStage = Boolean(stageId?.startsWith('raid_'));
+  const raidBoss = isRaidStage ? RAID_BOSSES.find(b => b.id === stageId) : null;
+
+  // きまぐれゲート判定
+  const isGateStage = Boolean(stageId?.startsWith('gate_'));
+  const gateMatch = stageId?.match(/^gate_([a-zA-Z0-9_]+)_lv_(\d+)_wave_(\d+)$/);
+  const gateRoomId = gateMatch ? gateMatch[1] : 'room_normal';
+  const gateLevelNum = gateMatch ? parseInt(gateMatch[2], 10) : 1;
+  const gateWaveNum = gateMatch ? parseInt(gateMatch[3], 10) : 1;
+  const [gateResultModal, setGateResultModal] = useState<{
+    isRoomCleared: boolean;
+    nextWave?: number;
+    specialAppearance?: { type: 'boss' | 'reward'; level: number };
+    rewards?: { yPoints: number; money: number; bonusDrops?: { name: string; count: number; icon: string }[] };
+  } | null>(null);
+
+
+  // 塔モード用アーティファクトバフ一覧
+  const towerBuffs = useMemo(() => {
+    if (!isTowerStage) return { cutPct: 0, gaugePct: 0, healPct: 0, connectPct: 0, feverPct: 0 };
+    let cutPct = 0;
+    let gaugePct = 0;
+    let healPct = 0;
+    let connectPct = 0;
+    let feverPct = 0;
+    towerArtifacts.forEach(artId => {
+      const art = TOWER_ARTIFACTS.find(a => a.id === artId);
+      if (!art) return;
+      if (art.effectType === 'cut') cutPct += art.value;
+      if (art.effectType === 'gauge') gaugePct += art.value;
+      if (art.effectType === 'heal') healPct += art.value;
+      if (art.effectType === 'connect') connectPct += art.value;
+      if (art.effectType === 'fever') feverPct += art.value;
+    });
+    return { cutPct, gaugePct, healPct, connectPct, feverPct };
+  }, [isTowerStage, towerArtifacts]);
+
+  // スピードランタイマー用ステート
+  const [speedrunElapsedMs, setSpeedrunElapsedMs] = useState<number>(0);
+  const [speedrunFinished, setSpeedrunFinished] = useState<boolean>(false);
+  const [speedrunResult, setSpeedrunResult] = useState<{ isNewBest: boolean; previousBestMs?: number; rank: string } | null>(null);
+  const speedrunAccumulatedMsRef = useRef<number>(0);
+  const speedrunLastTickRef = useRef<number>(0);
+  const speedrunFinishedRef = useRef<boolean>(false);
+
+  // 塔クリア・秘宝選択用ステート
+  const [towerArtifactChoices, setTowerArtifactChoices] = useState<TowerArtifact[] | null>(null);
+  const [selectedTowerRewardArtifact, setSelectedTowerRewardArtifact] = useState<string | null>(null);
 
   const sceneRef     = useRef<HTMLDivElement>(null);
   const engineRef    = useRef<Matter.Engine | null>(null);
@@ -368,7 +532,12 @@ const GameScene = () => {
   const bowlRadiusRef = useRef<number>(180);
   const spawnPuniRef  = useRef<() => void>(() => {});
 
-  const [enemyHp,     setEnemyHp]     = useState(stage?.enemyHp || 100);
+  const [enemyHp,     setEnemyHp]     = useState(() => {
+    if (isRaidStage && raidBoss) {
+      return raidBossHp[raidBoss.id] ?? raidBoss.maxHp;
+    }
+    return stage?.enemyHp || 100;
+  });
   const [playerHp,    setPlayerHp]    = useState(1);
   const [maxPlayerHp, setMaxPlayerHp] = useState(1);
   const [isGameOver,  setIsGameOver]  = useState(false);
@@ -377,11 +546,31 @@ const GameScene = () => {
   const isPausedRef   = useRef(false);
   isPausedRef.current = isPaused;
 
+  // Raid Boss battle states
+  const [raidTimeLeft, setRaidTimeLeft] = useState<number>(60);
+  const [raidAccumulatedDamage, setRaidAccumulatedDamage] = useState<number>(0);
+  const [isRaidFinished, setIsRaidFinished] = useState<boolean>(false);
+  const [raidResultModal, setRaidResultModal] = useState<{
+    damageGiven: number;
+    isCleared: boolean;
+    rewardYPoints: number;
+    rewardItemName?: string;
+  } | null>(null);
+
   // Score Attack states
   const isScoreAttack = stageId === 'score_attack';
-  const [scoreAttackTimeLeft, setScoreAttackTimeLeft] = useState(60);
+  const configuredScoreAttackTime = useRef<number>((() => {
+    try {
+      const saved = localStorage.getItem('score_attack_custom_time');
+      const val = saved ? parseInt(saved, 10) : 60;
+      return !isNaN(val) && val > 0 ? val : 60;
+    } catch {
+      return 60;
+    }
+  })()).current;
+  const [scoreAttackTimeLeft, setScoreAttackTimeLeft] = useState<number>(configuredScoreAttackTime);
   const [isSaFinished, setIsSaFinished] = useState(false);
-  const [saResult, setSaResult] = useState<{ isNewHighScore: boolean; previousHighScore: number } | null>(null);
+  const [saResult, setSaResult] = useState<{ isNewHighScore: boolean; previousHighScore: number; unlockedUzGod?: boolean } | null>(null);
 
   const [damageTexts, setDamageTexts] = useState<{ id: number; val: number; x: number; y: number; color: string; isFeverFinish?: boolean }[]>([]);
   const [feverFinishEffect, setFeverFinishEffect] = useState<{ active: boolean; dmg: number } | null>(null);
@@ -425,25 +614,24 @@ const GameScene = () => {
   const isDragging    = useRef(false);
   const clearedRef     = useRef(false);
   const clearTimerRef  = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    clearedRef.current = false;
-    if (clearTimerRef.current) {
-      clearTimeout(clearTimerRef.current);
-      clearTimerRef.current = null;
-    }
-  }, [stageId]);
+  const raidDamageProcessedRef = useRef<boolean>(false);
 
   // Restart function
-  const restartStage = () => {
-    if (!stage) return;
+  const restartStage = useCallback(() => {
     if (clearTimerRef.current) {
       clearTimeout(clearTimerRef.current);
       clearTimerRef.current = null;
     }
     clearedRef.current = false;
-    setEnemyHp(stage.enemyHp);
-    setPlayerHp(maxPlayerHp);
+    raidDamageProcessedRef.current = false;
+    if (stage) {
+      if (isRaidStage && raidBoss) {
+        setEnemyHp(raidBossHp[raidBoss.id] ?? raidBoss.maxHp);
+      } else {
+        setEnemyHp(stage.enemyHp);
+      }
+    }
+    setPlayerHp(maxPlayerHpRef.current || 1);
     setIsGameOver(false);
     setIsVictory(false);
     setFeverGauge(0);
@@ -452,18 +640,39 @@ const GameScene = () => {
     setScore(0);
     setFeverCount(0);
     setDropResult(undefined);
-    setScoreAttackTimeLeft(60);
+    setScoreAttackTimeLeft(configuredScoreAttackTime);
     setIsSaFinished(false);
     setSaResult(null);
+    setRaidTimeLeft(60);
+    setRaidAccumulatedDamage(0);
+    setIsRaidFinished(false);
+    setRaidResultModal(null);
     setEnemyFrozenSec(0);
     setHasShield(false);
     setHasReraise(false);
     setPermanentAtkBonusPct(0);
+
+    // スピードランタイマーの確実なリセット
+    speedrunAccumulatedMsRef.current = 0;
+    speedrunLastTickRef.current = Date.now();
+    speedrunFinishedRef.current = false;
+    setSpeedrunElapsedMs(0);
+    setSpeedrunFinished(false);
+    setSpeedrunResult(null);
+    setGateResultModal(null);
+
     const g: Record<string, number> = {};
+
     team.forEach(id => { g[id] = 0; });
     setCharGauges(g);
     setIsPaused(false);
-  };
+  }, [stage, isRaidStage, raidBoss, raidBossHp, configuredScoreAttackTime, team]);
+
+  // ステージ切り替え時、または同一ステージへの再入場時（location.key変化時）に確実に完全リセット
+  useEffect(() => {
+    restartStage();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stageId, location.key]);
 
   // Pause / Resume physics runner
   useEffect(() => {
@@ -491,10 +700,20 @@ const GameScene = () => {
     if (titleEffect?.hpPercent) {
       hp = Math.floor(hp * (1 + titleEffect.hpPercent / 100));
     }
-    setPlayerHp(hp);
     setMaxPlayerHp(hp);
+    if (isGateStage && gatePlayerHp !== null && gatePlayerHp !== undefined) {
+      setPlayerHp(Math.min(hp, Math.max(1, gatePlayerHp)));
+    } else {
+      setPlayerHp(hp);
+    }
     setCharGauges(g);
-  }, [team, characters, titleEffect, teamPassiveEffects.charStartGauges]);
+    if (teamPassiveEffects.hasReviveShield) {
+      setHasReraise(true);
+    }
+  }, [team, characters, titleEffect, teamPassiveEffects.charStartGauges, teamPassiveEffects.hasReviveShield, isGateStage, gatePlayerHp]);
+
+  const playerHpRef = useRef(playerHp);
+  useEffect(() => { playerHpRef.current = playerHp; }, [playerHp]);
 
   // ---------- enemy attack timer ----------
   const enemyHpRef = useRef(enemyHp);
@@ -553,6 +772,11 @@ const GameScene = () => {
           atkDamage = Math.max(1, Math.floor(atkDamage * (1 - teamPassiveEffects.damageCutPct / 100)));
         }
 
+        // 塔アーティファクトによる被ダメージ軽減
+        if (isTowerStage && towerBuffs.cutPct > 0) {
+          atkDamage = Math.max(1, Math.floor(atkDamage * (1 - Math.min(80, towerBuffs.cutPct) / 100)));
+        }
+
         // ノイトラの鋼皮（イエロ）による被ダメージ90%カット
         if (hasShieldRef.current) {
           atkDamage = Math.max(1, Math.floor(atkDamage * 0.1));
@@ -582,7 +806,7 @@ const GameScene = () => {
       });
     }, 3000);
     return () => clearInterval(iv);
-  }, [stage, isScoreAttack, teamPassiveEffects.damageCutPct]);
+  }, [stage, isScoreAttack, teamPassiveEffects.damageCutPct, isTowerStage, towerBuffs.cutPct]);
 
   // ---------- damage / win ----------
   const dealDamage = useCallback((dmg: number) => {
@@ -594,8 +818,11 @@ const GameScene = () => {
       }
       return Math.max(0, next);
     });
-    setScore(s => s + Math.floor(dmg * 10));
-  }, [isScoreAttack]);
+    if (isRaidStage) {
+      setRaidAccumulatedDamage(d => d + dmg);
+    }
+    setScore(s => s + Math.floor(dmg * 10 * teamPassiveEffects.scoreMult));
+  }, [isScoreAttack, isRaidStage, teamPassiveEffects.scoreMult]);
 
   const isFeverRef = useRef(isFever);
   useEffect(() => {
@@ -621,12 +848,19 @@ const GameScene = () => {
 
   // ---------- ダメージ適用（フィーバー中は蓄積、通常時は即時ダメージ） ----------
   const applyDamage = useCallback((dmg: number) => {
-    if (isFeverRef.current) {
-      feverDmgAccum.current += dmg;
-    } else {
-      dealDamage(dmg);
+    let finalDmg = dmg;
+    if (isFeverRef.current && isTowerStage && towerBuffs.feverPct > 0) {
+      finalDmg = Math.floor(finalDmg * (1 + towerBuffs.feverPct / 100));
     }
-  }, [dealDamage]);
+    if (isFeverRef.current) {
+      feverDmgAccum.current += finalDmg;
+    } else {
+      dealDamage(finalDmg);
+    }
+  }, [dealDamage, isTowerStage, towerBuffs.feverPct]);
+
+  const applyDamageRef = useRef(applyDamage);
+  useEffect(() => { applyDamageRef.current = applyDamage; }, [applyDamage]);
 
   // ---------- Score Attack Timer Countdown (必殺技カットイン中はカウント停止) ----------
   useEffect(() => {
@@ -644,6 +878,50 @@ const GameScene = () => {
     return () => clearInterval(iv);
   }, [isScoreAttack, isSaFinished, isPaused, isGameOver, isVictory, skillCutIn]);
 
+  // ---------- レイドボスタイマー (必殺技カットイン中はタイマー停止) ----------
+  useEffect(() => {
+    if (!isRaidStage || isRaidFinished || isPaused || isGameOver || isVictory || skillCutIn) return;
+    const iv = setInterval(() => {
+      setRaidTimeLeft(prev => {
+        if (prev <= 1) {
+          clearInterval(iv);
+          setIsRaidFinished(true);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(iv);
+  }, [isRaidStage, isRaidFinished, isPaused, isGameOver, isVictory, skillCutIn]);
+
+  // ---------- レイドボス戦 終了時・ダメージ反映・リザルト処理 ----------
+  useEffect(() => {
+    if (!isRaidStage || !raidBoss) return;
+    if ((isRaidFinished || enemyHp <= 0 || isGameOver) && !raidDamageProcessedRef.current) {
+      raidDamageProcessedRef.current = true;
+      const isDefeated = enemyHp <= 0;
+      let resRewardYp = 500;
+      let resRewardItem: string | undefined = undefined;
+
+      if (damageRaidBoss) {
+        const res = damageRaidBoss(raidBoss.id, raidAccumulatedDamage);
+        if (res.isCleared) {
+          resRewardYp = res.rewardYPoints;
+          resRewardItem = res.rewardItemName;
+        } else {
+          addYPoints(500); // 挑戦報酬
+        }
+      }
+
+      setRaidResultModal({
+        damageGiven: raidAccumulatedDamage,
+        isCleared: isDefeated,
+        rewardYPoints: isDefeated ? raidBoss.rewardYPoints : resRewardYp,
+        rewardItemName: isDefeated ? raidBoss.rewardItemName : resRewardItem
+      });
+    }
+  }, [isRaidStage, isRaidFinished, enemyHp, isGameOver, damageRaidBoss, raidBoss, raidAccumulatedDamage, addYPoints]);
+
   // ---------- スコアタ終了・決着時にフィーバー中の溜まりダメージを全額精算・スコア加算 ----------
   useEffect(() => {
     if (isSaFinished || isVictory || isGameOver) {
@@ -654,14 +932,47 @@ const GameScene = () => {
   // ---------- Score Attack Submission ----------
   useEffect(() => {
     if (isSaFinished && !saResult) {
-      const res = submitScoreAttackScore(score);
+      const res = submitScoreAttackScore(score, configuredScoreAttackTime);
       setSaResult(res);
+
+      if (activeRival && !rivalDefeatBonusAwarded && score >= activeRival.score) {
+        addYPoints(500);
+        addMoney(1000);
+        setRivalDefeatBonusAwarded(true);
+      }
     }
-  }, [isSaFinished, saResult, score, submitScoreAttackScore]);
+  }, [isSaFinished, saResult, score, configuredScoreAttackTime, submitScoreAttackScore, activeRival, rivalDefeatBonusAwarded, addYPoints, addMoney]);
+
+  // ---------- スピードランタイマー (10ms単位で高精度計測) ----------
+  useEffect(() => {
+    if (!isSpeedrunStage) return;
+
+    if (!speedrunFinished) {
+      speedrunFinishedRef.current = false;
+    }
+    speedrunLastTickRef.current = Date.now();
+
+    const iv = setInterval(() => {
+      if (speedrunFinishedRef.current || speedrunFinished) return;
+      const now = Date.now();
+      if (isPaused || skillCutIn || isGameOver || isVictory) {
+        speedrunLastTickRef.current = now;
+        return;
+      }
+      const delta = now - speedrunLastTickRef.current;
+      speedrunLastTickRef.current = now;
+      if (delta > 0 && delta < 5000) {
+        speedrunAccumulatedMsRef.current += delta;
+        setSpeedrunElapsedMs(speedrunAccumulatedMsRef.current);
+      }
+    }, 25);
+
+    return () => clearInterval(iv);
+  }, [isSpeedrunStage, speedrunFinished, isPaused, skillCutIn, isGameOver, isVictory, stageId]);
 
   // ---------- victory check ----------
   useEffect(() => {
-    if (!isScoreAttack && enemyHp <= 0 && !clearedRef.current && stage) {
+    if (!isScoreAttack && !isRaidStage && enemyHp <= 0 && !clearedRef.current && stage) {
       clearedRef.current = true;
       const sId = stage.id;
       let rMoney = stage.rewardMoney;
@@ -675,15 +986,53 @@ const GameScene = () => {
         rMoney = Math.floor(rMoney * (1 + titleEffect.moneyPercent / 100));
       }
 
+      // UZ+++ パッシブスキル（1000倍）適用
+      if (teamPassiveEffects.ypointMult > 1) {
+        rYpt = Math.floor(rYpt * teamPassiveEffects.ypointMult);
+      }
+      if (teamPassiveEffects.moneyMult > 1) {
+        rMoney = Math.floor(rMoney * teamPassiveEffects.moneyMult);
+      }
+
       const drops = clearStage(sId, rMoney, rYpt);
       setDropResult(drops);
+
+      // スピードランクリア処理
+      if (isSpeedrunStage) {
+        speedrunFinishedRef.current = true;
+        setSpeedrunFinished(true);
+        const finalTimeMs = Math.max(10, speedrunAccumulatedMsRef.current);
+        setSpeedrunElapsedMs(finalTimeMs);
+        const res = submitSpeedrunTime(sId, finalTimeMs);
+        setSpeedrunResult(res);
+      }
+
+      // 塔ステージクリア処理
+      if (isTowerStage) {
+        if (towerFloorNum % 5 === 0) {
+          const unownedArtifacts = TOWER_ARTIFACTS.filter(a => !towerArtifacts.includes(a.id));
+          const pool = unownedArtifacts.length > 0 ? unownedArtifacts : TOWER_ARTIFACTS;
+          const shuffled = [...pool].sort(() => Math.random() - 0.5);
+          setTowerArtifactChoices(shuffled.slice(0, 3));
+        } else {
+          advanceTowerFloor(towerFloorNum);
+        }
+      }
+
+      // きまぐれゲートクリア処理
+      if (isGateStage) {
+        const res = completeGateWave(gateRoomId, gateWaveNum, playerHpRef.current);
+        setGateResultModal(res);
+      }
+
 
       // 演出（必殺技カットイン、パーティクル、ダメージ数値、HPバー減少）をプレイヤーがしっかり楽しんでから勝利画面を表示！
       setTimeout(() => {
         setIsVictory(true);
       }, 1200);
     }
-  }, [enemyHp, stage, clearStage, isScoreAttack, titleEffect]);
+  }, [enemyHp, stage, clearStage, isScoreAttack, isRaidStage, titleEffect, teamPassiveEffects.ypointMult, teamPassiveEffects.moneyMult, isSpeedrunStage, isTowerStage, towerFloorNum, towerArtifacts, advanceTowerFloor, submitSpeedrunTime, isGateStage, gateRoomId, gateWaveNum, completeGateWave]);
+
 
   // ---------- fever start ----------
   useEffect(() => {
@@ -693,8 +1042,27 @@ const GameScene = () => {
       setFeverCount(c => c + 1);
       feverDmgAccum.current = 0;
       trackMission('fever_enter', 1);
+
+      // 塔秘宝: フィーバー突入時最大HP回復
+      if (isTowerStage && towerBuffs.healPct > 0) {
+        const healAmt = Math.floor(maxPlayerHp * (towerBuffs.healPct / 100));
+        setPlayerHp(prev => Math.min(maxPlayerHp, prev + healAmt));
+        const id = Date.now() + Math.random();
+        setDamageTexts(p => [...p, { id, val: healAmt, x: 150, y: 150, color: '#4ade80' }]);
+      }
+
+      if (teamPassiveEffects.feverGaugeCharge > 0) {
+        const charge = teamPassiveEffects.feverGaugeCharge >= 1000 ? 100 : teamPassiveEffects.feverGaugeCharge;
+        setCharGauges(prev => {
+          const next = { ...prev };
+          team.forEach(tId => {
+            next[tId] = Math.min(100, (next[tId] || 0) + charge);
+          });
+          return next;
+        });
+      }
     }
-  }, [feverGauge, isFever, trackMission]);
+  }, [feverGauge, isFever, trackMission, team, teamPassiveEffects.feverGaugeCharge, isTowerStage, towerBuffs.healPct, maxPlayerHp]);
 
   // ---------- fever timer countdown (必殺技カットイン中はタイマー停止) ----------
   useEffect(() => {
@@ -740,7 +1108,9 @@ const GameScene = () => {
       applyDamage(dmg);
       const id = Date.now() + Math.random();
       let textDmgColor = '#ffff00';
-      if (cd.rank === "Z'") textDmgColor = '#ff3399';
+      if (cd.rank === 'K') textDmgColor = '#00ffcc';
+      else if (cd.rank === 'UZ+++') textDmgColor = '#ff007f';
+      else if (cd.rank === "Z'") textDmgColor = '#ff3399';
       else if (cd.rank === 'Z') textDmgColor = '#00ffff';
       else if (cd.rank === 'SSS') textDmgColor = '#ffd700';
       else if (cd.rank === 'SS') textDmgColor = '#ff22ff';
@@ -1582,6 +1952,84 @@ const GameScene = () => {
       for (let i = 0; i < targets.length; i++) {
         setTimeout(() => spawnPuniRef.current(), i * 25);
       }
+    } else if (cd.skill.type === 'uz_god_supreme') {
+      // 🌟 UZ+++ 神創全滅破・天羅万象
+      // 1. 全ぷに消滅
+      const popCount = allPuniBodies.length;
+      allPuniBodies.forEach(b => Matter.Composite.remove(engine.world, b));
+
+      // 2. 超絶神創ダメージ (baseAtk * 9999 * 15.0)
+      const power = Math.round(cd.skill.power * (1 + (skillLv - 1) * 0.5));
+      const totalDmg = Math.floor(baseAtk * power * 15.0 * totalBoost);
+      const hitDmg = Math.floor(totalDmg / 8);
+
+      for (let i = 0; i < 8; i++) {
+        setTimeout(() => {
+          applyDamage(hitDmg);
+          const hitId = Date.now() + Math.random();
+          const offsetX = (Math.random() - 0.5) * 140;
+          const offsetY = (Math.random() - 0.5) * 100;
+          setDamageTexts(p => [...p, { id: hitId, val: hitDmg, x: 150 + offsetX, y: 140 + offsetY, color: '#ffd700' }]);
+          setTimeout(() => setDamageTexts(p => p.filter(t => t.id !== hitId)), 1200);
+        }, i * 60);
+      }
+
+      // 3. フィーバーゲージMAX & プレイヤーHP全回復
+      setFeverGauge(FEVER_MAX);
+      setPlayerHp(maxPlayerHp);
+
+      // 4. 味方全員の技ゲージ全快（100%）
+      setCharGauges(prev => {
+        const next = { ...prev };
+        team.forEach(tId => {
+          next[tId] = 100;
+        });
+        return next;
+      });
+
+      // 5. 盤面ぷに一挙フル補充
+      for (let i = 0; i < Math.max(35, popCount); i++) {
+        setTimeout(() => spawnPuniRef.current(), i * 20);
+      }
+    } else if (cd.skill.type === 'k_dev_supreme') {
+      // 💻⚡ ランクK 開発者権限・万象強制初期化 (UZ+++の1000倍)
+      // 1. 全ぷに完全消滅
+      const popCount = allPuniBodies.length;
+      allPuniBodies.forEach(b => Matter.Composite.remove(engine.world, b));
+
+      // 2. UZ+++の1000倍の神創開発ダメージ
+      const power = Math.round(cd.skill.power * (1 + (skillLv - 1) * 0.5));
+      const totalDmg = Math.floor(baseAtk * power * 15.0 * totalBoost);
+      const hitDmg = Math.floor(totalDmg / 10);
+
+      for (let i = 0; i < 10; i++) {
+        setTimeout(() => {
+          applyDamage(hitDmg);
+          const hitId = Date.now() + Math.random();
+          const offsetX = (Math.random() - 0.5) * 160;
+          const offsetY = (Math.random() - 0.5) * 120;
+          setDamageTexts(p => [...p, { id: hitId, val: hitDmg, x: 150 + offsetX, y: 140 + offsetY, color: '#00ffcc' }]);
+          setTimeout(() => setDamageTexts(p => p.filter(t => t.id !== hitId)), 1500);
+        }, i * 50);
+      }
+
+      // 3. フィーバーゲージMAX & プレイヤーHP全回復
+      setFeverGauge(FEVER_MAX);
+      setPlayerHp(maxPlayerHp);
+
+      // 4. 味方全員の技ゲージ全快（100%）
+      setCharGauges(prev => {
+        const next = { ...prev };
+        team.forEach(tId => {
+          next[tId] = 100;
+        });
+        return next;
+      });
+
+      // 5. 盤面ぷにフル補充
+      for (let i = 0; i < Math.max(35, popCount); i++) {
+        setTimeout(() => spawnPuniRef.current(), i * 15);
+      }
     }
   };
 
@@ -1768,11 +2216,11 @@ const GameScene = () => {
           let gaugeAdd = Math.min(100, Math.floor(Math.pow(total, 1.45) * 1.0));
 
           // パッシブスキル補正
-          if (teamPassiveEffects.feverBoostPct > 0) {
-            feverAdd = feverAdd * (1 + teamPassiveEffects.feverBoostPct / 100);
+          if (teamPassiveEffectsRef.current.feverBoostPct > 0) {
+            feverAdd = feverAdd * (1 + teamPassiveEffectsRef.current.feverBoostPct / 100);
           }
-          if (teamPassiveEffects.gaugeBoostPct > 0) {
-            gaugeAdd = gaugeAdd * (1 + teamPassiveEffects.gaugeBoostPct / 100);
+          if (teamPassiveEffectsRef.current.gaugeBoostPct > 0) {
+            gaugeAdd = gaugeAdd * (1 + teamPassiveEffectsRef.current.gaugeBoostPct / 100);
           }
 
           setFeverGauge(prev => Math.min(FEVER_MAX, prev + feverAdd));
@@ -1793,9 +2241,9 @@ const GameScene = () => {
       const popPuni = (puni: Matter.Body) => {
         const pd  = (puni as any).puniData as PuniData;
         const cd  = CHARACTERS.find(c => c.id === pd.charId)!;
-        const charBoost = getCharBoostMultiplier(cd);
-        const charTribeMult = getCharTribeMultiplier(cd);
-        const dmg = Math.floor(totalTeamAtk * Math.pow(pd.size, BIG_PUNI_MULT) * charBoost * charTribeMult * 0.25);
+        const charBoost = getCharBoostMultiplierRef.current(cd);
+        const charTribeMult = getCharTribeMultiplierRef.current(cd);
+        const dmg = Math.floor(totalTeamAtkRef.current * Math.pow(pd.size, BIG_PUNI_MULT) * charBoost * charTribeMult * 0.25);
 
         // 消した時もぷにのサイズ（長かった連結ぷに）に応じてさらにボーナス加算
         let feverAdd = 0;
@@ -1812,11 +2260,11 @@ const GameScene = () => {
           gaugeAdd = Math.min(100, Math.floor(Math.pow(pd.size, 1.4) * 1.2));
 
           // パッシブスキル補正
-          if (teamPassiveEffects.feverBoostPct > 0) {
-            feverAdd = feverAdd * (1 + teamPassiveEffects.feverBoostPct / 100);
+          if (teamPassiveEffectsRef.current.feverBoostPct > 0) {
+            feverAdd = feverAdd * (1 + teamPassiveEffectsRef.current.feverBoostPct / 100);
           }
-          if (teamPassiveEffects.gaugeBoostPct > 0) {
-            gaugeAdd = gaugeAdd * (1 + teamPassiveEffects.gaugeBoostPct / 100);
+          if (teamPassiveEffectsRef.current.gaugeBoostPct > 0) {
+            gaugeAdd = gaugeAdd * (1 + teamPassiveEffectsRef.current.gaugeBoostPct / 100);
           }
         }
 
@@ -1826,7 +2274,7 @@ const GameScene = () => {
           [pd.charId]: Math.min(100, (prev[pd.charId] || 0) + gaugeAdd)
         }));
 
-        applyDamage(dmg);
+        applyDamageRef.current(dmg);
 
         const id = Date.now() + Math.random();
         setDamageTexts(t => [...t, { id, val: dmg, x: puni.position.x, y: puni.position.y, color: '#ff3333' }]);
@@ -1868,7 +2316,7 @@ const GameScene = () => {
           const hd    = (b as any).puniData    as PuniData;
           if (fd.charId === hd.charId) {
             const baseMaxD = last.circleRadius! + b.circleRadius! + PUNI_RADIUS * 2.5;
-            const maxD = baseMaxD * (teamPassiveEffects.connectRangeMult || 1.0);
+            const maxD = baseMaxD * (teamPassiveEffectsRef.current.connectRangeMult || 1.0);
             if (Vector.magnitude(Vector.sub(b.position, last.position)) < maxD) {
               selectedRef.current.push(b);
               b.render.lineWidth = 5;
@@ -2051,13 +2499,24 @@ const GameScene = () => {
       };
     };
 
-    let cleanup = buildScene(container.clientWidth || 400, container.clientHeight || 450);
+    const initW = container.clientWidth || 400;
+    const initH = container.clientHeight || 450;
+    lastSceneDimensionsRef.current = { w: initW, h: initH };
+    let cleanup = buildScene(initW, initH);
 
     const observer = new ResizeObserver(entries => {
       const { width, height } = entries[0].contentRect;
-      if (width > 0 && height > 0) {
-        cleanup?.();
-        cleanup = buildScene(Math.floor(width), Math.floor(height));
+      const roundedW = Math.floor(width);
+      const roundedH = Math.floor(height);
+      if (roundedW > 0 && roundedH > 0) {
+        const dw = Math.abs(roundedW - lastSceneDimensionsRef.current.w);
+        const dh = Math.abs(roundedH - lastSceneDimensionsRef.current.h);
+        // コンテナの幅または高さが15px以上大幅に変化した場合のみ物理エンジンを安全に再構築
+        if (dw >= 15 || dh >= 15) {
+          lastSceneDimensionsRef.current = { w: roundedW, h: roundedH };
+          cleanup?.();
+          cleanup = buildScene(roundedW, roundedH);
+        }
       }
     });
     observer.observe(container);
@@ -2067,13 +2526,14 @@ const GameScene = () => {
       cleanup?.();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stage, team, characters, totalTeamAtk, isGameOver, isVictory, dealDamage, teamPassiveEffects]);
+  }, [stageId, isGameOver, isVictory]);
 
   if (!stage || !team.length) return null;
 
   return (
-    <div className={`view-container ${isSkillShaking ? 'animate-skill-screen-shake' : isShaking ? 'animate-shake' : ''}`} style={{
+    <div className={`game-scene game-scene-container ${isSkillShaking ? 'animate-skill-screen-shake' : isShaking ? 'animate-shake' : ''}`} style={{
       padding: '0',
+      margin: '0',
       display: 'flex',
       flexDirection: 'column',
       background: isFever ? 'radial-gradient(circle,#4a1a4a,#1a001a)' : 'var(--bg-color)',
@@ -2108,6 +2568,68 @@ const GameScene = () => {
             {score.toLocaleString()}
           </span>
         </div>
+        {isSpeedrunStage && (
+          <>
+            <div style={{ width: '1px', height: '12px', background: 'rgba(255,255,255,0.2)' }} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <Timer size={14} color="#38bdf8" />
+              <span style={{
+                fontSize: '1rem',
+                fontWeight: 900,
+                color: '#38bdf8',
+                fontFamily: 'monospace, sans-serif',
+                letterSpacing: '0.5px'
+              }}>
+                {(() => {
+                  const ms = speedrunElapsedMs;
+                  const totalSec = Math.floor(ms / 1000);
+                  const min = Math.floor(totalSec / 60);
+                  const sec = totalSec % 60;
+                  const milli = Math.floor(ms % 1000);
+                  return `${String(min).padStart(2, '0')}:${String(sec).padStart(2, '0')}.${String(milli).padStart(3, '0')}`;
+                })()}
+              </span>
+              <button
+                onClick={restartStage}
+                title="計測をリセットして最初からやり直す"
+                style={{
+                  background: 'rgba(56, 189, 248, 0.15)',
+                  border: '1px solid rgba(56, 189, 248, 0.5)',
+                  borderRadius: '6px',
+                  color: '#38bdf8',
+                  padding: '2px 6px',
+                  fontSize: '0.65rem',
+                  fontWeight: 900,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '3px',
+                  marginLeft: '2px'
+                }}
+              >
+                <RotateCcw size={11} /> リトライ
+              </button>
+            </div>
+            {speedrunCourse && (
+              <span style={{ fontSize: '0.65rem', color: '#ffd700', fontWeight: 800 }}>
+                目標 S+: {speedrunCourse.targetTimes.sPlus}s
+              </span>
+            )}
+          </>
+        )}
+        {isTowerStage && (
+          <>
+            <div style={{ width: '1px', height: '12px', background: 'rgba(255,255,255,0.2)' }} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <span style={{ fontSize: '0.72rem', color: '#f59e0b', fontWeight: 900 }}>🗼 試練の塔 {towerFloorNum}F</span>
+            </div>
+            {towerArtifacts.length > 0 && (
+              <span style={{ fontSize: '0.65rem', color: '#a855f7', fontWeight: 800 }}>
+                秘宝 {towerArtifacts.length}個
+              </span>
+            )}
+          </>
+        )}
         {isScoreAttack && (
           <>
             <div style={{ width: '1px', height: '12px', background: 'rgba(255,255,255,0.2)' }} />
@@ -2122,6 +2644,39 @@ const GameScene = () => {
                 {scoreAttackTimeLeft}s
               </span>
             </div>
+            {activeRival && (
+              <>
+                <div style={{ width: '1px', height: '12px', background: 'rgba(255,255,255,0.2)' }} />
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.72rem', fontWeight: 800 }}>
+                  <Swords size={12} color="#f87171" />
+                  <span style={{ color: '#fca5a5' }}>VS {activeRival.playerName}:</span>
+                  <span style={{ color: score >= activeRival.score ? '#4ade80' : '#fde047', fontFamily: 'monospace' }}>
+                    {score >= activeRival.score
+                      ? `リード中 (+${(score - activeRival.score).toLocaleString()})`
+                      : `あと ${(activeRival.score - score).toLocaleString()} pt`}
+                  </span>
+                </div>
+              </>
+            )}
+          </>
+        )}
+        {isRaidStage && raidBoss && (
+          <>
+            <div style={{ width: '1px', height: '12px', background: 'rgba(255,255,255,0.2)' }} />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <span style={{ fontSize: '0.65rem', color: '#ff3366', fontWeight: 900 }}>🔥 強敵討伐戦</span>
+              <span style={{
+                fontSize: '1rem',
+                fontWeight: 900,
+                color: raidTimeLeft <= 10 ? '#ff3333' : '#ffd700',
+                fontFamily: 'monospace, sans-serif',
+              }}>
+                ⏱️ {raidTimeLeft}s
+              </span>
+            </div>
+            <span style={{ fontSize: '0.65rem', color: '#f59e0b', fontWeight: 900 }}>
+              蓄積: {(raidAccumulatedDamage / 1000000000000).toFixed(2)}兆dmg
+            </span>
           </>
         )}
       </div>
@@ -2601,6 +3156,8 @@ const GameScene = () => {
                   {skillCutIn.skillType === 'bleach_teatro' && '🔬 人形芝居の呪術医学でHP完全全快！'}
                   {skillCutIn.skillType === 'bleach_glotoneria' && '🌊 喰虚の海蒼双蓮華ででかぷに爆誕連鎖！'}
                   {skillCutIn.skillType === 'bleach_kurohitsugi' && '🌌 破道の九十「黒棺」・鏡花水月で全宇宙崩壊神撃！'}
+                  {skillCutIn.skillType === 'uz_god_supreme' && '🌌 神創全滅破・天羅万象で全ぷに消滅＆神創撃！'}
+                  {skillCutIn.skillType === 'k_dev_supreme' && '💻 開発者権限・万象強制初期化で全画面消滅＆UZ+++の1000倍神撃！'}
                 </div>
               </div>
             </div>
@@ -2694,57 +3251,126 @@ const GameScene = () => {
                 <RotateCcw size={18} /> 最初からやり直す
               </button>
 
-              <button
-                className="btn btn-danger"
-                onClick={() => navigate((isScoreAttack || stageId === 'score_attack') ? '/score_attack' : stageId?.startsWith('bleach_st_') ? '/event/bleach' : stageId?.startsWith('event_snow_') ? '/event/map' : '/stages')}
-                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '10px', fontSize: '0.9rem', marginTop: '4px' }}
-              >
-                <ArrowLeft size={18} /> ステージ選択に戻る
-              </button>
+              <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => navigate('/home')}
+                  style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '10px', fontSize: '0.85rem' }}
+                >
+                  <Home size={16} /> ホーム
+                </button>
+                <button
+                  className="btn btn-danger"
+                  onClick={() => navigate(
+                    isTowerStage ? '/tower' :
+                    isSpeedrunStage ? '/speedrun' :
+                    (isScoreAttack || stageId === 'score_attack') ? '/score_attack' :
+                    stageId?.startsWith('bleach_st_') ? '/event/bleach' :
+                    stageId?.startsWith('event_snow_') ? '/event/map' :
+                    '/stages'
+                  )}
+                  style={{ flex: 1.2, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', padding: '10px', fontSize: '0.85rem' }}
+                >
+                  <ArrowLeft size={16} /> {isTowerStage ? '塔ロビー' : isSpeedrunStage ? 'TA画面' : isScoreAttack ? 'スコアタ' : 'ステージ選択'}
+                </button>
+              </div>
             </div>
           </div>
         </div>
       )}
 
       {isGameOver && (
-        <div style={{ position: 'absolute', inset: 0, background: 'rgba(40,0,0,0.88)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', zIndex: 999 }}>
-          <h1 style={{ fontSize: '3.5rem', color: '#ff3333', textShadow: '0 0 20px #f00' }}>GAME OVER</h1>
-          <div style={{ display: 'flex', gap: '12px', marginTop: 20 }}>
-            <button className="btn btn-secondary" onClick={restartStage}>もう一度挑戦</button>
-            <button className="btn btn-primary" onClick={() => navigate((isScoreAttack || stageId === 'score_attack') ? '/score_attack' : stageId?.startsWith('bleach_st_') ? '/event/bleach' : stageId?.startsWith('event_snow_') ? '/event/map' : '/stages')}>ステージ選択</button>
+        <div style={{ position: 'absolute', inset: 0, background: 'rgba(40,0,0,0.88)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', zIndex: 999, padding: '20px' }}>
+          <h1 style={{ fontSize: '3.2rem', color: '#ff3333', textShadow: '0 0 20px #f00', fontWeight: 900, margin: '0 0 20px 0' }}>GAME OVER</h1>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', width: '100%', maxWidth: '280px' }}>
+            <button className="btn btn-primary" onClick={restartStage} style={{ padding: '12px', fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+              <RotateCcw size={18} /> もう一度挑戦する
+            </button>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button className="btn btn-secondary" onClick={() => navigate('/home')} style={{ flex: 1, padding: '10px', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                <Home size={16} /> ホーム
+              </button>
+              <button
+                className="btn btn-secondary"
+                onClick={() => navigate(
+                  isTowerStage ? '/tower' :
+                  isSpeedrunStage ? '/speedrun' :
+                  isGateStage ? '/gate' :
+                  (isScoreAttack || stageId === 'score_attack') ? '/score_attack' :
+                  stageId?.startsWith('bleach_st_') ? '/event/bleach' :
+                  stageId?.startsWith('event_snow_') ? '/event/map' :
+                  '/stages'
+                )}
+                style={{ flex: 1.2, padding: '10px', fontWeight: 800 }}
+              >
+                {isTowerStage ? '塔ロビー' : isSpeedrunStage ? 'TA画面' : isGateStage ? 'ゲート画面' : isScoreAttack ? 'スコアタ' : 'ステージ選択'}
+              </button>
+            </div>
+
+            {/* きまぐれゲート専用：漢方アイテムで即時復活ボタン */}
+            {isGateStage && gateKampo > 0 && (
+              <button
+                className="btn"
+                onClick={() => {
+                  consumeKampoItem();
+                  setPlayerHp(maxPlayerHp);
+                  setIsGameOver(false);
+                }}
+
+                style={{
+                  width: '100%',
+                  marginTop: '8px',
+                  padding: '12px',
+                  background: 'linear-gradient(135deg, #059669, #10b981)',
+                  color: '#fff',
+                  fontWeight: 950,
+                  fontSize: '0.9rem',
+                  border: '2px solid #34d399',
+                  borderRadius: '12px',
+                  boxShadow: '0 4px 12px rgba(16, 185, 129, 0.4)',
+                  cursor: 'pointer'
+                }}
+              >
+                🧪 漢方を使ってHP全快で復活！（残 {gateKampo} 個）
+              </button>
+            )}
           </div>
         </div>
       )}
 
+
       {isSaFinished && saResult && (
-        <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.92)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px', textAlign: 'center' }}>
-          <div className="glass-panel" style={{ width: '100%', maxWidth: '360px', padding: '25px', border: '3px solid #ffcc00', borderRadius: '24px', boxShadow: '0 0 25px rgba(255,204,0,0.4)', background: 'linear-gradient(135deg, rgba(20,15,35,0.95), rgba(10,5,20,0.95))' }}>
-            <div style={{ fontSize: '1.2rem', color: '#ffcc00', fontWeight: 900, letterSpacing: '0.1em', marginBottom: '5px' }}>⏱️ TIME UP !!</div>
-            <h1 style={{ fontSize: '2rem', margin: '0 0 20px 0', color: '#fff', textShadow: '0 0 10px rgba(255,255,255,0.5)', fontWeight: 900 }}>スコアタ終了！</h1>
+        <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.92)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px', textAlign: 'center', overflowY: 'auto' }}>
+          <div className="glass-panel" style={{ width: '100%', maxWidth: '380px', padding: '20px', border: '3px solid #ffcc00', borderRadius: '24px', boxShadow: '0 0 25px rgba(255,204,0,0.4)', background: 'linear-gradient(135deg, rgba(20,15,35,0.95), rgba(10,5,20,0.95))' }}>
+            <div style={{ fontSize: '1.1rem', color: '#ffcc00', fontWeight: 900, letterSpacing: '0.1em', marginBottom: '2px' }}>⏱️ TIME UP !!</div>
+            <div style={{ display: 'inline-block', background: 'rgba(255,204,0,0.15)', border: '1px solid #ffcc00', color: '#ffd700', padding: '2px 10px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 900, marginBottom: '6px' }}>
+              ⏱️ 設定タイム: {configuredScoreAttackTime}秒
+            </div>
+            <h1 style={{ fontSize: '1.8rem', margin: '0 0 14px 0', color: '#fff', textShadow: '0 0 10px rgba(255,255,255,0.5)', fontWeight: 900 }}>スコアタ終了！</h1>
             
-            <div style={{ background: 'rgba(0,0,0,0.4)', borderRadius: '16px', padding: '15px', marginBottom: '20px', border: '1px solid rgba(255,255,255,0.1)' }}>
-              <div style={{ fontSize: '0.8rem', color: '#888', marginBottom: '4px' }}>今回の獲得スコア</div>
-              <div style={{ fontSize: '2rem', fontWeight: 900, color: '#00ffcc', fontFamily: 'monospace' }}>
-                {score.toLocaleString()} <span style={{ fontSize: '1rem' }}>点</span>
+            <div style={{ background: 'rgba(0,0,0,0.4)', borderRadius: '16px', padding: '14px', marginBottom: '14px', border: '1px solid rgba(255,255,255,0.1)' }}>
+              <div style={{ fontSize: '0.78rem', color: '#888', marginBottom: '2px' }}>今回の獲得スコア</div>
+              <div style={{ fontSize: '1.8rem', fontWeight: 900, color: '#00ffcc', fontFamily: 'monospace' }}>
+                {score.toLocaleString()} <span style={{ fontSize: '0.9rem' }}>点</span>
               </div>
 
-              <div style={{ margin: '12px 0', height: '1px', background: 'rgba(255,255,255,0.1)' }} />
+              <div style={{ margin: '8px 0', height: '1px', background: 'rgba(255,255,255,0.1)' }} />
 
-              <div style={{ fontSize: '0.8rem', color: '#888', marginBottom: '4px' }}>ハイスコア</div>
-              <div style={{ fontSize: '1.4rem', fontWeight: 900, color: '#fff', fontFamily: 'monospace' }}>
-                {Math.max(score, saResult.previousHighScore).toLocaleString()} <span style={{ fontSize: '0.8rem' }}>点</span>
+              <div style={{ fontSize: '0.75rem', color: '#888', marginBottom: '2px' }}>ハイスコア</div>
+              <div style={{ fontSize: '1.25rem', fontWeight: 900, color: '#fff', fontFamily: 'monospace' }}>
+                {Math.max(score, saResult.previousHighScore).toLocaleString()} <span style={{ fontSize: '0.75rem' }}>点</span>
               </div>
 
               {saResult.isNewHighScore && (
                 <div style={{
-                  marginTop: '12px',
+                  marginTop: '10px',
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: '4px',
                   background: 'linear-gradient(90deg, #ff0055, #ffcc00)',
-                  padding: '6px 16px',
+                  padding: '4px 14px',
                   borderRadius: '20px',
-                  fontSize: '0.85rem',
+                  fontSize: '0.8rem',
                   fontWeight: 900,
                   color: '#fff',
                   boxShadow: '0 4px 12px rgba(255,0,85,0.4)'
@@ -2754,40 +3380,785 @@ const GameScene = () => {
               )}
             </div>
 
-            {/* Participation rewards */}
-            <div style={{ marginBottom: '25px' }}>
-              <div style={{ fontSize: '0.8rem', color: '#aaa', marginBottom: '8px' }}>🎁 参加報酬を獲得！</div>
-              <div style={{ display: 'flex', justifyContent: 'center', gap: '15px' }}>
-                <div style={{ background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: '12px', padding: '8px 15px' }}>
-                  <span style={{ fontSize: '0.75rem', color: '#fbbf24', fontWeight: 'bold' }}>🔶 +100 Ypt</span>
+            {/* 🌟 100京pt突破・最強UZ+++獲得告知バナー */}
+            {(saResult.unlockedUzGod || score >= 1000000000000000000) && (
+              <div style={{
+                background: 'linear-gradient(135deg, rgba(255, 215, 0, 0.25) 0%, rgba(236, 72, 153, 0.25) 50%, rgba(147, 51, 234, 0.35) 100%)',
+                border: '2px solid #ffd700',
+                borderRadius: '16px',
+                padding: '12px 10px',
+                marginBottom: '14px',
+                textAlign: 'center',
+                boxShadow: '0 0 20px rgba(255, 215, 0, 0.6)'
+              }}>
+                <div style={{ fontSize: '0.8rem', color: '#fde047', fontWeight: 950, marginBottom: '2px' }}>
+                  🌌👑【スコアタ100京pt突破！神降臨】👑🌌
                 </div>
-                <div style={{ background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.3)', borderRadius: '12px', padding: '8px 15px' }}>
-                  <span style={{ fontSize: '0.75rem', color: '#34d399', fontWeight: 'bold' }}>💰 +300 コイン</span>
+                <div style={{ fontSize: '0.98rem', fontWeight: 950, color: '#ffffff', textShadow: '0 0 10px #ffd700' }}>
+                  🌟【UZ+++】神創絶神・天照極エンマ王UZ+++
+                </div>
+                <div style={{ fontSize: '0.72rem', color: '#fef08a', marginTop: '4px', fontWeight: 800 }}>
+                  （Lv.300 / 技MAX / 限凸+10 / HP＆ATK50万・全スキル50倍に大幅上方修正！）を仲間に獲得しました！
+                </div>
+              </div>
+            )}
+
+            {/* Rival Battle Result HUD */}
+            {activeRival && (
+              <div style={{
+                background: score >= activeRival.score
+                  ? 'linear-gradient(135deg, rgba(34, 197, 94, 0.25) 0%, rgba(234, 179, 8, 0.2) 100%)'
+                  : 'linear-gradient(135deg, rgba(239, 68, 68, 0.25) 0%, rgba(100, 116, 139, 0.2) 100%)',
+                border: score >= activeRival.score ? '1.5px solid #22c55e' : '1.5px solid #ef4444',
+                borderRadius: '14px',
+                padding: '10px',
+                marginBottom: '12px',
+                textAlign: 'center'
+              }}>
+                <div style={{ fontSize: '0.75rem', color: '#ccc', fontWeight: 800, marginBottom: '2px' }}>
+                  ⚔️ ライバル対戦結果 VS {activeRival.playerName}
+                </div>
+                <div style={{
+                  fontSize: '1.15rem',
+                  fontWeight: 950,
+                  color: score >= activeRival.score ? '#4ade80' : '#f87171',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px'
+                }}>
+                  {score >= activeRival.score ? '🏆 VICTORY (ライバル撃破！)' : '💀 DEFEAT (惜敗...)'}
+                </div>
+                <div style={{ fontSize: '0.72rem', color: '#e2e8f0', marginTop: '2px', fontFamily: 'monospace' }}>
+                  目標: {activeRival.score.toLocaleString()} pt (差: {(score - activeRival.score >= 0 ? `+` : '')}{(score - activeRival.score).toLocaleString()} pt)
+                </div>
+                {score >= activeRival.score && (
+                  <div style={{ marginTop: '4px', fontSize: '0.72rem', color: '#fde047', fontWeight: 900 }}>
+                    🔥 ライバル撃破ボーナス: +500 Ypt / +1000 コイン獲得！
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Participation rewards */}
+            <div style={{ marginBottom: '16px' }}>
+              <div style={{ fontSize: '0.75rem', color: '#aaa', marginBottom: '6px' }}>🎁 参加報酬を獲得！</div>
+              <div style={{ display: 'flex', justifyContent: 'center', gap: '10px' }}>
+                <div style={{ background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: '10px', padding: '6px 12px' }}>
+                  <span style={{ fontSize: '0.72rem', color: '#fbbf24', fontWeight: 'bold' }}>🔶 +100 Ypt</span>
+                </div>
+                <div style={{ background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.3)', borderRadius: '10px', padding: '6px 12px' }}>
+                  <span style={{ fontSize: '0.72rem', color: '#34d399', fontWeight: 'bold' }}>💰 +300 コイン</span>
                 </div>
               </div>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               <button
                 className="btn btn-primary"
                 onClick={restartStage}
-                style={{ width: '100%', padding: '12px', fontSize: '0.95rem', fontWeight: 900, background: 'linear-gradient(135deg, #ea580c, #ca8a04)' }}
+                style={{ width: '100%', padding: '10px', fontSize: '0.9rem', fontWeight: 900, background: 'linear-gradient(135deg, #ea580c, #ca8a04)' }}
               >
-                もう一度挑戦する
+                🔄 もう一度挑戦する
+              </button>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => navigate('/home')}
+                  style={{ flex: 1, padding: '10px', fontSize: '0.85rem', fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
+                >
+                  <Home size={16} /> ホーム
+                </button>
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => navigate('/score_attack')}
+                  style={{ flex: 1.2, padding: '10px', fontSize: '0.85rem', fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
+                >
+                  <Trophy size={16} /> スコアタ画面
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── 🗼 無限の試練の塔 階層突破リザルトモーダル ── */}
+      {isTowerStage && isVictory && stage && (
+        <div style={{
+          position: 'absolute',
+          inset: 0,
+          background: 'rgba(15, 10, 30, 0.95)',
+          backdropFilter: 'blur(8px)',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          padding: '20px',
+          textAlign: 'center',
+          overflowY: 'auto'
+        }}>
+          <div className="glass-panel" style={{
+            width: '100%',
+            maxWidth: '380px',
+            padding: '22px 18px',
+            border: '2px solid #f59e0b',
+            borderRadius: '24px',
+            boxShadow: '0 0 35px rgba(245, 158, 11, 0.45)',
+            background: 'linear-gradient(135deg, rgba(30, 20, 50, 0.95), rgba(15, 10, 25, 0.95))'
+          }}>
+            <div style={{ fontSize: '0.85rem', color: '#fbbf24', fontWeight: 900, letterSpacing: '2px', marginBottom: '2px' }}>
+              🗼 無限の試練の塔
+            </div>
+            <h1 style={{
+              fontSize: '1.8rem',
+              fontWeight: 950,
+              color: '#ffffff',
+              textShadow: '0 0 15px #f59e0b',
+              margin: '0 0 12px 0'
+            }}>
+              第 {towerFloorNum} 階層 突破！
+            </h1>
+
+            {/* ボス情報 */}
+            <div style={{
+              background: 'rgba(255, 255, 255, 0.05)',
+              border: '1px solid rgba(245, 158, 11, 0.3)',
+              borderRadius: '16px',
+              padding: '10px',
+              marginBottom: '14px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '12px'
+            }}>
+              <span style={{ fontSize: '2.5rem' }}>{stage.enemyEmoji}</span>
+              <div style={{ textAlign: 'left' }}>
+                <div style={{ fontSize: '0.72rem', color: '#fbbf24', fontWeight: 800 }}>討伐完了</div>
+                <div style={{ fontSize: '1rem', fontWeight: 900, color: '#fff' }}>{stage.enemyName}</div>
+                <div style={{ fontSize: '0.7rem', color: '#94a3b8' }}>
+                  獲得: 💰 +{stage.rewardMoney.toLocaleString()} / 🔶 +{stage.rewardYPoints.toLocaleString()} Ypt
+                </div>
+              </div>
+            </div>
+
+            {/* 🎁 5階層ごとの秘宝選択 */}
+            {towerArtifactChoices && towerArtifactChoices.length > 0 ? (
+              <div style={{ marginBottom: '16px' }}>
+                <div style={{
+                  fontSize: '0.95rem',
+                  fontWeight: 950,
+                  color: '#fbbf24',
+                  textShadow: '0 0 10px rgba(251, 191, 36, 0.6)',
+                  marginBottom: '4px'
+                }}>
+                  ✨ 試練の秘宝・選択の刻 ✨
+                </div>
+                <div style={{ fontSize: '0.72rem', color: '#cbd5e1', marginBottom: '10px' }}>
+                  塔の攻略を有利にする強力な秘宝を1つ選んでください
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {towerArtifactChoices.map(art => {
+                    const isSelected = selectedTowerRewardArtifact === art.id;
+                    return (
+                      <div
+                        key={art.id}
+                        onClick={() => setSelectedTowerRewardArtifact(art.id)}
+                        style={{
+                          background: isSelected
+                            ? 'linear-gradient(135deg, rgba(245, 158, 11, 0.3) 0%, rgba(217, 119, 6, 0.3) 100%)'
+                            : 'rgba(255, 255, 255, 0.04)',
+                          border: isSelected ? '2px solid #f59e0b' : '1px solid rgba(255, 255, 255, 0.15)',
+                          borderRadius: '12px',
+                          padding: '10px 12px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '10px',
+                          cursor: 'pointer',
+                          textAlign: 'left',
+                          transition: 'all 0.2s',
+                          boxShadow: isSelected ? '0 0 15px rgba(245, 158, 11, 0.4)' : 'none'
+                        }}
+                      >
+                        <span style={{ fontSize: '1.8rem', flexShrink: 0 }}>{art.emoji}</span>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: '0.85rem', fontWeight: 900, color: isSelected ? '#fde047' : '#fff' }}>
+                            {art.name}
+                          </div>
+                          <div style={{ fontSize: '0.72rem', color: '#cbd5e1', marginTop: '2px' }}>
+                            {art.desc}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <button
+                  className="btn btn-primary"
+                  disabled={!selectedTowerRewardArtifact}
+                  onClick={() => {
+                    if (selectedTowerRewardArtifact) {
+                      advanceTowerFloor(towerFloorNum, selectedTowerRewardArtifact);
+                      navigate(`/game/tower_floor_${towerFloorNum + 1}`);
+                      window.location.reload();
+                    }
+                  }}
+                  style={{
+                    width: '100%',
+                    marginTop: '14px',
+                    padding: '12px',
+                    fontSize: '0.95rem',
+                    fontWeight: 950,
+                    background: selectedTowerRewardArtifact
+                      ? 'linear-gradient(135deg, #f59e0b, #ea580c)'
+                      : 'rgba(255, 255, 255, 0.1)',
+                    color: selectedTowerRewardArtifact ? '#fff' : '#666',
+                    cursor: selectedTowerRewardArtifact ? 'pointer' : 'not-allowed',
+                    border: 'none',
+                    borderRadius: '12px'
+                  }}
+                >
+                  🎁 秘宝を獲得して第 {towerFloorNum + 1} 階層へ進む
+                </button>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
+                <button
+                  className="btn btn-primary"
+                  onClick={() => {
+                    navigate(`/game/tower_floor_${towerFloorNum + 1}`);
+                    window.location.reload();
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    fontSize: '0.95rem',
+                    fontWeight: 950,
+                    background: 'linear-gradient(135deg, #f59e0b, #ea580c)',
+                    boxShadow: '0 4px 15px rgba(245, 158, 11, 0.4)'
+                  }}
+                >
+                  ⚡ 次の階層へ挑む (第 {towerFloorNum + 1} 階層へ)
+                </button>
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+              <button
+                className="btn btn-secondary"
+                onClick={() => navigate('/home')}
+                style={{ flex: 1, padding: '10px', fontSize: '0.85rem', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
+              >
+                <Home size={16} /> ホーム
               </button>
               <button
                 className="btn btn-secondary"
-                onClick={() => navigate('/score_attack')}
-                style={{ width: '100%', padding: '12px', fontSize: '0.95rem', fontWeight: 900 }}
+                onClick={() => navigate('/tower')}
+                style={{ flex: 1.2, padding: '10px', fontSize: '0.85rem', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
               >
-                スコアタ画面に戻る
+                🗼 塔ロビー
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {isVictory && stage && (
+      {/* ── ⏱️ タイムアタック（最速討伐）リザルトモーダル ── */}
+      {isSpeedrunStage && isVictory && stage && (
+        <div style={{
+          position: 'absolute',
+          inset: 0,
+          background: 'rgba(5, 15, 35, 0.96)',
+          backdropFilter: 'blur(8px)',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          padding: '20px',
+          textAlign: 'center',
+          overflowY: 'auto'
+        }}>
+          <div className="glass-panel" style={{
+            width: '100%',
+            maxWidth: '380px',
+            padding: '22px 18px',
+            border: '2px solid #38bdf8',
+            borderRadius: '24px',
+            boxShadow: '0 0 35px rgba(56, 189, 248, 0.45)',
+            background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(8, 47, 73, 0.95))'
+          }}>
+            <div style={{ fontSize: '0.85rem', color: '#38bdf8', fontWeight: 900, letterSpacing: '2px', marginBottom: '2px' }}>
+              ⏱️ 最速討伐タイムアタック
+            </div>
+            <h1 style={{
+              fontSize: '1.5rem',
+              fontWeight: 950,
+              color: '#ffffff',
+              margin: '0 0 14px 0'
+            }}>
+              {speedrunCourse?.title || stage.name}
+            </h1>
+
+            {/* クリアタイム＆ランク */}
+            <div style={{
+              background: 'rgba(0, 0, 0, 0.45)',
+              border: '1px solid rgba(56, 189, 248, 0.3)',
+              borderRadius: '18px',
+              padding: '16px',
+              marginBottom: '14px'
+            }}>
+              <div style={{ fontSize: '0.78rem', color: '#94a3b8', marginBottom: '2px' }}>CLEAR TIME</div>
+              <div style={{
+                fontSize: '2.4rem',
+                fontWeight: 950,
+                color: '#38bdf8',
+                fontFamily: 'monospace, sans-serif',
+                textShadow: '0 0 20px rgba(56, 189, 248, 0.8)',
+                letterSpacing: '1px'
+              }}>
+                {(speedrunElapsedMs / 1000).toFixed(3)}s
+              </div>
+
+              {/* ランク評価 */}
+              {speedrunResult && (
+                <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                  <div style={{
+                    padding: '4px 16px',
+                    borderRadius: '20px',
+                    fontSize: '1.2rem',
+                    fontWeight: 950,
+                    color: '#fff',
+                    background: speedrunResult.rank === 'S+'
+                      ? 'linear-gradient(90deg, #ec4899, #f59e0b)'
+                      : speedrunResult.rank === 'S'
+                      ? 'linear-gradient(90deg, #eab308, #ca8a04)'
+                      : speedrunResult.rank === 'A'
+                      ? 'linear-gradient(90deg, #94a3b8, #64748b)'
+                      : 'linear-gradient(90deg, #b45309, #78350f)',
+                    boxShadow: '0 0 15px rgba(255, 255, 255, 0.3)'
+                  }}>
+                    RANK {speedrunResult.rank}
+                  </div>
+                </div>
+              )}
+
+              {speedrunResult?.isNewBest && (
+                <div style={{
+                  marginTop: '10px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  background: 'linear-gradient(90deg, #38bdf8, #818cf8)',
+                  padding: '4px 14px',
+                  borderRadius: '20px',
+                  fontSize: '0.8rem',
+                  fontWeight: 900,
+                  color: '#fff',
+                  boxShadow: '0 4px 12px rgba(56, 189, 248, 0.4)'
+                }}>
+                  🎉 自己最速レコード更新！
+                </div>
+              )}
+            </div>
+
+            {/* 目標タイム一覧 */}
+            {speedrunCourse && (
+              <div style={{
+                background: 'rgba(255, 255, 255, 0.04)',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
+                borderRadius: '12px',
+                padding: '10px',
+                marginBottom: '14px',
+                fontSize: '0.72rem',
+                color: '#cbd5e1'
+              }}>
+                <div style={{ fontWeight: 800, marginBottom: '4px', color: '#94a3b8' }}>目標タイム基準</div>
+                <div style={{ display: 'flex', justifyContent: 'space-around', fontWeight: 900 }}>
+                  <span style={{ color: speedrunElapsedMs <= speedrunCourse.targetTimes.sPlus * 1000 ? '#f43f5e' : '#64748b' }}>
+                    S+: {speedrunCourse.targetTimes.sPlus}s以内
+                  </span>
+                  <span style={{ color: speedrunElapsedMs <= speedrunCourse.targetTimes.s * 1000 ? '#eab308' : '#64748b' }}>
+                    S: {speedrunCourse.targetTimes.s}s以内
+                  </span>
+                  <span style={{ color: speedrunElapsedMs <= speedrunCourse.targetTimes.a * 1000 ? '#38bdf8' : '#64748b' }}>
+                    A: {speedrunCourse.targetTimes.a}s以内
+                  </span>
+                </div>
+              </div>
+            )}
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <button
+                className="btn btn-primary"
+                onClick={restartStage}
+                style={{
+                  width: '100%',
+                  padding: '11px',
+                  fontSize: '0.95rem',
+                  fontWeight: 900,
+                  background: 'linear-gradient(135deg, #0284c7, #0369a1)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px'
+                }}
+              >
+                <RotateCcw size={18} /> もう一度走る
+              </button>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => navigate('/home')}
+                  style={{ flex: 1, padding: '10px', fontSize: '0.85rem', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
+                >
+                  <Home size={16} /> ホーム
+                </button>
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => navigate('/speedrun')}
+                  style={{ flex: 1.2, padding: '10px', fontSize: '0.85rem', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
+                >
+                  <Trophy size={16} /> TAコース一覧
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── 🔥 超大型レイドボス討伐リザルトモーダル ── */}
+      {isRaidStage && raidResultModal && raidBoss && (
+        <div style={{
+          position: 'absolute',
+          inset: 0,
+          background: 'rgba(10, 5, 20, 0.95)',
+          backdropFilter: 'blur(8px)',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          padding: '20px',
+          textAlign: 'center',
+          overflowY: 'auto'
+        }}>
+          <div className="glass-panel" style={{
+            width: '100%',
+            maxWidth: '380px',
+            padding: '22px 18px',
+            border: `2px solid ${raidBoss.borderHex}`,
+            borderRadius: '24px',
+            boxShadow: `0 0 35px ${raidBoss.borderHex}66`,
+            background: 'linear-gradient(135deg, rgba(20, 10, 30, 0.95), rgba(10, 5, 20, 0.95))'
+          }}>
+            <div style={{ fontSize: '0.85rem', color: raidBoss.borderHex, fontWeight: 900, letterSpacing: '2px', marginBottom: '2px' }}>
+              🔥 超大型レイドボス強敵討伐戦
+            </div>
+            <h1 style={{
+              fontSize: '1.6rem',
+              fontWeight: 950,
+              color: '#ffffff',
+              margin: '0 0 10px 0'
+            }}>
+              {raidResultModal.isCleared ? '🎉 レイドボス完全討伐！！' : '⚔️ パズルバトル終了（撤退）'}
+            </h1>
+
+            {/* ボスアイコンと名前 */}
+            <div style={{
+              background: raidBoss.bgGradient,
+              border: `1px solid ${raidBoss.borderHex}`,
+              borderRadius: '16px',
+              padding: '12px',
+              marginBottom: '14px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '12px'
+            }}>
+              <div style={{ fontSize: '2.5rem' }}>{raidBoss.avatarEmoji}</div>
+              <div style={{ textAlign: 'left' }}>
+                <div style={{ fontSize: '0.95rem', fontWeight: 950, color: '#fff' }}>{raidBoss.name}</div>
+                <div style={{ fontSize: '0.75rem', color: '#fcd34d' }}>
+                  {raidResultModal.isCleared ? '討伐完了！' : `残りHP: ${(Math.max(0, enemyHp) / 1000000000000).toFixed(2)}兆 / ${raidBoss.formattedHp}`}
+                </div>
+              </div>
+            </div>
+
+            {/* 与えたダメージ */}
+            <div style={{
+              background: 'rgba(0, 0, 0, 0.5)',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              borderRadius: '16px',
+              padding: '14px',
+              marginBottom: '14px'
+            }}>
+              <div style={{ fontSize: '0.78rem', color: '#94a3b8', marginBottom: '2px' }}>今回のパズル総与ダメージ</div>
+              <div style={{
+                fontSize: '1.8rem',
+                fontWeight: 950,
+                color: '#38bdf8',
+                fontFamily: 'monospace, sans-serif',
+                textShadow: '0 0 15px rgba(56, 189, 248, 0.6)'
+              }}>
+                {(raidResultModal.damageGiven / 1000000000000).toFixed(3)} <span style={{ fontSize: '1rem' }}>兆</span>
+              </div>
+              <div style={{ fontSize: '0.72rem', color: '#a7f3d0', marginTop: '4px', fontWeight: 800 }}>
+                ※ダメージはボスのHPにリアルタイム保存・引き継ぎされました！
+              </div>
+            </div>
+
+            {/* 報酬 */}
+            <div style={{
+              background: 'rgba(255, 255, 255, 0.05)',
+              borderRadius: '14px',
+              padding: '12px',
+              marginBottom: '14px'
+            }}>
+              <div style={{ fontSize: '0.75rem', color: '#cbd5e1', marginBottom: '6px', fontWeight: 800 }}>獲得報酬</div>
+              <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                <div style={{
+                  background: 'rgba(245, 158, 11, 0.2)',
+                  border: '1px solid rgba(245, 158, 11, 0.5)',
+                  borderRadius: '10px',
+                  padding: '4px 10px',
+                  fontSize: '0.75rem',
+                  color: '#fbbf24',
+                  fontWeight: 900
+                }}>
+                  🔶 +{raidResultModal.rewardYPoints.toLocaleString()} Ypt
+                </div>
+                {raidResultModal.rewardItemName && (
+                  <div style={{
+                    background: 'rgba(168, 85, 247, 0.2)',
+                    border: '1px solid rgba(168, 85, 247, 0.5)',
+                    borderRadius: '10px',
+                    padding: '4px 10px',
+                    fontSize: '0.75rem',
+                    color: '#d8b4fe',
+                    fontWeight: 900
+                  }}>
+                    🎁 {raidResultModal.rewardItemName}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {!raidResultModal.isCleared && (
+                <button
+                  className="btn btn-primary"
+                  onClick={restartStage}
+                  style={{
+                    width: '100%',
+                    padding: '11px',
+                    fontSize: '0.95rem',
+                    fontWeight: 900,
+                    background: 'linear-gradient(135deg, #ea580c, #c2410c)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  <RotateCcw size={18} /> 続けてパズルで削る
+                </button>
+              )}
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => navigate('/home')}
+                  style={{ flex: 1, padding: '10px', fontSize: '0.85rem', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
+                >
+                  <Home size={16} /> ホーム
+                </button>
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => navigate('/raid')}
+                  style={{ flex: 1.2, padding: '10px', fontSize: '0.85rem', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
+                >
+                  🔥 レイド一覧
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── 🌀 きまぐれゲート ウェイブ／間突破リザルトモーダル ── */}
+      {isGateStage && isVictory && stage && gateResultModal && (
+        <div style={{
+          position: 'absolute',
+          inset: 0,
+          background: 'rgba(15, 10, 30, 0.95)',
+          backdropFilter: 'blur(8px)',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          padding: '20px',
+          textAlign: 'center',
+          overflowY: 'auto'
+        }}>
+          <div className="glass-panel" style={{
+            width: '100%',
+            maxWidth: '380px',
+            padding: '22px 18px',
+            border: '2px solid #a855f7',
+            borderRadius: '24px',
+            boxShadow: '0 0 35px rgba(168, 85, 247, 0.45)',
+            background: 'linear-gradient(135deg, rgba(30, 15, 55, 0.95), rgba(15, 8, 30, 0.95))'
+          }}>
+            <div style={{ fontSize: '0.85rem', color: '#c084fc', fontWeight: 900, letterSpacing: '2px', marginBottom: '2px' }}>
+              🌀 きまぐれゲート Lv.{gateLevelNum}
+            </div>
+            <h1 style={{
+              fontSize: '1.8rem',
+              fontWeight: 950,
+              color: '#ffffff',
+              textShadow: '0 0 15px #a855f7',
+              margin: '0 0 12px 0'
+            }}>
+              {gateResultModal.isRoomCleared ? '間の完全制覇達成！！' : `第 ${gateWaveNum} 階層 突破！`}
+            </h1>
+
+            {/* 出現告知演出（邪神の間 / ご褒美の間） */}
+            {gateResultModal.specialAppearance && (
+              <div style={{
+                background: gateResultModal.specialAppearance.type === 'boss'
+                  ? 'linear-gradient(135deg, rgba(220, 38, 38, 0.4), rgba(153, 27, 27, 0.6))'
+                  : 'linear-gradient(135deg, rgba(245, 158, 11, 0.4), rgba(217, 119, 6, 0.6))',
+                border: '2px solid ' + (gateResultModal.specialAppearance.type === 'boss' ? '#fca5a5' : '#fde047'),
+                borderRadius: '16px',
+                padding: '12px',
+                marginBottom: '16px',
+                boxShadow: gateResultModal.specialAppearance.type === 'boss' ? '0 0 20px rgba(239, 68, 68, 0.6)' : '0 0 20px rgba(245, 158, 11, 0.6)'
+              }}>
+                <div style={{ fontSize: '1.8rem', marginBottom: '2px' }}>
+                  {gateResultModal.specialAppearance.type === 'boss' ? '👿🔥' : '🎁✨'}
+                </div>
+                <div style={{ fontSize: '1.05rem', fontWeight: 950, color: '#ffffff' }}>
+                  {gateResultModal.specialAppearance.type === 'boss' ? '👿 邪神の間 出現！！' : '🎁 ご褒美の間 出現！！'}
+                </div>
+                <div style={{ fontSize: '0.8rem', color: '#fef08a', fontWeight: 900, marginTop: '2px' }}>
+                  Lv.{gateResultModal.specialAppearance.level} の間が開放されました！
+                </div>
+              </div>
+            )}
+
+            {/* ボス情報 */}
+            <div style={{
+              background: 'rgba(255, 255, 255, 0.05)',
+              border: '1px solid rgba(168, 85, 247, 0.3)',
+              borderRadius: '16px',
+              padding: '12px',
+              marginBottom: '16px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '12px'
+            }}>
+              <span style={{ fontSize: '2.5rem' }}>{stage.enemyEmoji}</span>
+              <div style={{ textAlign: 'left', flex: 1 }}>
+                <div style={{ fontSize: '0.72rem', color: '#c084fc', fontWeight: 800 }}>討伐完了</div>
+                <div style={{ fontSize: '1rem', fontWeight: 900, color: '#fff' }}>{stage.enemyName}</div>
+                <div style={{ fontSize: '0.7rem', color: '#cbd5e1' }}>
+                  残りHP引継ぎ: <span style={{ color: '#4ade80', fontWeight: 'bold' }}>{playerHp}</span> / {maxPlayerHp}
+                </div>
+              </div>
+            </div>
+
+            {/* 報酬 */}
+            {gateResultModal.rewards && (
+              <div style={{
+                background: 'rgba(168, 85, 247, 0.1)',
+                border: '1px solid rgba(168, 85, 247, 0.25)',
+                borderRadius: '16px',
+                padding: '12px',
+                marginBottom: '16px'
+              }}>
+                <div style={{ fontSize: '0.75rem', color: '#e9d5ff', fontWeight: 800, marginBottom: '6px' }}>
+                  🎁 獲得クリア報酬
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'center', gap: '10px' }}>
+                  <div style={{ background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: '10px', padding: '6px 12px' }}>
+                    <span style={{ fontSize: '0.85rem', color: '#fbbf24', fontWeight: 900 }}>🔶 +{gateResultModal.rewards.yPoints.toLocaleString()} Ypt</span>
+                  </div>
+                  <div style={{ background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.3)', borderRadius: '10px', padding: '6px 12px' }}>
+                    <span style={{ fontSize: '0.85rem', color: '#34d399', fontWeight: 900 }}>💰 +{gateResultModal.rewards.money.toLocaleString()}</span>
+                  </div>
+                </div>
+
+                {gateResultModal.rewards.bonusDrops && gateResultModal.rewards.bonusDrops.length > 0 && (
+                  <div style={{ marginTop: '8px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    {gateResultModal.rewards.bonusDrops.map((b, idx) => (
+                      <div key={idx} style={{ fontSize: '0.78rem', color: '#fef08a', fontWeight: 900 }}>
+                        {b.icon} {b.name} × {b.count}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* アクションボタン */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {!gateResultModal.isRoomCleared && gateResultModal.nextWave ? (
+                <button
+                  className="btn btn-primary"
+                  onClick={() => {
+                    navigate(`/game/gate_${gateRoomId}_lv_${gateLevelNum}_wave_${gateResultModal.nextWave}`);
+                    window.location.reload();
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    fontSize: '0.95rem',
+                    fontWeight: 950,
+                    background: 'linear-gradient(135deg, #a855f7, #7c3aed)',
+                    boxShadow: '0 4px 15px rgba(168, 85, 247, 0.4)'
+                  }}
+                >
+                  ⚡ 第 {gateResultModal.nextWave} 階層（次戦）へ進む ➔
+                </button>
+              ) : (
+                <button
+                  className="btn btn-primary"
+                  onClick={() => navigate('/gate')}
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    fontSize: '0.95rem',
+                    fontWeight: 950,
+                    background: 'linear-gradient(135deg, #10b981, #059669)',
+                    boxShadow: '0 4px 15px rgba(16, 185, 129, 0.4)'
+                  }}
+                >
+                  🎉 間の制覇完了！ゲート画面へ
+                </button>
+              )}
+
+              <button
+                className="btn btn-secondary"
+                onClick={() => navigate('/gate')}
+                style={{
+                  width: '100%',
+                  padding: '10px',
+                  fontSize: '0.85rem',
+                  fontWeight: 900
+                }}
+              >
+                🌀 ゲート拠点に戻る
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── 通常ステージクリアモーダル ── */}
+      {!isTowerStage && !isSpeedrunStage && !isRaidStage && !isGateStage && isVictory && stage && (
         <StageResultModal
           stageName={stage.name}
           enemyName={stage.enemyName}
@@ -2804,6 +4175,7 @@ const GameScene = () => {
           onNext={() => navigate((isScoreAttack || stageId === 'score_attack') ? '/score_attack' : stageId?.startsWith('bleach_st_') ? '/event/bleach' : stageId?.startsWith('event_snow_') ? '/event/map' : '/stages')}
         />
       )}
+
     </div>
   );
 };

@@ -2,6 +2,7 @@ export interface SerialCodePayload {
   yPoints?: number;
   money?: number;
   unlockStagesCount?: number; // 通常ステージを進める数
+  characterId?: string; // キャラクター直接付与
   items?: {
     expSmall?: number;
     expLarge?: number;
@@ -105,6 +106,25 @@ export function decodeSerialCode(code: string): { success: boolean; payload?: Se
     };
   }
 
+  // 特殊シークレット暗号コード: UZ+++ 神創絶神・天照極エンマ王UZ+++ 降臨コード
+  const normalized = cleanCode.replace(/[\s-]/g, '');
+  if (
+    normalized === 'UZ3P9K7XSUPR8M2VGOD9W4QL' ||
+    normalized === 'UZGOD9X7KM4B2V8QLW99Z' ||
+    normalized === 'PUNIUZGODSUPREME9999' ||
+    normalized === 'UZ3P9K7XSUPR8M2V'
+  ) {
+    return {
+      success: true,
+      payload: {
+        characterId: 'char_uz_god_supreme',
+        yPoints: 100000,
+        money: 10000000,
+        title: '【UZ+++降臨】神創絶神・天照極エンマ王'
+      }
+    };
+  }
+
   if (!code.trim().startsWith('PUNI-')) {
     return { success: false, error: '無効な形式のシリアルコードです' };
   }
@@ -119,7 +139,7 @@ export function decodeSerialCode(code: string): { success: boolean; payload?: Se
     const json = xorEncryptDecrypt(encrypted, SECRET_SALT);
     const payload = JSON.parse(json) as SerialCodePayload;
 
-    if (!payload || (payload.yPoints === undefined && payload.money === undefined && !payload.items && !payload.unlockStagesCount)) {
+    if (!payload || (payload.yPoints === undefined && payload.money === undefined && !payload.items && !payload.unlockStagesCount && !payload.characterId)) {
       return { success: false, error: 'シリアルコードの内容が不正です' };
     }
 

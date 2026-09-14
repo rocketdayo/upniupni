@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Star, Trophy, Coins, Sparkles, RotateCcw, ArrowRight, Check, Award, Gift } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Star, Trophy, Coins, Sparkles, RotateCcw, ArrowRight, Check, Award, Gift, Home } from 'lucide-react';
 import type { StageDropReward } from '../store/GameContext';
 
 interface StageResultModalProps {
@@ -72,11 +73,12 @@ export const StageResultModal: React.FC<StageResultModalProps> = ({
   feverCount,
   rewardMoney,
   rewardYPoints,
-  isEventStage = false,
+  isEventStage: _isEventStage = false,
   drops,
   onRetry,
   onNext
 }) => {
+  const navigate = useNavigate();
   const hpRatio = maxPlayerHp > 0 ? playerHp / maxPlayerHp : 0;
 
   // 星3つの獲得判定
@@ -358,10 +360,10 @@ export const StageResultModal: React.FC<StageResultModalProps> = ({
               </div>
             </div>
 
-            {/* 獲得Yポイント or サマーコイン */}
+            {/* 獲得Yポイント */}
             <div style={{
-              background: isEventStage ? 'rgba(56, 189, 248, 0.12)' : 'rgba(236, 72, 153, 0.12)',
-              border: isEventStage ? '1px solid rgba(56, 189, 248, 0.35)' : '1px solid rgba(236, 72, 153, 0.35)',
+              background: 'rgba(236, 72, 153, 0.12)',
+              border: '1px solid rgba(236, 72, 153, 0.35)',
               borderRadius: '14px',
               padding: '10px 12px',
               display: 'flex',
@@ -370,13 +372,13 @@ export const StageResultModal: React.FC<StageResultModalProps> = ({
             }}>
               <div style={{
                 fontSize: '0.7rem',
-                color: isEventStage ? '#38bdf8' : '#f472b6',
+                color: '#f472b6',
                 fontWeight: 700,
                 display: 'flex',
                 alignItems: 'center',
                 gap: '4px'
               }}>
-                <Sparkles size={14} /> {isEventStage ? 'サマーコイン' : 'Yポイント'}
+                <Sparkles size={14} /> Yポイント
               </div>
               <div style={{
                 fontSize: '1.25rem',
@@ -694,52 +696,76 @@ export const StageResultModal: React.FC<StageResultModalProps> = ({
         <div style={{
           width: '100%',
           display: 'flex',
-          gap: '10px',
+          flexDirection: 'column',
+          gap: '8px',
           marginTop: '6px'
         }}>
-          <button
-            onClick={onRetry}
-            style={{
-              flex: 1,
-              padding: '12px',
-              borderRadius: '16px',
-              background: 'rgba(255,255,255,0.1)',
-              border: '1px solid rgba(255,255,255,0.2)',
-              color: '#ffffff',
-              fontWeight: 800,
-              fontSize: '0.9rem',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '6px',
-              cursor: 'pointer',
-              transition: 'all 0.2s'
-            }}
-          >
-            <RotateCcw size={18} /> もう一度
-          </button>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button
+              onClick={onRetry}
+              style={{
+                flex: 1,
+                padding: '12px',
+                borderRadius: '16px',
+                background: 'rgba(255,255,255,0.1)',
+                border: '1px solid rgba(255,255,255,0.2)',
+                color: '#ffffff',
+                fontWeight: 800,
+                fontSize: '0.88rem',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '6px',
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+            >
+              <RotateCcw size={16} /> もう一度
+            </button>
+
+            <button
+              onClick={onNext}
+              style={{
+                flex: 1.4,
+                padding: '12px',
+                borderRadius: '16px',
+                background: 'linear-gradient(135deg, #ff9900 0%, #ff5500 100%)',
+                border: 'none',
+                boxShadow: '0 4px 15px rgba(255, 85, 0, 0.4)',
+                color: '#ffffff',
+                fontWeight: 900,
+                fontSize: '0.92rem',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '6px',
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+            >
+              次へ進む <ArrowRight size={16} />
+            </button>
+          </div>
 
           <button
-            onClick={onNext}
+            onClick={() => navigate('/home')}
             style={{
-              flex: 1.4,
-              padding: '12px',
-              borderRadius: '16px',
-              background: 'linear-gradient(135deg, #ff9900 0%, #ff5500 100%)',
-              border: 'none',
-              boxShadow: '0 4px 15px rgba(255, 85, 0, 0.4)',
-              color: '#ffffff',
-              fontWeight: 900,
-              fontSize: '0.95rem',
+              width: '100%',
+              padding: '10px',
+              borderRadius: '14px',
+              background: 'rgba(255, 255, 255, 0.07)',
+              border: '1px solid rgba(255, 255, 255, 0.15)',
+              color: '#fef08a',
+              fontWeight: 800,
+              fontSize: '0.85rem',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               gap: '6px',
-              cursor: 'pointer',
-              transition: 'all 0.2s'
+              cursor: 'pointer'
             }}
           >
-            次へ進む <ArrowRight size={18} />
+            <Home size={16} color="#ffd700" /> 🏠 ホームに戻る
           </button>
         </div>
       </div>

@@ -31,6 +31,7 @@ export const DebugConsoleScreen: React.FC = () => {
     setMoney,
     setYPoints,
     unlockCharacter,
+    unlockKDeveloper,
     unlockAllCharacters,
     unlockAllStages,
     addMaxItems,
@@ -233,7 +234,7 @@ export const DebugConsoleScreen: React.FC = () => {
       color: '#fff',
       display: 'flex',
       flexDirection: 'column',
-      paddingBottom: '30px'
+      paddingBottom: '200px'
     }}>
       {/* ヘッダー */}
       <div style={{
@@ -444,6 +445,81 @@ export const DebugConsoleScreen: React.FC = () => {
         }}>
           <div style={{ fontSize: '0.95rem', fontWeight: 900, color: '#ff5588', marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
             <Users size={18} /> 妖怪キャラクター解放＆レベル上限解放
+          </div>
+
+          {/* ★ 最高峰ランクK 開発者キャラクター解放 ★ */}
+          <div style={{
+            background: 'linear-gradient(135deg, rgba(2, 30, 30, 0.95), rgba(0, 40, 35, 0.95))',
+            border: '2px solid #00ffcc',
+            borderRadius: '12px',
+            padding: '14px',
+            boxShadow: '0 0 20px rgba(0, 255, 204, 0.25)',
+            marginBottom: '14px',
+            position: 'relative'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+              <span style={{
+                background: '#00ffcc',
+                color: '#021a1a',
+                fontWeight: 950,
+                fontSize: '0.75rem',
+                padding: '2px 8px',
+                borderRadius: '6px'
+              }}>
+                RANK K
+              </span>
+              <span style={{ fontSize: '0.95rem', fontWeight: 950, color: '#00ffcc' }}>
+                創世開発神・コードデベロッパー
+              </span>
+            </div>
+
+            <div style={{ fontSize: '0.73rem', color: '#99f6e4', lineHeight: 1.5, marginBottom: '10px' }}>
+              【入手方法: <b>デバッグメニュー限定</b>】<br />
+              UZ+++のさらに<b>1000倍の攻撃力 (99,999,000)</b> と全スキル効果（<b>10,000倍</b> / 200,000%）を誇る究極の開発者チート神！
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '12px', background: 'rgba(0,0,0,0.4)', padding: '8px 10px', borderRadius: '8px', border: '1px solid rgba(0,255,204,0.3)' }}>
+              {(() => {
+                const kChar = CHARACTERS.find(c => c.id === 'char_k_developer') || CHARACTERS[0];
+                return (
+                  <>
+                    <div style={{ border: '2px solid #00ffcc', borderRadius: '50%', padding: '2px', background: '#021a1a', flexShrink: 0 }}>
+                      <CharacterAvatar character={kChar} size={44} />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0, fontSize: '0.7rem' }}>
+                      <div style={{ color: '#5eead4', fontWeight: 800 }}>ステータス (Lv.300 / 限凸+10 / 技Lv.7)</div>
+                      <div style={{ color: '#fff', fontFamily: 'monospace' }}>HP: 99,999,000 / ATK: 99,999,000</div>
+                      <div style={{ color: '#fef08a', fontSize: '0.67rem' }}>技: 開発者権限・万象強制初期化 (威力 9,999,000)</div>
+                    </div>
+                  </>
+                );
+              })()}
+            </div>
+
+            <button
+              onClick={() => {
+                unlockKDeveloper();
+                showToast('💻 最高峰ランクK「創世開発神・コードデベロッパー」を獲得＆MAX強化しました！');
+              }}
+              style={{
+                width: '100%',
+                padding: '10px',
+                background: 'linear-gradient(135deg, #00ffff 0%, #00ff88 50%, #059669 100%)',
+                border: '2px solid #ffffff',
+                color: '#021a1a',
+                borderRadius: '8px',
+                fontSize: '0.88rem',
+                fontWeight: 950,
+                cursor: 'pointer',
+                boxShadow: '0 4px 14px rgba(0, 255, 204, 0.35)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '6px'
+              }}
+            >
+              💻 ランクK「コードデベロッパー」を入手・MAX解放
+            </button>
           </div>
 
           <button

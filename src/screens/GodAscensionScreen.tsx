@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Sparkles, Crown, ShoppingBag, HelpCircle, Flame } from 'lucide-react';
 import { useGame } from '../store/GameContext';
@@ -6,6 +6,7 @@ import { CHARACTERS } from '../data/characters';
 import type { Character } from '../data/characters';
 import { CharacterAvatar } from '../components/CharacterAvatar';
 import { BleachRingShopModal } from '../components/BleachRingShopModal';
+import { AscensionCutscene } from '../components/AscensionCutscene';
 
 export const GodAscensionScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -19,56 +20,61 @@ export const GodAscensionScreen: React.FC = () => {
   const [isShopOpen, setIsShopOpen] = useState(false);
   const [selectedBaseCharId, setSelectedBaseCharId] = useState<string>('');
   const [isAscending, setIsAscending] = useState<boolean>(false);
-  const [rouletteChar, setRouletteChar] = useState<Character | null>(null);
-  const [ascensionSuccessChar, setAscensionSuccessChar] = useState<Character | null>(null);
-  const [ascensionMessage, setAscensionMessage] = useState<string>('');
-  const [isNewUnlock, setIsNewUnlock] = useState<boolean>(false);
+  const [cutsceneData, setCutsceneData] = useState<{
+    baseChar: Character;
+    resultChar: Character;
+    isNewUnlock: boolean;
+    message: string;
+  } | null>(null);
   const [detailChar, setDetailChar] = useState<Character | null>(null);
   const [showGuide, setShowGuide] = useState<boolean>(false);
 
   const ownedStones = items?.godAscensionStone || 0;
 
-  // Owned Z' characters that can be sacrificed for ascension
-  const ownedZPrimeChars = CHARACTERS.filter(c => c.rank === "Z'" && characters[c.id]);
+  // Owned Z' or Z characters that can be sacrificed for ascension
+  const ownedBaseChars = CHARACTERS.filter(c => (c.rank === "Z'" || c.rank === 'Z') && characters[c.id]);
+
+  // Auto-select first base character if none selected or selected one not owned
+  useEffect(() => {
+    if ((!selectedBaseCharId || !characters[selectedBaseCharId]) && ownedBaseChars.length > 0) {
+      setSelectedBaseCharId(ownedBaseChars[0].id);
+    }
+  }, [characters, ownedBaseChars, selectedBaseCharId]);
 
   // All 13 ZZ characters obtainable via ascension
   const allZZChars = CHARACTERS.filter(c => c.rank === 'ZZ');
 
-  // Handle Ascension
+  // Handle Ascension with Cutscene
   const handleStartAscension = (baseId: string) => {
-    if (isAscending) return;
+    if (isAscending || cutsceneData) return;
     if (ownedStones < 1) {
       alert('『神昇の秘石』が不足しています（必要数: 1個）。入手方法をご確認ください。');
       return;
     }
-    if (!characters[baseId]) {
+    const baseChar = CHARACTERS.find(c => c.id === baseId);
+    if (!baseChar || !characters[baseId]) {
       alert('進化元のベースキャラクターを所持していません。');
       return;
     }
 
     setIsAscending(true);
-    let count = 0;
-    const maxCount = 22;
-    const interval = setInterval(() => {
-      const randomIdx = Math.floor(Math.random() * allZZChars.length);
-      setRouletteChar(allZZChars[randomIdx]);
-      count++;
-      if (count >= maxCount) {
-        clearInterval(interval);
-        // Execute Ascension
-        const res = ascendToZZ(baseId);
-        setIsAscending(false);
-        setRouletteChar(null);
-        if (res.success && res.targetCharId) {
-          const resultChar = CHARACTERS.find(c => c.id === res.targetCharId) || null;
-          setAscensionSuccessChar(resultChar);
-          setAscensionMessage(res.message);
-          setIsNewUnlock(!!res.isNewUnlock);
-        } else {
-          alert(res.message);
-        }
+    // Execute Ascension
+    const res = ascendToZZ(baseId);
+    setIsAscending(false);
+
+    if (res.success && res.targetCharId) {
+      const resultChar = CHARACTERS.find(c => c.id === res.targetCharId);
+      if (resultChar) {
+        setCutsceneData({
+          baseChar,
+          resultChar,
+          isNewUnlock: !!res.isNewUnlock,
+          message: res.message
+        });
       }
-    }, 70);
+    } else {
+      alert(res.message || '神昇覚醒に失敗しました');
+    }
   };
 
   const selectedBaseChar = CHARACTERS.find(c => c.id === selectedBaseCharId);
@@ -79,16 +85,17 @@ export const GodAscensionScreen: React.FC = () => {
       style={{
         background: 'radial-gradient(ellipse at top, #2e1065 0%, #0f172a 50%, #020617 100%)',
         color: '#ffffff',
-        minHeight: '100vh',
+        minHeight: '100%',
         padding: '16px',
+        paddingBottom: '80px',
         display: 'flex',
         flexDirection: 'column',
-        gap: '14px',
+        gap: '16px',
         overflowY: 'auto'
       }}
     >
       {/* ── Header ── */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
         <button
           className="btn btn-secondary"
           onClick={() => navigate('/home')}
@@ -112,7 +119,7 @@ export const GodAscensionScreen: React.FC = () => {
             </h1>
           </div>
           <span style={{ fontSize: '0.72rem', color: '#fef08a', fontWeight: 800, letterSpacing: '0.05em' }}>
-            Z' ➔ ZZ 神昇覚醒システム
+            Z' / Z ➔ ZZ 神昇覚醒システム
           </span>
         </div>
         <button
@@ -146,7 +153,8 @@ export const GodAscensionScreen: React.FC = () => {
         justifyContent: 'space-around',
         boxShadow: '0 0 25px rgba(255, 215, 0, 0.25)',
         flexWrap: 'wrap',
-        gap: '8px'
+        gap: '8px',
+        flexShrink: 0
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <div style={{
@@ -203,7 +211,8 @@ export const GodAscensionScreen: React.FC = () => {
         border: '1.5px solid rgba(250, 204, 21, 0.4)',
         borderRadius: '16px',
         padding: '12px 14px',
-        backdropFilter: 'blur(8px)'
+        backdropFilter: 'blur(8px)',
+        flexShrink: 0
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
           <Sparkles size={16} color="#ffd700" />
@@ -261,7 +270,7 @@ export const GodAscensionScreen: React.FC = () => {
           }}>
             <div>
               <div style={{ fontSize: '0.78rem', fontWeight: 800, color: '#38bdf8' }}>
-                🏆 スコアアタック（週間＆累計スコア報酬）
+                🏆 BLEACH記念スコアアタック
               </div>
               <div style={{ fontSize: '0.68rem', color: '#94a3b8' }}>
                 10兆/1000兆pt到達、または日曜週間集計の上位入賞で獲得！
@@ -325,29 +334,32 @@ export const GodAscensionScreen: React.FC = () => {
 
       {/* ── Ascension Ritual Section ── */}
       <div style={{
-        background: 'linear-gradient(180deg, rgba(30, 27, 75, 0.9) 0%, rgba(15, 23, 42, 0.95) 100%)',
-        border: '2px solid #a855f7',
+        background: 'linear-gradient(180deg, rgba(30, 27, 75, 0.95) 0%, rgba(15, 23, 42, 0.98) 100%)',
+        border: '2px solid #c084fc',
         borderRadius: '20px',
-        padding: '16px',
-        boxShadow: '0 8px 30px rgba(0, 0, 0, 0.5)',
+        padding: '18px',
+        boxShadow: '0 8px 30px rgba(0, 0, 0, 0.5), 0 0 20px rgba(192, 132, 252, 0.25)',
         position: 'relative',
-        overflow: 'hidden'
+        flexShrink: 0,
+        minHeight: 'fit-content'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-          <Flame size={20} color="#f59e0b" />
-          <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 900, color: '#fef08a' }}>
-            神昇の儀式：進化元 Z' キャラクター選択
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+          <Flame size={22} color="#f59e0b" />
+          <h2 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 900, color: '#fef08a' }}>
+            神昇の儀式：進化元キャラクター選択
           </h2>
         </div>
 
-        <p style={{ margin: '0 0 12px 0', fontSize: '0.75rem', color: '#cbd5e1', lineHeight: '1.4' }}>
-          手持ちの Z' キャラクター1体と『神昇の秘石 1個』を捧げることで、全13体の最高峰 <strong>ZZキャラクター</strong> の中からランダムで1体が神昇覚醒します！
+        <p style={{ margin: '0 0 14px 0', fontSize: '0.78rem', color: '#cbd5e1', lineHeight: '1.5' }}>
+          手持ちの <strong>Z' または Z キャラクター1体</strong> と <strong>『神昇の秘石 1個』</strong> を捧げることで、全13体の最高峰 <strong>ZZキャラクター</strong> の中から神昇覚醒！
           <br />
-          <span style={{ color: '#38bdf8' }}>※ 技レベル・限界突破・スキルLvは継承・強化されます。</span>
+          <span style={{ color: '#fca5a5', fontWeight: 800 }}>※ 進化元キャラクターは融合で疲れ切り、すべてを託してお別れ（所持枠から離脱）となります。</span>
+          <br />
+          <span style={{ color: '#38bdf8' }}>※ 技レベル・限界突破・スキルLvは覚醒後のZZキャラへしっかりと継承・強化されます。</span>
         </p>
 
-        {/* Owned Z' List */}
-        {ownedZPrimeChars.length === 0 ? (
+        {/* Owned Base Character List */}
+        {ownedBaseChars.length === 0 ? (
           <div style={{
             background: 'rgba(239, 68, 68, 0.15)',
             border: '1.5px dashed #f87171',
@@ -356,44 +368,61 @@ export const GodAscensionScreen: React.FC = () => {
             textAlign: 'center'
           }}>
             <div style={{ fontSize: '1.5rem', marginBottom: '6px' }}>⚠️</div>
-            <div style={{ fontSize: '0.85rem', fontWeight: 900, color: '#fca5a5' }}>
-              神昇進化元の Z' キャラクターを所持していません
+            <div style={{ fontSize: '0.88rem', fontWeight: 900, color: '#fca5a5' }}>
+              神昇進化元の Z' / Z キャラクターを所持していません
             </div>
-            <div style={{ fontSize: '0.72rem', color: '#cbd5e1', marginTop: '4px' }}>
-              BLEACH特設ガシャや虚圏特設マップで Z'（十刃・護廷十三隊）を仲間にしよう！
+            <div style={{ fontSize: '0.72rem', color: '#cbd5e1', marginTop: '6px' }}>
+              BLEACH特設ガシャや虚圏特設マップで Z'（十刃・護廷十三隊）またはZキャラを仲間にしよう！
             </div>
-            <button
-              className="btn"
-              onClick={() => navigate('/gacha')}
-              style={{
-                marginTop: '10px',
-                background: 'linear-gradient(135deg, #d946ef, #a855f7)',
-                color: '#fff',
-                fontSize: '0.78rem',
-                fontWeight: 900,
-                padding: '8px 16px',
-                borderRadius: '10px',
-                border: 'none',
-                cursor: 'pointer'
-              }}
-            >
-              ガシャ画面へ
-            </button>
+            <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', marginTop: '12px' }}>
+              <button
+                className="btn"
+                onClick={() => navigate('/gacha')}
+                style={{
+                  background: 'linear-gradient(135deg, #d946ef, #a855f7)',
+                  color: '#fff',
+                  fontSize: '0.78rem',
+                  fontWeight: 900,
+                  padding: '8px 16px',
+                  borderRadius: '10px',
+                  border: 'none',
+                  cursor: 'pointer'
+                }}
+              >
+                ガシャ画面へ
+              </button>
+              <button
+                className="btn"
+                onClick={() => navigate('/event/bleach')}
+                style={{
+                  background: 'linear-gradient(135deg, #0284c7, #0369a1)',
+                  color: '#fff',
+                  fontSize: '0.78rem',
+                  fontWeight: 900,
+                  padding: '8px 16px',
+                  borderRadius: '10px',
+                  border: 'none',
+                  cursor: 'pointer'
+                }}
+              >
+                虚圏マップへ
+              </button>
+            </div>
           </div>
         ) : (
           <div>
-            <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginBottom: '8px' }}>
-              所持中の Z' キャラクター（タップして選択）:
+            <div style={{ fontSize: '0.78rem', color: '#94a3b8', marginBottom: '8px' }}>
+              所持中の進化元キャラクター（タップして選択）:
             </div>
             <div style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(90px, 1fr))',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(92px, 1fr))',
               gap: '10px',
               maxHeight: '220px',
               overflowY: 'auto',
               padding: '4px'
             }}>
-              {ownedZPrimeChars.map(char => {
+              {ownedBaseChars.map(char => {
                 const isSelected = selectedBaseCharId === char.id;
                 const save = characters[char.id];
                 return (
@@ -402,9 +431,9 @@ export const GodAscensionScreen: React.FC = () => {
                     onClick={() => setSelectedBaseCharId(char.id)}
                     style={{
                       background: isSelected
-                        ? 'linear-gradient(135deg, rgba(234, 179, 8, 0.3) 0%, rgba(217, 70, 239, 0.4) 100%)'
+                        ? 'linear-gradient(135deg, rgba(234, 179, 8, 0.35) 0%, rgba(217, 70, 239, 0.45) 100%)'
                         : 'rgba(15, 23, 42, 0.7)',
-                      border: isSelected ? '2px solid #ffd700' : '1px solid rgba(255,255,255,0.1)',
+                      border: isSelected ? '2px solid #ffd700' : '1px solid rgba(255,255,255,0.12)',
                       borderRadius: '12px',
                       padding: '8px',
                       display: 'flex',
@@ -441,41 +470,63 @@ export const GodAscensionScreen: React.FC = () => {
         )}
 
         {/* Selected Base Char & Stone Requirements Card */}
-        {selectedBaseChar && (
+        {selectedBaseChar ? (
           <div style={{
             marginTop: '16px',
-            background: 'rgba(0,0,0,0.4)',
+            background: 'rgba(0,0,0,0.45)',
             border: '1.5px solid #ffd700',
             borderRadius: '14px',
-            padding: '12px',
+            padding: '14px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
             flexWrap: 'wrap',
-            gap: '10px'
+            gap: '12px'
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <CharacterAvatar character={selectedBaseChar} size={48} showRankBadge={true} />
+              <CharacterAvatar character={selectedBaseChar} size={50} showRankBadge={true} />
               <div>
                 <div style={{ fontSize: '0.7rem', color: '#fef08a', fontWeight: 800 }}>選択中のベースキャラ:</div>
-                <div style={{ fontSize: '0.95rem', fontWeight: 950, color: '#fff' }}>{selectedBaseChar.name}</div>
+                <div style={{ fontSize: '1rem', fontWeight: 950, color: '#fff' }}>{selectedBaseChar.name}</div>
                 <div style={{ fontSize: '0.68rem', color: '#94a3b8' }}>
-                  攻撃: {selectedBaseChar.baseAtk} / HP: {selectedBaseChar.baseHp}
+                  ランク: {selectedBaseChar.rank} / 攻撃: {selectedBaseChar.baseAtk} / HP: {selectedBaseChar.baseHp}
+                </div>
+                <div style={{ fontSize: '0.65rem', color: '#fca5a5', fontWeight: 800, marginTop: '2px' }}>
+                  ※ 融合で力を使い果たし、お別れとなります
                 </div>
               </div>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
               <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: '0.68rem', color: '#cbd5e1' }}>必要秘石: 1個</div>
+                <div style={{ fontSize: '0.7rem', color: '#cbd5e1' }}>必要秘石: 1個 (所持: {ownedStones}個)</div>
                 <div style={{
                   fontSize: '0.85rem',
                   fontWeight: 900,
                   color: ownedStones >= 1 ? '#86efac' : '#f87171'
                 }}>
-                  {ownedStones >= 1 ? '所持数充足 (OK)' : '秘石が足りません'}
+                  {ownedStones >= 1 ? '所持数充足 (覚醒可能)' : '秘石が不足しています'}
                 </div>
               </div>
+
+              {ownedStones < 1 && (
+                <button
+                  onClick={() => setIsShopOpen(true)}
+                  style={{
+                    background: '#ca8a04',
+                    border: '1px solid #ffd700',
+                    color: '#000',
+                    padding: '8px 12px',
+                    borderRadius: '10px',
+                    fontSize: '0.75rem',
+                    fontWeight: 900,
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap'
+                  }}
+                >
+                  秘石を交換する
+                </button>
+              )}
 
               <button
                 disabled={isAscending || ownedStones < 1}
@@ -488,7 +539,7 @@ export const GodAscensionScreen: React.FC = () => {
                   color: ownedStones >= 1 ? '#000' : '#94a3b8',
                   padding: '10px 18px',
                   borderRadius: '12px',
-                  fontSize: '0.9rem',
+                  fontSize: '0.92rem',
                   fontWeight: 950,
                   cursor: ownedStones >= 1 ? 'pointer' : 'not-allowed',
                   boxShadow: ownedStones >= 1 ? '0 0 20px rgba(255, 215, 0, 0.6)' : 'none',
@@ -503,6 +554,18 @@ export const GodAscensionScreen: React.FC = () => {
               </button>
             </div>
           </div>
+        ) : ownedBaseChars.length > 0 && (
+          <div style={{
+            marginTop: '12px',
+            background: 'rgba(0,0,0,0.3)',
+            borderRadius: '10px',
+            padding: '12px',
+            textAlign: 'center',
+            fontSize: '0.8rem',
+            color: '#ffd700'
+          }}>
+            👆 上の一覧から神昇させたいキャラクターをタップして選択してください
+          </div>
         )}
       </div>
 
@@ -511,7 +574,8 @@ export const GodAscensionScreen: React.FC = () => {
         background: 'rgba(15, 23, 42, 0.85)',
         border: '1.5px solid rgba(255, 215, 0, 0.3)',
         borderRadius: '16px',
-        padding: '16px'
+        padding: '16px',
+        flexShrink: 0
       }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -599,163 +663,15 @@ export const GodAscensionScreen: React.FC = () => {
         </div>
       </div>
 
-      {/* ── Ascension Roulette Animated Overlay ── */}
-      {isAscending && rouletteChar && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            zIndex: 9999,
-            background: 'rgba(0, 0, 0, 0.9)',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '20px'
-          }}
-        >
-          <div style={{
-            fontSize: '1.2rem',
-            color: '#ffd700',
-            fontWeight: 950,
-            marginBottom: '16px',
-            textShadow: '0 0 20px rgba(255, 215, 0, 0.8)',
-            animation: 'pulse 0.5s infinite'
-          }}>
-            ⚡ 神域の扉が開放中… ⚡
-          </div>
-
-          <div style={{
-            width: '180px',
-            height: '180px',
-            borderRadius: '50%',
-            border: '6px solid #ffd700',
-            boxShadow: '0 0 50px rgba(255, 215, 0, 0.9), inset 0 0 30px rgba(255, 215, 0, 0.6)',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            background: 'radial-gradient(circle, #4c1d95 0%, #0f172a 100%)',
-            transform: 'scale(1.1)',
-            transition: 'transform 0.1s ease'
-          }}>
-            <CharacterAvatar character={rouletteChar} size={110} showRankBadge={true} />
-          </div>
-
-          <div style={{
-            marginTop: '20px',
-            fontSize: '1.3rem',
-            fontWeight: 950,
-            color: '#ffffff',
-            textShadow: '0 0 15px rgba(255,255,255,0.8)'
-          }}>
-            {rouletteChar.name}
-          </div>
-          <div style={{ fontSize: '0.8rem', color: '#f0abfc', marginTop: '6px', fontWeight: 800 }}>
-            ZZキャラクター抽選中…
-          </div>
-        </div>
-      )}
-
-      {/* ── Ascension Result Success Modal ── */}
-      {ascensionSuccessChar && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            zIndex: 9999,
-            background: 'rgba(0, 0, 0, 0.85)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '20px'
-          }}
-        >
-          <div style={{
-            background: 'linear-gradient(135deg, #1e1b4b 0%, #0f172a 100%)',
-            border: '3px solid #ffd700',
-            borderRadius: '24px',
-            padding: '24px',
-            maxWidth: '400px',
-            width: '100%',
-            textAlign: 'center',
-            boxShadow: '0 0 40px rgba(255, 215, 0, 0.5)',
-            position: 'relative'
-          }}>
-            <div style={{ fontSize: '2rem', marginBottom: '8px' }}>👑✨</div>
-            <h2 style={{
-              margin: '0 0 4px 0',
-              fontSize: '1.5rem',
-              fontWeight: 950,
-              color: '#ffd700',
-              textShadow: '0 0 15px rgba(255, 215, 0, 0.6)'
-            }}>
-              {isNewUnlock ? '新ZZキャラクター神昇覚醒！' : '限界突破・神昇完了！'}
-            </h2>
-            <div style={{ fontSize: '0.75rem', color: '#38bdf8', marginBottom: '16px' }}>
-              神域の力を得て、新たなZZキャラクターが降臨しました！
-            </div>
-
-            <div style={{
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              gap: '10px',
-              background: 'rgba(255, 215, 0, 0.1)',
-              border: '1.5px solid #ffd700',
-              borderRadius: '16px',
-              padding: '16px',
-              marginBottom: '16px'
-            }}>
-              <CharacterAvatar character={ascensionSuccessChar} size={90} showRankBadge={true} />
-              <div>
-                <span style={{ background: '#ffd700', color: '#000', padding: '2px 8px', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 950 }}>
-                  ZZ
-                </span>
-                <div style={{ fontSize: '1.2rem', fontWeight: 950, color: '#ffffff', marginTop: '4px' }}>
-                  {ascensionSuccessChar.name}
-                </div>
-                <div style={{ fontSize: '0.75rem', color: '#fef08a', marginTop: '2px' }}>
-                  必殺技: {ascensionSuccessChar.skill?.name || '神域必殺技'}
-                </div>
-              </div>
-            </div>
-
-            <div style={{
-              background: 'rgba(0,0,0,0.4)',
-              borderRadius: '10px',
-              padding: '10px',
-              fontSize: '0.78rem',
-              color: '#cbd5e1',
-              lineHeight: '1.5',
-              marginBottom: '16px',
-              whiteSpace: 'pre-line'
-            }}>
-              {ascensionMessage}
-            </div>
-
-            <button
-              onClick={() => {
-                setAscensionSuccessChar(null);
-                setAscensionMessage('');
-              }}
-              style={{
-                width: '100%',
-                padding: '12px',
-                borderRadius: '12px',
-                background: 'linear-gradient(135deg, #ffd700 0%, #f59e0b 100%)',
-                border: 'none',
-                color: '#000000',
-                fontWeight: 950,
-                fontSize: '0.95rem',
-                cursor: 'pointer',
-                boxShadow: '0 4px 15px rgba(255, 215, 0, 0.4)'
-              }}
-            >
-              閉じる
-            </button>
-          </div>
-        </div>
+      {/* ── Ascension Cutscene with merging animation ── */}
+      {cutsceneData && (
+        <AscensionCutscene
+          baseCharacter={cutsceneData.baseChar}
+          resultCharacter={cutsceneData.resultChar}
+          isNewUnlock={cutsceneData.isNewUnlock}
+          message={cutsceneData.message}
+          onComplete={() => setCutsceneData(null)}
+        />
       )}
 
       {/* ── ZZ Character Detail Modal ── */}

@@ -95,7 +95,7 @@ const StageSelect = () => {
   const STAGE_WIDTH = 160;
 
   return (
-    <div className="view-container" style={{ padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+    <div className="view-container stage-select-container" style={{ padding: 0, paddingBottom: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column', height: '100%' }}>
       {/* Header */}
       <div style={{ position: 'absolute', top: 0, left: 0, right: 0, padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: '8px', zIndex: 10, background: 'linear-gradient(180deg, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.6) 80%, transparent 100%)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

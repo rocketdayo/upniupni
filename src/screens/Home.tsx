@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Play, Users, Sparkles, BookOpen, CalendarDays, Bell, Gift, X, HelpCircle, Trophy, ClipboardList, Award, Newspaper, Settings, Crown } from 'lucide-react';
+import { Play, Users, Sparkles, BookOpen, Bell, Gift, X, HelpCircle, Trophy, ClipboardList, Award, Newspaper, Settings, Crown, Timer, Swords } from 'lucide-react';
 import { useGame } from '../store/GameContext';
 import { CHARACTERS } from '../data/characters';
 import { STAGES } from '../data/stages';
@@ -10,6 +10,8 @@ import { SettingsModal } from '../components/SettingsModal';
 import { TitleUnlockedModal } from '../components/TitleUnlockedModal';
 
 const NEWS_ITEMS = [
+  "🌀【新機能】「きまぐれゲート」登場！異次元サバイバルパズルで間の完全制覇を目指せ！",
+  "🗼【新モード】無限の試練の塔（エンドレス・ボスラッシュ）＆⏱️最速討伐スピードラン実装！",
   "👑【神昇解禁】最高峰「ZZランク」神昇の祭壇オープン！Z'キャラと神昇の秘石で降臨！",
   "💎【神昇の秘石】虚圏特別ボス初クリア・スコアタ報酬・BLEACHリング交換所で獲得可能！",
   "⚔️【BLEACHコラボ】Z'ランク十刃＆崩玉藍染登場！虚圏特別マップ2面も大解放！！",
@@ -29,8 +31,11 @@ const Home = () => {
     unlockedTitles = [],
     notifiedUnlockedTitles = [],
     acknowledgeTitle,
-    setSelectedTitle
+    setSelectedTitle,
+    towerHighestFloor = 1,
+    gateLevel = 1
   } = useGame();
+
 
   const unnotifiedTitles = unlockedTitles.filter(t => !notifiedUnlockedTitles.includes(t));
 
@@ -212,70 +217,7 @@ const Home = () => {
         </div>
       </div>
 
-      {/* ── 🌟 超ド派手！イベント裏マップ特設アクセスバナー ── */}
-      <div
-        onClick={() => navigate('/event/map')}
-        style={{
-          background: 'linear-gradient(135deg, #ea580c 0%, #c2410c 50%, #7c2d12 100%)',
-          border: '3px solid #fde047',
-          borderRadius: '18px',
-          padding: '14px 18px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          cursor: 'pointer',
-          boxShadow: '0 8px 24px rgba(234, 88, 12, 0.5), 0 0 15px rgba(253, 224, 71, 0.4)',
-          position: 'relative',
-          overflow: 'hidden',
-          transition: 'transform 0.15s'
-        }}
-        onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
-        onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', zIndex: 2 }}>
-          <div style={{
-            fontSize: '2.4rem',
-            background: 'rgba(0,0,0,0.3)',
-            borderRadius: '50%',
-            width: '52px',
-            height: '52px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            border: '2px solid #fde047',
-            flexShrink: 0
-          }}>
-            🏝️
-          </div>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <span style={{ background: '#ef4444', color: '#fff', fontSize: '0.65rem', fontWeight: 900, padding: '2px 8px', borderRadius: '10px' }}>
-                超激ムズ！
-              </span>
-              <span style={{ color: '#fef08a', fontSize: '0.75rem', fontWeight: 800 }}>裏ボス: サマーエンマ大王 👑</span>
-            </div>
-            <div style={{ fontSize: '1.2rem', fontWeight: 900, color: '#ffffff', textShadow: '0 2px 4px rgba(0,0,0,0.8)', marginTop: '2px' }}>
-              常夏ビーチ(裏) マップへ出撃！
-            </div>
-          </div>
-        </div>
-        <div style={{
-          background: '#fde047',
-          color: '#000000',
-          fontWeight: 900,
-          fontSize: '0.9rem',
-          padding: '8px 14px',
-          borderRadius: '12px',
-          border: '2px solid #ffffff',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.4)',
-          whiteSpace: 'nowrap',
-          zIndex: 2
-        }}>
-          GO ➔
-        </div>
-      </div>
-
-      {/* ── ⚔️ BLEACH 十刃（エスパーダ）特設コラボステージバナー（常夏ビーチの直下） ── */}
+      {/* ── ⚔️ BLEACH 十刃（エスパーダ）特設コラボステージバナー ── */}
       <div
         onClick={() => navigate('/event/bleach')}
         style={{
@@ -495,13 +437,38 @@ const Home = () => {
         </button>
 
         <button
-          className="btn btn-y-point"
+          className="btn btn-purple"
           style={{ padding: '15px 5px', flexDirection: 'column', gap: '8px', position: 'relative' }}
-          onClick={() => navigate('/event')}
+          onClick={() => navigate('/event/bleach')}
         >
-          <div style={{ position: 'absolute', top: -5, right: -5, background: '#ff2255', color: 'white', borderRadius: '50%', width: 20, height: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.6rem', fontWeight: 900, border: '2px solid white' }}>NEW</div>
-          <CalendarDays size={28} />
-          <span className="text-outline" style={{ fontSize: '0.9rem' }}>イベント</span>
+          <div style={{ position: 'absolute', top: -5, right: -5, background: '#d946ef', color: 'white', borderRadius: '50%', width: 20, height: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.6rem', fontWeight: 900, border: '2px solid white' }}>HOT</div>
+          <Swords size={28} />
+          <span className="text-outline" style={{ fontSize: '0.9rem' }}>ブリーチ</span>
+        </button>
+
+        {/* ── 🗼 無限の試練の塔（大辞典とイベントの直下） ── */}
+        <button
+          className="btn btn-tower"
+          style={{ padding: '15px 5px', flexDirection: 'column', gap: '8px', position: 'relative' }}
+          onClick={() => navigate('/tower')}
+        >
+          {towerHighestFloor > 0 && (
+            <div style={{ position: 'absolute', top: -5, right: -5, background: '#ffd700', color: '#000', borderRadius: '10px', padding: '1px 6px', fontSize: '0.65rem', fontWeight: 950, border: '2px solid white', zIndex: 3 }}>
+              {towerHighestFloor}F
+            </div>
+          )}
+          <span style={{ fontSize: '26px', lineHeight: '28px', filter: 'drop-shadow(0 2px 3px rgba(0,0,0,0.4))' }}>🗼</span>
+          <span className="text-outline" style={{ fontSize: '0.9rem' }}>試練の塔</span>
+        </button>
+
+        {/* ── ⏱️ 最速討伐スピードラン（大辞典とイベントの直下） ── */}
+        <button
+          className="btn btn-speedrun"
+          style={{ padding: '15px 5px', flexDirection: 'column', gap: '8px', position: 'relative' }}
+          onClick={() => navigate('/speedrun')}
+        >
+          <Timer size={28} color="white" style={{ filter: 'drop-shadow(0 2px 3px rgba(0,0,0,0.4))' }} />
+          <span className="text-outline" style={{ fontSize: '0.9rem' }}>最速討伐</span>
         </button>
 
         <button
@@ -520,6 +487,53 @@ const Home = () => {
         >
           <ClipboardList size={28} />
           <span className="text-outline" style={{ fontSize: '0.9rem' }}>ミッション</span>
+        </button>
+
+        {/* ── 🌀 きまぐれゲート（異次元サバイバルパズル） ── */}
+        <button
+          className="btn"
+          style={{
+            padding: '15px 5px',
+            flexDirection: 'column',
+            gap: '8px',
+            position: 'relative',
+            background: 'linear-gradient(135deg, #7c3aed 0%, #4c1d95 100%)',
+            border: '2px solid #c084fc',
+            borderRadius: '16px',
+            boxShadow: '0 4px 12px rgba(124, 58, 237, 0.4)',
+            cursor: 'pointer'
+          }}
+          onClick={() => navigate('/gate')}
+        >
+          <div style={{ position: 'absolute', top: -5, right: -5, background: '#f59e0b', color: '#000', borderRadius: '10px', padding: '1px 6px', fontSize: '0.65rem', fontWeight: 950, border: '2px solid white', zIndex: 3 }}>
+            Lv.{gateLevel}
+          </div>
+          <span style={{ fontSize: '26px', lineHeight: '28px', filter: 'drop-shadow(0 2px 3px rgba(0,0,0,0.4))' }}>🌀</span>
+          <span className="text-outline" style={{ fontSize: '0.9rem', color: '#fff' }}>ゲート</span>
+        </button>
+
+
+        {/* ── 👹 超大型レイドボス ── */}
+        <button
+          className="btn"
+          style={{
+            padding: '15px 5px',
+            flexDirection: 'column',
+            gap: '8px',
+            position: 'relative',
+            background: 'linear-gradient(135deg, #dc2626 0%, #7f1d1d 100%)',
+            border: '2px solid #f87171',
+            borderRadius: '16px',
+            boxShadow: '0 4px 12px rgba(220, 38, 38, 0.4)',
+            cursor: 'pointer'
+          }}
+          onClick={() => navigate('/raid')}
+        >
+          <div style={{ position: 'absolute', top: -5, right: -5, background: '#ef4444', color: '#fff', borderRadius: '10px', padding: '1px 6px', fontSize: '0.65rem', fontWeight: 950, border: '2px solid white', zIndex: 3 }}>
+            兆/京HP
+          </div>
+          <span style={{ fontSize: '26px', lineHeight: '28px', filter: 'drop-shadow(0 2px 3px rgba(0,0,0,0.4))' }}>👹</span>
+          <span className="text-outline" style={{ fontSize: '0.9rem', color: '#fff' }}>レイドボス</span>
         </button>
       </div>
 

@@ -208,7 +208,7 @@ export const EventMap: React.FC = () => {
   };
 
   return (
-    <div style={{
+    <div className="view-container" style={{
       width: '100%',
       minHeight: '100vh',
       background: 'linear-gradient(180deg, #1e1b4b 0%, #311b92 25%, #0284c7 65%, #0369a1 100%)',
@@ -216,7 +216,7 @@ export const EventMap: React.FC = () => {
       fontFamily: '"Hiragino Kaku Gothic ProN", "Meiryo", sans-serif',
       position: 'relative',
       overflowX: 'hidden',
-      paddingBottom: '80px',
+      paddingBottom: '220px',
       boxSizing: 'border-box'
     }}>
       {/* 背景の太陽光＆夏のエナジーエフェクト */}

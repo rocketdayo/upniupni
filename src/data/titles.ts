@@ -503,6 +503,86 @@ export const ALL_TITLES: TitleInfo[] = [
     howToGet: 'スコアアタックでスコア100,000,000点(1億点)以上を記録'
   },
   {
+    id: 'legend_kei_god_creator',
+    name: '百京神話の創世神',
+    description: 'スコアアタックで100京(10^18)ptを突破し、最強のUZ+++をも目覚めさせた創世の神',
+    rarity: 'LEGEND',
+    color: '#ffd700',
+    category: 'スコアタ',
+    effect: {
+      atkPercent: 200,
+      hpPercent: 200,
+      yPointPercent: 200,
+      critRatePercent: 50,
+      specialDescription: '全ステータス +200% / 獲得Ypt +200% / クリティカル +50%'
+    },
+    howToGet: 'スコアアタックで100京pt以上を達成'
+  },
+  {
+    id: 'legend_gai_overlord',
+    name: '百垓無双の覇王',
+    description: '100垓(10^22)ptの超弩級スコアを叩き出し全宇宙を震わせた覇王',
+    rarity: 'LEGEND',
+    color: '#ffd700',
+    category: 'スコアタ',
+    effect: {
+      atkPercent: 300,
+      hpPercent: 300,
+      yPointPercent: 300,
+      critRatePercent: 70,
+      specialDescription: '全ステータス +300% / 獲得Ypt +300% / クリティカル +70%'
+    },
+    howToGet: 'スコアアタックで100垓pt以上を達成'
+  },
+  {
+    id: 'legend_jou_ruler',
+    name: '百穣銀河の支配者',
+    description: '100穣(10^30)ptという天文学的極限スコアを統べる銀河の支配者',
+    rarity: 'LEGEND',
+    color: '#ffd700',
+    category: 'スコアタ',
+    effect: {
+      atkPercent: 500,
+      hpPercent: 500,
+      yPointPercent: 500,
+      critRatePercent: 100,
+      specialDescription: '全ステータス +500% / 獲得Ypt +500% / 確定クリティカル'
+    },
+    howToGet: 'スコアアタックで100穣pt以上を達成'
+  },
+  {
+    id: 'legend_goku_transcendent',
+    name: '百極次元の超越神',
+    description: '100極(10^50)ptの次元を突破し理を創り変えた絶対超越神',
+    rarity: 'LEGEND',
+    color: '#ffd700',
+    category: 'スコアタ',
+    effect: {
+      atkPercent: 1000,
+      hpPercent: 1000,
+      yPointPercent: 1000,
+      critRatePercent: 100,
+      specialDescription: '全ステータス +1000% / 獲得Ypt +1000% / 神威確定クリティカル'
+    },
+    howToGet: 'スコアアタックで100極pt以上を達成'
+  },
+  {
+    id: 'legend_muryotaisu_omnipotent',
+    name: '無量大数の絶対全能神',
+    description: '1無量大数(10^68)ptの頂に君臨し、数の概念すら超えた究極全知全能の最高神',
+    rarity: 'LEGEND',
+    color: '#ffd700',
+    category: 'スコアタ',
+    effect: {
+      atkPercent: 5000,
+      hpPercent: 5000,
+      yPointPercent: 5000,
+      critRatePercent: 100,
+      specialDescription: '全ステータス +5000% / 獲得Ypt +5000% / 宇宙創生神威'
+    },
+    howToGet: 'スコアアタックで1無量大数pt以上を達成'
+  },
+  {
     id: 'legend_y_mega_rich',
     name: 'Ypt兆万長者',
     description: '果てしない努力の末に膨大なYポイントの大財宝を築き上げた大富豪',
@@ -630,14 +710,235 @@ export const ALL_TITLES: TitleInfo[] = [
       specialDescription: '全ステータス +50% / 獲得Ypt +100% / ドロップ率 +50%'
     },
     howToGet: '開放可能な称号を25種類以上獲得する'
+  },
+
+  // --- スコアタ100京 & UZ+++ 究極創世称号 ---
+  {
+    id: 'legend_hyakkei_genesis',
+    name: '百京神話の創世神',
+    description: 'スコアアタックで100京(10^18)ptという人智を超越した神話スコアを刻み、神をも統べる絶対的創世主',
+    rarity: 'LEGEND',
+    color: '#ffd700',
+    category: '伝説',
+    effect: {
+      atkPercent: 1000,
+      hpPercent: 1000,
+      yPointPercent: 1000,
+      dropRatePercent: 100,
+      critRatePercent: 100,
+      feverGaugeSpeed: 100,
+      specialDescription: '全キャラ攻撃力・HP・Ypt・スコア 1,000%UP / クリティカル＆ドロップ率超極大上昇'
+    },
+    howToGet: 'スコアアタックでスコア100京(10^18)pt以上を記録する'
+  },
+  {
+    id: 'legend_uz_god_supreme',
+    name: '【UZ+++降臨】神創絶神・天照極エンマ王',
+    description: '宇宙の始祖たる光を纏い、あらゆる邪悪を消滅せしめる全知全能の最高神称号',
+    rarity: 'LEGEND',
+    color: '#ff007f',
+    category: '伝説',
+    effect: {
+      atkPercent: 500,
+      hpPercent: 500,
+      yPointPercent: 500,
+      dropRatePercent: 50,
+      specialDescription: '全キャラ攻撃力＆HP +500% / 獲得Ypt +500% / ドロップ率 +50%'
+    },
+    howToGet: 'キャラクター「神創絶神・天照極エンマ王UZ+++」を獲得する'
+  },
+  {
+    id: 'legend_ascended_god',
+    name: '神昇せし超越者',
+    description: '神昇の祭壇にて限界の殻を破り、ZZランクへの昇華を成し遂げた超越の証',
+    rarity: 'LEGEND',
+    color: '#ffd700',
+    category: '育成',
+    effect: {
+      atkPercent: 50,
+      hpPercent: 50,
+      yPointPercent: 50,
+      specialDescription: 'チーム攻撃力 & 最大HP +50% / 獲得Ypt +50%'
+    },
+    howToGet: 'キャラクターを神昇の祭壇にてZZランクへ神昇覚醒させる'
+  },
+
+  // --- BLEACHコラボ・イベント称号 ---
+  {
+    id: 'title_bleach_yamamoto',
+    name: '護廷十三隊総隊長',
+    description: '千年にわたり尸魂界の頂点に君臨した最強の死神の証',
+    rarity: 'UR',
+    color: '#38bdf8',
+    category: 'イベント',
+    effect: {
+      tribeAtkBonus: { tribe: 'イサマシ', percent: 50 },
+      atkPercent: 30,
+      specialDescription: 'イサマシ族攻撃力 +50% / チーム攻撃力 +30%'
+    },
+    howToGet: '「山本元柳斎重國」を仲間にする'
+  },
+  {
+    id: 'title_bleach_aizen_hogyoku',
+    name: '崩玉との融合',
+    description: '死神と虚の境界を超越し、天に立ちし超越者の証明',
+    rarity: 'UR',
+    color: '#38bdf8',
+    category: 'イベント',
+    effect: {
+      atkPercent: 40,
+      hpPercent: 40,
+      yPointPercent: 30,
+      specialDescription: 'チーム攻撃力 & 最大HP +40% / 獲得Ypt +30%'
+    },
+    howToGet: '「藍染惣右介(崩玉融合)」を獲得する'
+  },
+  {
+    id: 'title_bleach_aizen',
+    name: '虚圏の統括者',
+    description: '冷徹な知謀と圧倒的な力で虚圏を支配した反逆の覇者',
+    rarity: 'SSR',
+    color: '#ec4899',
+    category: 'イベント',
+    effect: {
+      atkPercent: 25,
+      hpPercent: 25,
+      specialDescription: 'チーム攻撃力 & 最大HP +25%'
+    },
+    howToGet: '「藍染惣右介」を仲間にする'
+  },
+  {
+    id: 'title_bleach_ichigo_bankai',
+    name: '卍解の極致',
+    description: '漆黒の刃と超速の斬撃で運命を切り拓く死神の真髄',
+    rarity: 'SSR',
+    color: '#ec4899',
+    category: 'イベント',
+    effect: {
+      atkPercent: 25,
+      critRatePercent: 15,
+      specialDescription: 'チーム攻撃力 +25% / クリティカル率 +15%'
+    },
+    howToGet: '「黒崎一護(卍解)」を仲間にする'
+  },
+  {
+    id: 'title_bleach_shinigami',
+    name: '死神代行',
+    description: '尸魂界と現世を繋ぎ、仲間を守るために戦う代理死神',
+    rarity: 'SR',
+    color: '#a855f7',
+    category: 'イベント',
+    effect: {
+      atkPercent: 15,
+      feverGaugeSpeed: 15,
+      specialDescription: 'チーム攻撃力 +15% / フィーバー上昇速度 +15%'
+    },
+    howToGet: 'BLEACHコラボキャラクターを1体以上仲間にする'
+  },
+
+  // --- シリアルコード・特典称号 ---
+  {
+    id: 'title_skip_all',
+    name: '通常ステージ全開放',
+    description: 'シリアルコードによってすべての通常ステージを開放した特権者',
+    rarity: 'UR',
+    color: '#38bdf8',
+    category: '基本',
+    effect: {
+      atkPercent: 25,
+      hpPercent: 25,
+      yPointPercent: 25,
+      specialDescription: 'チーム攻撃力 & 最大HP +25% / 獲得Ypt +25%'
+    },
+    howToGet: 'シリアルコード「STAGE-CLEAR-ALL」を入力する'
+  },
+  {
+    id: 'title_skip_10',
+    name: '通常ステージ10進む',
+    description: 'シリアルコードによってステージを一気に突破した快速の証',
+    rarity: 'SR',
+    color: '#a855f7',
+    category: '基本',
+    effect: {
+      atkPercent: 15,
+      hpPercent: 10,
+      specialDescription: 'チーム攻撃力 +15% / 最大HP +10%'
+    },
+    howToGet: 'シリアルコード「STAGE-SKIP-10」を入力する'
+  },
+  {
+    id: 'title_skip_5',
+    name: '通常ステージ5進む',
+    description: 'シリアルコードの恩恵を受けし冒険者',
+    rarity: 'Rare',
+    color: '#60a5fa',
+    category: '基本',
+    effect: {
+      atkPercent: 10,
+      hpPercent: 5,
+      specialDescription: 'チーム攻撃力 +10% / 最大HP +5%'
+    },
+    howToGet: 'シリアルコード「STAGE-SKIP-5」を入力する'
+  },
+  {
+    id: 'title_skip_1',
+    name: '通常ステージ1進む',
+    description: 'シリアルコードを初めて試した冒険の始まり',
+    rarity: 'Normal',
+    color: '#9ca3af',
+    category: '基本',
+    effect: {
+      atkPercent: 5,
+      specialDescription: 'チーム全員の攻撃力 +5%'
+    },
+    howToGet: 'シリアルコード「STAGE-SKIP-1」を入力する'
   }
 ];
 
 /**
- * 称号IDまたは称号名からTitleInfoを取得する
+ * 称号IDまたは称号名からTitleInfoを取得する (未定義のカスタム称号もフォールバック生成)
  */
 export const getTitleInfo = (titleIdOrName: string): TitleInfo | undefined => {
-  return ALL_TITLES.find(t => t.id === titleIdOrName || t.name === titleIdOrName);
+  if (!titleIdOrName) return undefined;
+  const found = ALL_TITLES.find(t => t.id === titleIdOrName || t.name === titleIdOrName);
+  if (found) return found;
+
+  // プレイヤーが保有している動的・特別称号に対するフォールバック
+  return {
+    id: `custom_${titleIdOrName}`,
+    name: titleIdOrName,
+    description: `特別な試練または特典により解禁された限定称号「${titleIdOrName}」`,
+    rarity: titleIdOrName.includes('神') || titleIdOrName.includes('UZ') ? 'LEGEND' : 'UR',
+    color: titleIdOrName.includes('神') ? '#ffd700' : '#38bdf8',
+    category: '伝説',
+    effect: {
+      atkPercent: 20,
+      hpPercent: 20,
+      yPointPercent: 20,
+      specialDescription: 'チーム全員の攻撃力・HP・獲得Ypt +20%'
+    },
+    howToGet: '特別イベントまたはシリアルコード達成'
+  };
+};
+
+/**
+ * プレイヤーの所持称号も含めた完全な称号リストを取得する
+ */
+export const getCompleteTitleList = (unlockedTitles: string[] = []): TitleInfo[] => {
+  const titles = [...ALL_TITLES];
+  const registeredNames = new Set(titles.map(t => t.name));
+
+  unlockedTitles.forEach(unlockedName => {
+    if (!registeredNames.has(unlockedName)) {
+      const dynamicInfo = getTitleInfo(unlockedName);
+      if (dynamicInfo) {
+        titles.push(dynamicInfo);
+        registeredNames.add(unlockedName);
+      }
+    }
+  });
+
+  return titles;
 };
 
 /**

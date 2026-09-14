@@ -1,4 +1,4 @@
-export type Rank = 'E' | 'D' | 'C' | 'B' | 'A' | 'S' | 'SS' | 'SSS' | 'Z' | "Z'" | 'ZZ';
+export type Rank = 'E' | 'D' | 'C' | 'B' | 'A' | 'S' | 'SS' | 'SSS' | 'Z' | "Z'" | 'ZZ' | 'UZ+++' | 'K';
 
 export type Tribe = 'イサマシ' | 'フシギ' | 'ゴーケツ' | 'プリチー' | 'ポカポカ' | 'ウスラカゲ' | 'ブキミー' | 'ニョロロン' | 'エンマ' | 'ハグレ';
 
@@ -24,6 +24,8 @@ export const getTribeMultiplier = (sameTribeCount: number): number => {
 };
 
 export const RANK_BASE_MAX_LEVEL: Record<Rank, number> = {
+  'K': 999,
+  'UZ+++': 300,
   'ZZ': 170,
   "Z'": 150,
   'Z': 120,
@@ -60,7 +62,7 @@ export const getPublicUrl = (path: string): string => {
 
 // Legacy ID migration map to ensure user save data is preserved without corruption
 const OLD_TO_NEW_CHAR_ID: Record<string, string> = {};
-const allRanks: Rank[] = ['E', 'D', 'C', 'B', 'A', 'S', 'SS', 'SSS', 'Z', "Z'", 'ZZ'];
+const allRanks: Rank[] = ['E', 'D', 'C', 'B', 'A', 'S', 'SS', 'SSS', 'Z', "Z'", 'ZZ', 'UZ+++', 'K'];
 let legacyCounter = 1;
 allRanks.forEach(r => {
   for (let idx = 1; idx <= 15; idx++) {
@@ -76,6 +78,12 @@ export const migrateCharId = (id: string): string => {
 
 // Color generator per character name for vibrant visual distinction
 export const getCharacterDistinctColor = (name: string, _defaultColor: string): { bg: string, accent: string, textBg: string, hair: string } => {
+  // Rank K Developer Characters
+  if (/ランクK|コードデベロッパー|創世開発神/i.test(name)) return { bg: '#021a1a', accent: '#00ffcc', textBg: '#012b2b', hair: '#00ff88' };
+
+  // UZ+++ God Characters
+  if (/UZ\+\+\+|天照極エンマ王|邪神創世皇/i.test(name)) return { bg: '#2e004f', accent: '#a855f7', textBg: '#1e0038', hair: '#00ffff' };
+
   // SSS God Characters
   if (/サマーエンマ王|創世神/i.test(name)) return { bg: '#dc2626', accent: '#ffd700', textBg: '#7f1d1d', hair: '#f59e0b' };
   if (/アルティメット龍神エンマ|龍神/i.test(name)) return { bg: '#059669', accent: '#38bdf8', textBg: '#042f2e', hair: '#0284c7' };
@@ -180,6 +188,9 @@ export const createPuniSvgDataUrl = (
   const { bg: bodyColor, accent: accentColor, textBg, hair: hairColor } = getCharacterDistinctColor(name, defaultColor);
 
   const rankBorderColors: Record<string, string> = {
+    'K': '#00ffcc',
+    'UZ+++': '#ff007f',
+    'ZZ': '#ffd700',
     "Z'": '#ff3399',
     'Z': '#00ffff',
     'SSS': '#ffd700',
@@ -200,10 +211,90 @@ export const createPuniSvgDataUrl = (
   let customSkinColor = '#ffe0d0'; // Realistic face skin tone by default
   let customBodyFill = '';
 
+  // --- RANK K DEVELOPER GOD (CYBER MATRIX TRANSCENDENCE) ---
+  if (/ランクK|コードデベロッパー|創世開発神/i.test(name) || rank === 'K') {
+    customSkinColor = '#e6fffb';
+    hairAndAccessoriesSvg = `
+      <defs>
+        <linearGradient id="kPuniGrad" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#00ffff" />
+          <stop offset="50%" stop-color="#00ff88" />
+          <stop offset="100%" stop-color="#ffd700" />
+        </linearGradient>
+      </defs>
+      <!-- Cyber Matrix Ring Aura -->
+      <circle cx="64" cy="64" r="63.5" fill="none" stroke="#00ffff" stroke-width="5" opacity="0.9" stroke-dasharray="16,4">
+        <animateTransform attributeName="transform" type="rotate" from="0 64 64" to="360 64 64" dur="1s" repeatCount="indefinite"/>
+      </circle>
+      <circle cx="64" cy="64" r="59" fill="none" stroke="#00ff88" stroke-width="3.5" opacity="0.9" stroke-dasharray="8,4">
+        <animateTransform attributeName="transform" type="rotate" from="360 64 64" to="0 64 64" dur="0.7s" repeatCount="indefinite"/>
+      </circle>
+      <!-- Developer Cyber Headset & Circuit Crown -->
+      <path d="M 12 28 L 26 -16 L 48 8 L 64 -22 L 80 8 L 102 -16 L 116 28 Z" fill="url(#kPuniGrad)" stroke="#ffffff" stroke-width="3" />
+      <text x="64" y="6" font-size="10" font-weight="950" fill="#021a1a" text-anchor="middle" font-family="monospace">&lt;DEV/&gt;</text>
+      <circle cx="26" cy="-16" r="4" fill="#00ffff" stroke="#ffffff" stroke-width="1.5" />
+      <circle cx="102" cy="-16" r="4" fill="#00ff88" stroke="#ffffff" stroke-width="1.5" />
+      <path d="M 16 38 C 10 12 28 4 64 4 C 100 4 118 12 112 38 Z" fill="#021e1e" stroke="#00ffff" stroke-width="2.5" />
+    `;
+    eyesSvg = `
+      <!-- Glowing Matrix Cyan/Emerald Eyes with Code Pupils -->
+      <ellipse cx="44" cy="58" rx="8" ry="11" fill="#00ffff" stroke="#ffffff" stroke-width="2" />
+      <ellipse cx="84" cy="58" rx="8" ry="11" fill="#00ff88" stroke="#ffffff" stroke-width="2" />
+      <circle cx="44" cy="58" r="4" fill="#021a1a" />
+      <circle cx="84" cy="58" r="4" fill="#021a1a" />
+      <circle cx="42" cy="54" r="2.5" fill="#ffffff" />
+      <circle cx="82" cy="54" r="2.5" fill="#ffffff" />
+      <!-- Cyber Circuit markings under eyes -->
+      <path d="M 38 72 L 44 76 L 44 82" fill="none" stroke="#00ffff" stroke-width="2" />
+      <path d="M 90 72 L 84 76 L 84 82" fill="none" stroke="#00ff88" stroke-width="2" />
+    `;
+    mouthSvg = `<path d="M 52 75 Q 64 84 76 75" fill="none" stroke="#00ffcc" stroke-width="3.5" stroke-linecap="round" />`;
+  } else if (/UZ\+\+\+|天照極エンマ王/i.test(name)) {
+    customSkinColor = '#faf5ff';
+    hairAndAccessoriesSvg = `
+      <defs>
+        <linearGradient id="uzPuniCrownGrad" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#ffd700" />
+          <stop offset="30%" stop-color="#ff007f" />
+          <stop offset="70%" stop-color="#7928ca" />
+          <stop offset="100%" stop-color="#00ffff" />
+        </linearGradient>
+      </defs>
+      <!-- Ultimate Celestial Galactic Aura Background -->
+      <circle cx="64" cy="64" r="63.5" fill="none" stroke="#ffd700" stroke-width="6" opacity="0.95" stroke-dasharray="20,6">
+        <animateTransform attributeName="transform" type="rotate" from="0 64 64" to="360 64 64" dur="1.2s" repeatCount="indefinite"/>
+      </circle>
+      <circle cx="64" cy="64" r="60" fill="none" stroke="#ff007f" stroke-width="4.5" opacity="0.9" stroke-dasharray="12,6">
+        <animateTransform attributeName="transform" type="rotate" from="360 64 64" to="0 64 64" dur="0.8s" repeatCount="indefinite"/>
+      </circle>
+      <circle cx="64" cy="64" r="57" fill="none" stroke="#00ffff" stroke-width="3" opacity="0.85" stroke-dasharray="6,4">
+        <animateTransform attributeName="transform" type="rotate" from="0 64 64" to="360 64 64" dur="1.6s" repeatCount="indefinite"/>
+      </circle>
+      <!-- Supreme Galaxy Emperor Crown with Jewels -->
+      <path d="M 8 26 L 24 -18 L 46 8 L 64 -24 L 82 8 L 104 -18 L 120 26 Z" fill="url(#uzPuniCrownGrad)" stroke="#ffffff" stroke-width="3.2" />
+      <circle cx="64" cy="-8" r="8" fill="#ffd700" stroke="#ffffff" stroke-width="2" />
+      <circle cx="28" cy="-6" r="5" fill="#ff007f" stroke="#ffffff" stroke-width="1.5" />
+      <circle cx="100" cy="-6" r="5" fill="#00ffff" stroke="#ffffff" stroke-width="1.5" />
+      <!-- Transcendent Flowing Divine Hair -->
+      <path d="M 12 40 C 4 10 26 2 64 2 C 102 2 124 10 116 40 Z" fill="#0f001e" stroke="#ffd700" stroke-width="2.8" />
+    `;
+    eyesSvg = `
+      <!-- Supreme Radiant Divine Eyes with Sparkles -->
+      <circle cx="42" cy="56" r="12" fill="#ffd700" stroke="#ffffff" stroke-width="2.5" />
+      <circle cx="42" cy="56" r="5.5" fill="#ff007f" />
+      <circle cx="44" cy="54" r="2.2" fill="#ffffff" />
+      <circle cx="86" cy="56" r="12" fill="#ffd700" stroke="#ffffff" stroke-width="2.5" />
+      <circle cx="86" cy="56" r="5.5" fill="#00ffff" />
+      <circle cx="88" cy="54" r="2.2" fill="#ffffff" />
+      <!-- Divine Forehead Mark -->
+      <path d="M 64 34 L 69 44 L 64 50 L 59 44 Z" fill="#ffd700" stroke="#ffffff" stroke-width="1.2" />
+    `;
+    mouthSvg = `<path d="M 46 76 Q 64 92 82 76" fill="none" stroke="#ffd700" stroke-width="5" stroke-linecap="round" />`;
+  }
   // --- Z GOD RANK CHARACTERS (1000% UNIQUE & TRANSCENDENT DESIGN) ---
   
   // 1. 超終次元・極エンマ神 (Ultimate Future God Enma Z)
-  if (/極エンマ神/i.test(name)) {
+  else if (/極エンマ神/i.test(name)) {
     customSkinColor = '#f0fdf4';
     hairAndAccessoriesSvg = `
       <!-- Ultimate Galactic Aura Background -->
@@ -1195,7 +1286,45 @@ export const createPuniSvgDataUrl = (
 
   // Forehead Emblem / Badge Differentiation - Moved to the Top-Left Corner as an elegant medal to avoid face clutter
   let foreheadBadge = '';
-  if (rank === 'ZZ') {
+  if (rank === 'K') {
+    foreheadBadge = `
+      <!-- Rank K Cyber Developer Corner Medal -->
+      <g transform="translate(24, 24)" filter="url(#puniShadow)">
+        <defs>
+          <linearGradient id="kMedalGrad" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#00ffff" />
+            <stop offset="50%" stop-color="#00ff88" />
+            <stop offset="100%" stop-color="#ffd700" />
+          </linearGradient>
+        </defs>
+        <polygon points="0,-18 13,-13 18,0 13,13 0,18 -13,13 -18,0 -13,-13" fill="url(#kMedalGrad)" stroke="#00ffff" stroke-width="3" />
+        <circle cx="0" cy="0" r="10" fill="#021a1a" />
+        <text x="0" y="1" font-size="11" font-weight="950" font-family="'Impact', 'Arial Black', sans-serif" text-anchor="middle" dominant-baseline="central" fill="#00ffcc">K</text>
+        <circle cx="14" cy="-14" r="3" fill="#ffffff" />
+      </g>
+    `;
+  } else if (rank === 'UZ+++') {
+    foreheadBadge = `
+      <!-- UZ+++ Rank Cosmic God Ascension Corner Medal -->
+      <g transform="translate(24, 24)" filter="url(#puniShadow)">
+        <defs>
+          <linearGradient id="uzMedalGrad" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#ff007f" />
+            <stop offset="25%" stop-color="#7928ca" />
+            <stop offset="50%" stop-color="#00ffff" />
+            <stop offset="75%" stop-color="#ffd700" />
+            <stop offset="100%" stop-color="#ff0055" />
+          </linearGradient>
+        </defs>
+        <!-- Supreme Crown Medal Shape -->
+        <polygon points="0,-18 13,-13 18,0 13,13 0,18 -13,13 -18,0 -13,-13" fill="url(#uzMedalGrad)" stroke="#ffd700" stroke-width="3" />
+        <path d="M -18 0 L 0 -18 L 0 0 Z" fill="#ffffff" opacity="0.65" />
+        <text x="0" y="1" font-size="8" font-weight="950" font-family="'Impact', 'Arial Black', sans-serif" letter-spacing="-0.3" text-anchor="middle" dominant-baseline="central" fill="#ffffff" stroke="#1e1b4b" stroke-width="2.5" paint-order="stroke fill">UZ+++</text>
+        <circle cx="14" cy="-14" r="3" fill="#ffffff" />
+        <circle cx="-14" cy="14" r="2.5" fill="#ffff00" />
+      </g>
+    `;
+  } else if (rank === 'ZZ') {
     foreheadBadge = `
       <!-- ZZ Rank Ultimate God Ascension Corner Medal -->
       <g transform="translate(24, 24)" filter="url(#puniShadow)">
@@ -1424,9 +1553,60 @@ export const createRankBadgeSvgDataUrl = (rank: string): string => {
     'SSS': '#ffd700',
     'Z': '#00ffff',
     "Z'": '#ff3399',
-    'ZZ': '#ffd700'
+    'ZZ': '#ffd700',
+    'UZ+++': '#ff007f',
+    'K': '#00ffcc'
   };
   const col = colors[rank] || '#ff4488';
+
+  if (rank === 'K') {
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+      <defs>
+        <linearGradient id="kBadgeGrad" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#00ffff" />
+          <stop offset="35%" stop-color="#00ff88" />
+          <stop offset="70%" stop-color="#ffd700" />
+          <stop offset="100%" stop-color="#00ffcc" />
+        </linearGradient>
+      </defs>
+      <polygon points="32,1 55,10 63,32 55,54 32,63 9,54 1,32 9,10" fill="#021a1a" stroke="#00ffff" stroke-width="4" />
+      <polygon points="32,4 52,12 59,32 52,52 32,60 12,52 5,32 12,12" fill="url(#kBadgeGrad)" stroke="#ffffff" stroke-width="2"/>
+      <text x="32" y="38" font-size="24" font-weight="950" fill="#011818" stroke="#ffffff" stroke-width="1.2" paint-order="stroke fill" text-anchor="middle" dominant-baseline="middle" font-family="'Impact', 'Arial Black', sans-serif" letter-spacing="1">K</text>
+      <circle cx="16" cy="18" r="2.5" fill="#00ffff" />
+      <circle cx="48" cy="18" r="2.5" fill="#00ff88" />
+      <circle cx="32" cy="52" r="2" fill="#ffd700" />
+    </svg>`;
+    const utf8Bytes = new TextEncoder().encode(svg);
+    let binStr = '';
+    for (let i = 0; i < utf8Bytes.length; i++) binStr += String.fromCharCode(utf8Bytes[i]);
+    return `data:image/svg+xml;base64,${btoa(binStr)}`;
+  }
+
+  if (rank === 'UZ+++') {
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+      <defs>
+        <linearGradient id="uzBadgeGrad" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#ffd700" />
+          <stop offset="25%" stop-color="#ff007f" />
+          <stop offset="50%" stop-color="#7928ca" />
+          <stop offset="75%" stop-color="#00ffff" />
+          <stop offset="100%" stop-color="#ffd700" />
+        </linearGradient>
+      </defs>
+      <!-- Dual Ring Supreme Celestial Outer Frame -->
+      <polygon points="32,0 61,14 61,50 32,64 3,50 3,14" fill="none" stroke="#ffd700" stroke-width="5" />
+      <polygon points="32,2 58,15 58,49 32,62 6,49 6,15" fill="url(#uzBadgeGrad)" stroke="#ffffff" stroke-width="2.5"/>
+      <text x="32" y="38" font-size="14.5" font-weight="950" fill="#ffffff" stroke="#1e1b4b" stroke-width="3" paint-order="stroke fill" text-anchor="middle" dominant-baseline="middle" font-family="'Impact', 'Arial Black', sans-serif" letter-spacing="-0.5">UZ+++</text>
+      <!-- Mini Cosmic Sparkles -->
+      <circle cx="51" cy="16" r="3" fill="#ffffff" />
+      <circle cx="13" cy="48" r="2.5" fill="#ffff00" />
+      <circle cx="32" cy="7" r="2" fill="#00ffff" />
+    </svg>`;
+    const utf8Bytes = new TextEncoder().encode(svg);
+    let binStr = '';
+    for (let i = 0; i < utf8Bytes.length; i++) binStr += String.fromCharCode(utf8Bytes[i]);
+    return `data:image/svg+xml;base64,${btoa(binStr)}`;
+  }
 
   if (rank === 'ZZ') {
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
@@ -1486,7 +1666,10 @@ export type PassiveSkillType =
   | 'drop_rate_boost'    // 自身のぷにが降ってきやすくなる
   | 'revive_shield'      // 致命傷を受けた時にHPを一定割合で耐える/復活
   | 'fever_gauge_charge' // フィーバーイン時に味方全体の技ゲージアップ
-  | 'super_fever_boost'; // スーパーフィーバー効果アップ
+  | 'super_fever_boost'  // スーパーフィーバー効果アップ
+  | 'ypoint_boost'       // ワイポイント増加（1000倍等）
+  | 'score_boost'        // スコア増加（1000倍等）
+  | 'money_boost';       // ワイマネー増加（1000倍等）
 
 export interface PassiveSkill {
   name: string;
@@ -1516,6 +1699,8 @@ export type SkillType =
   | 'damage'             // 単体大ダメージ
   | 'fever_charge'       // フィーバーゲージ蓄積（※フィーバー中は無効）
   | 'god_burst'          // 創世神滅破（画面全消去＋超絶ダメージ）
+  | 'uz_god_supreme'     // UZ+++神創全滅破（全ぷに消滅＋超絶神撃＋フィーバーMAX＋技ゲージ全快＋全回復）
+  | 'k_dev_supreme'      // K開発者権限・万象強制初期化（全ぷに完全消滅＋UZ+++の1000倍神創開発ダメージ＋フィーバー即全開＋技ゲージ全快＋全回復）
   // BLEACH Z' 特殊技（単一技）
   | 'bleach_lansa' | 'bleach_desgarron' | 'bleach_cero_metralleta' | 'bleach_respira'
   | 'bleach_caudal' | 'bleach_santa_teresa' | 'bleach_gran_rey_cero' | 'bleach_brujeria'
@@ -2005,6 +2190,16 @@ export const getSkillDetails = (skill?: Skill, skillLevel: number = 1) => {
         nextUpgrade: isMax ? '技レベルMAX！' : `次Lv: 威力 ${nextPower}`
       };
     }
+    case 'uz_god_supreme': {
+      const currentPower = Math.round(skill.power * (1 + (lv - 1) * 0.5));
+      const nextPower = Math.round(skill.power * (1 + lv * 0.5));
+      return {
+        description: `【UZ+++神創絶技】盤面全ぷに即時消滅 ＋ 超絶神創ダメージ ＋ フィーバーMAX ＋ 味方全員の技ゲージ全快 ＋ HP全回復！`,
+        power: currentPower,
+        countInfo: `全消滅＋味方全員技ゲージMAX＋HP全快 / 威力: ${currentPower}`,
+        nextUpgrade: isMax ? '技レベルMAX！' : `次Lv: 威力 ${nextPower}`
+      };
+    }
     default: {
       const currentPower = Math.round(skill.power * (1 + (lv - 1) * 0.25));
       const nextPower = Math.round(skill.power * (1 + lv * 0.25));
@@ -2138,6 +2333,8 @@ export const generateCharacters = (): Character[] => {
     'Z': createRankBadgeSvgDataUrl('Z'),
     "Z'": createRankBadgeSvgDataUrl("Z'"),
     'ZZ': createRankBadgeSvgDataUrl('ZZ'),
+    'UZ+++': createRankBadgeSvgDataUrl('UZ+++'),
+    'K': createRankBadgeSvgDataUrl('K'),
   };
 
   const createSet = (rank: Rank, baseHp: number, baseAtk: number, color: string, list: CharacterDef[], idPrefix?: string) => {
@@ -2828,6 +3025,299 @@ export const generateCharacters = (): Character[] => {
     { name: '井上織姫', tribe: 'ポカポカ', emoji: '🌸🧡🛡️', trait: '【Sランク】盾舜六花で味方を護り癒やしを与える！', skillName: '三天結盾', skillType: 'heal', skillPower: 500 },
   ];
   createSet('S', 1500, 160, '#ff2222', bleachSList, 'bleach_s');
+
+  // =========================================================================
+  // 【UZ+++】シリアルコード＆スコアタ100京pt達成限定・全宇宙最強神（天照極エンマ王UZ+++）
+  // ※ステータス・スキル効果量を5倍大幅上方修正（通常の50倍）
+  // =========================================================================
+  const uzCharDef: CharacterDef = {
+    name: '神創絶神・天照極エンマ王UZ+++',
+    tribe: 'エンマ',
+    emoji: '🌌👑☀️⚡💥',
+    trait: '【UZ+++神創神】全次元万象を創造し統べる神王。シリアルコード入力またはスコアタ100京pt突破で降臨。ステータス・全スキル効果量が通常の50倍（5倍大幅上方修正！）に覚醒した超絶覇神！',
+    skillName: '神創全滅破・天羅万象',
+    skillType: 'uz_god_supreme',
+    skillPower: 49999,
+    passiveSkills: [
+      {
+        name: '神創・ワイポイント五十倍祝福',
+        type: 'ypoint_boost',
+        value: 50,
+        description: '【通常スキルの50倍・5倍上方修正】ステージクリア時の獲得Yポイントが50倍（×50）に爆増！'
+      },
+      {
+        name: '神創・スコア五十倍増幅',
+        type: 'score_boost',
+        value: 50,
+        description: '【通常スキルの50倍・5倍上方修正】バトル中のスコア加算量が50倍（×50）に爆増！'
+      },
+      {
+        name: '神創・ワイマネー五十倍富豪',
+        type: 'money_boost',
+        value: 50,
+        description: '【通常スキルの50倍・5倍上方修正】ステージクリア時の獲得yマネーが50倍（×50）に爆増！'
+      },
+      {
+        name: '神創・全種族五十倍共鳴',
+        type: 'tribe_boost',
+        value: 1000,
+        description: '【通常スキルの50倍・5倍上方修正】全種族味方のHP・攻撃力種族効果が50倍（+1,000%）に上昇！'
+      },
+      {
+        name: '神創・全神威五十倍破壊',
+        type: 'damage_boost',
+        value: 1000,
+        description: '【通常スキルの50倍・5倍上方修正】味方全体のぷに消し・通常攻撃ダメージが11倍（+1,000%）に増加！'
+      },
+      {
+        name: '神創・神域守護結界・極',
+        type: 'damage_cut',
+        value: 80,
+        description: '【通常スキルの50倍・5倍上方修正】敵から受けるあらゆる被ダメージを80%カット！'
+      },
+      {
+        name: '神創・超光速フィーバー加速',
+        type: 'fever_boost',
+        value: 1250,
+        description: '【通常スキルの50倍・5倍上方修正】フィーバーゲージチャージ速度が13.5倍（+1,250%）に加速！'
+      },
+      {
+        name: '神創・神技超光速充填',
+        type: 'gauge_boost',
+        value: 1250,
+        description: '【通常スキルの50倍・5倍上方修正】技ゲージチャージ速度が13.5倍（+1,250%）に高速化！'
+      },
+      {
+        name: '神創・全画面超神連結',
+        type: 'connect_boost',
+        value: 1500,
+        description: '【通常スキルの50倍・5倍上方修正】ぷに接続可能距離が16倍（+1,500%）拡大！'
+      },
+      {
+        name: '神創・開幕神技全満タン',
+        type: 'gauge_start',
+        value: 100,
+        description: '【通常スキルの50倍・5倍上方修正】バトル開幕時に味方全体の技ゲージが100%全チャージ状態でスタート！'
+      },
+      {
+        name: '神創・フィーバー全開神充',
+        type: 'fever_gauge_charge',
+        value: 100,
+        description: '【通常スキルの50倍・5倍上方修正】フィーバー突入時に味方全員の技ゲージが100%全チャージ！'
+      },
+      {
+        name: '神創・自動全快完全再生結界',
+        type: 'revive_shield',
+        value: 50,
+        description: '【通常スキルの50倍・5倍上方修正】HPが0になっても即座にHP100%全快で完全自動復活！'
+      },
+      {
+        name: '神創・超絶でかぷに降誕',
+        type: 'drop_rate_boost',
+        value: 1250,
+        description: '【通常スキルの50倍・5倍上方修正】自身のでかぷに降下率が13.5倍（+1,250%）に上昇！'
+      }
+    ]
+  };
+
+  chars.push({
+    id: 'char_uz_god_supreme',
+    name: uzCharDef.name,
+    rank: 'UZ+++',
+    tribe: uzCharDef.tribe || 'エンマ',
+    color: '#080014',
+    emoji: uzCharDef.emoji,
+    rankImage: rankImageMap['UZ+++'],
+    imageUrl: createPuniSvgDataUrl(uzCharDef.name, '#080014', 'UZ+++', uzCharDef.emoji),
+    baseHp: 499999,
+    baseAtk: 499999,
+    skill: {
+      name: uzCharDef.skillName!,
+      type: uzCharDef.skillType!,
+      power: uzCharDef.skillPower!,
+      description: '全画面ぷに即時消滅＋超絶神創ダメージ＋フィーバーゲージMAX＋味方全員の技ゲージ全快＋HP全回復！'
+    },
+    passiveSkills: uzCharDef.passiveSkills,
+    trait: uzCharDef.trait
+  });
+
+  // 💥 邪神の間 Lv.100 完全制覇報酬 限定 Uz+++ キャラクター
+  const uzJashinCharDef: CharacterDef = {
+    name: '【UZ+++】極・邪神創世皇ゲートマスター',
+    tribe: 'エンマ',
+    emoji: '⚡🔥👑👿🌌',
+    trait: '【邪神の間 Lv.100 完全制覇限定・至高のUZ+++キャラ】邪神の間の深層頂点を制した者のみに宿る暗黒創世神。圧倒的な邪神領域を展開し、全属性無敵・全画面ぷに完全消滅・技ゲージ超高速自動チャージを誇る絶対最高峰！',
+    skillName: '邪神極限崩壊・創世暗黒波',
+    skillType: 'uz_god_supreme',
+    skillPower: 666666,
+    passiveSkills: [
+      {
+        name: '邪神の威光・全種族ステータス爆発上昇',
+        type: 'tribe_boost',
+        value: 1000,
+        description: '【邪神限定・UZ+++特権】味方全妖怪のHP・攻撃力が10倍（+1,000%）に超絶上昇！'
+      },
+      {
+        name: '邪神の領域・全画面即時連結拡大',
+        type: 'connect_boost',
+        value: 1500,
+        description: '【邪神限定・UZ+++特権】ぷに接続可能距離が15倍（+1,500%）拡大し画面全域を瞬時に連結！'
+      },
+      {
+        name: '邪神の臨戦・開幕技ゲージ100%全チャージ',
+        type: 'gauge_start',
+        value: 100,
+        description: '【邪神限定・UZ+++特権】バトル開幕時に味方全体の技ゲージが100%全チャージ！'
+      },
+      {
+        name: '邪神の執念・HP0時100%完全自動復活',
+        type: 'revive_shield',
+        value: 100,
+        description: '【邪神限定・UZ+++特権】HPが0になっても即座にHP100%全快で完全自動復活！'
+      },
+      {
+        name: '邪神の降臨・巨大でかぷに常時超降下',
+        type: 'drop_rate_boost',
+        value: 2000,
+        description: '【邪神限定・UZ+++特権】自身のでかぷに降下率が20倍（+2,000%）に激増！'
+      }
+    ]
+  };
+
+  chars.push({
+    id: 'char_uz_jashin_master',
+    name: uzJashinCharDef.name,
+    rank: 'UZ+++',
+    tribe: uzJashinCharDef.tribe || 'エンマ',
+    color: '#2e004f',
+    emoji: uzJashinCharDef.emoji,
+    rankImage: rankImageMap['UZ+++'],
+    imageUrl: createPuniSvgDataUrl(uzJashinCharDef.name, '#2e004f', 'UZ+++', uzJashinCharDef.emoji),
+    baseHp: 666666,
+    baseAtk: 666666,
+    skill: {
+      name: uzJashinCharDef.skillName!,
+      type: uzJashinCharDef.skillType!,
+      power: uzJashinCharDef.skillPower!,
+      description: '全画面ぷに即時消滅＋極限暗黒ダメージ＋フィーバーゲージMAX＋味方全員の技ゲージ全快＋HP全回復！'
+    },
+    passiveSkills: uzJashinCharDef.passiveSkills,
+    trait: uzJashinCharDef.trait
+  });
+
+  // =========================================================================
+  // 【K】デバッグメニュー限定・創世開発神・コードデベロッパー（開発者キャラ・UZ+++の1000倍）
+  // =========================================================================
+  const kDevCharDef: CharacterDef = {
+    name: '【K】創世開発神・コードデベロッパー',
+    tribe: 'エンマ',
+    emoji: '💻⚡👑🛠️🌌',
+    trait: '【最高位・ランクK開発者キャラクター】ゲームソースコードを直接改変・支配する至高の開発神。入手方法はデバッグメニューでのみ獲得可能。UZ+++のさらに1000倍の攻撃力（99,999,000）と全スキル効果（10,000倍）を誇る絶対全能神！',
+    skillName: '開発者権限・万象強制初期化',
+    skillType: 'k_dev_supreme',
+    skillPower: 9999000,
+    passiveSkills: [
+      {
+        name: '開発神・Yポイント万倍爆発',
+        type: 'ypoint_boost',
+        value: 10000,
+        description: '【開発者特権・UZ+++の1000倍】ステージクリア時獲得Yポイントが10,000倍（×10,000）に超絶爆発！'
+      },
+      {
+        name: '開発神・スコア万倍爆発',
+        type: 'score_boost',
+        value: 10000,
+        description: '【開発者特権・UZ+++の1000倍】バトル中のスコア加算量が10,000倍（×10,000）に超絶爆発！'
+      },
+      {
+        name: '開発神・Yマネー万倍爆発',
+        type: 'money_boost',
+        value: 10000,
+        description: '【開発者特権・UZ+++の1000倍】ステージクリア時獲得yマネーが10,000倍（×10,000）に超絶爆発！'
+      },
+      {
+        name: '開発神・全種族万象絶対共鳴',
+        type: 'tribe_boost',
+        value: 200000,
+        description: '【開発者特権・UZ+++の1000倍】全種族味方のHP・攻撃力種族効果が2,000倍（+200,000%）に超絶上昇！'
+      },
+      {
+        name: '開発神・全神威超越破壊',
+        type: 'damage_boost',
+        value: 200000,
+        description: '【開発者特権・UZ+++の1000倍】味方全体のぷに消し・通常攻撃ダメージが2,000倍（+200,000%）に超絶爆発！'
+      },
+      {
+        name: '開発神・無敵神域完全無効結界',
+        type: 'damage_cut',
+        value: 99.99,
+        description: '【開発者特権・UZ+++の1000倍】敵から受けるあらゆる被ダメージを99.99%完全無敵カット！'
+      },
+      {
+        name: '開発神・光速フィーバー超加速',
+        type: 'fever_boost',
+        value: 250000,
+        description: '【開発者特権・UZ+++の1000倍】フィーバーゲージチャージ速度が2,500倍（+250,000%）に超加速！'
+      },
+      {
+        name: '開発神・即座神技瞬時充填',
+        type: 'gauge_boost',
+        value: 250000,
+        description: '【開発者特権・UZ+++の1000倍】技ゲージチャージ速度が2,500倍（+250,000%）に超高速化！'
+      },
+      {
+        name: '開発神・全画面瞬間光速超連結',
+        type: 'connect_boost',
+        value: 300000,
+        description: '【開発者特権・UZ+++の1000倍】ぷに接続可能距離が3,000倍（+300,000%）拡大し画面全域を瞬時に超連結！'
+      },
+      {
+        name: '開発神・開幕常時神技MAX臨戦',
+        type: 'gauge_start',
+        value: 100000,
+        description: '【開発者特権・UZ+++の1000倍】バトル開幕直後から味方全員の技ゲージが100%MAXでスタート！'
+      },
+      {
+        name: '開発神・フィーバー瞬時全充填',
+        type: 'fever_gauge_charge',
+        value: 100000,
+        description: '【開発者特権・UZ+++の1000倍】フィーバー突入時に味方全員の技ゲージが100%即座に全快！'
+      },
+      {
+        name: '開発神・完全不死永久再生',
+        type: 'revive_shield',
+        value: 10000,
+        description: '【開発者特権・UZ+++の1000倍】HPが0になっても即座にHP100%全快で完全自動復活！'
+      },
+      {
+        name: '開発神・常時でかぷに超降誕',
+        type: 'drop_rate_boost',
+        value: 250000,
+        description: '【開発者特権・UZ+++の1000倍】自身のでかぷに降下率が2,500倍（+250,000%）に超絶上昇！'
+      }
+    ]
+  };
+
+  chars.push({
+    id: 'char_k_developer',
+    name: kDevCharDef.name,
+    rank: 'K',
+    tribe: kDevCharDef.tribe || 'エンマ',
+    color: '#021a1a',
+    emoji: kDevCharDef.emoji,
+    rankImage: rankImageMap['K'],
+    imageUrl: createPuniSvgDataUrl(kDevCharDef.name, '#021a1a', 'K', kDevCharDef.emoji),
+    baseHp: 99999000,
+    baseAtk: 99999000,
+    skill: {
+      name: kDevCharDef.skillName!,
+      type: kDevCharDef.skillType!,
+      power: kDevCharDef.skillPower!,
+      description: '全画面ぷに完全消滅＋UZ+++の1000倍神創開発ダメージ＋フィーバー即全開＋味方全員の技ゲージ全快＋HP完全全回復！'
+    },
+    passiveSkills: kDevCharDef.passiveSkills,
+    trait: kDevCharDef.trait
+  });
 
   return chars;
 };
