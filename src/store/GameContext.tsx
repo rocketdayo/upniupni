@@ -160,9 +160,9 @@ export const BLEACH_SHOP_ITEMS: BleachShopItem[] = [
     id: 'godAscensionStone',
     name: '神昇の秘石',
     icon: '💎',
-    cost: 80,
-    limit: 3,
-    description: "Z'キャラを全13体の神ランク『ZZ』へランダム神昇降臨させる至高の秘石。"
+    cost: 500,
+    limit: 5,
+    description: "ブリーチリング500個で『神昇の秘石』1個と交換できる至高の秘石。"
   },
   {
     id: 'superLimitBreakBook',
@@ -1076,7 +1076,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       expLargeCount: 0,
       skillBookCount: 0,
     };
-    const isBleachStage = stageId.startsWith('bleach_st_');
+    const isBleachStage = stageId.startsWith('bleach_st_') || stageId.startsWith('bleach_ura_');
     
     mutateAndSave(prev => {
       const newCleared = prev.clearedStages.includes(stageId)
@@ -1112,22 +1112,23 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       if (isBleachStage) {
         const bleachRingReward = 
-          stageId === 'bleach_st_8' ? 1000 :
-          stageId === 'bleach_st_7' ? 250 :
-          stageId === 'bleach_st_6' ? 50 :
-          stageId === 'bleach_st_5' ? 10 :
-          stageId === 'bleach_st_4' ? 7 :
-          stageId === 'bleach_st_3' ? 5 :
-          stageId === 'bleach_st_2' ? 3 : 1;
+          stageId === 'bleach_ura_3' ? 50 :
+          stageId === 'bleach_ura_2' ? 30 :
+          stageId === 'bleach_ura_1' ? 20 :
+          stageId === 'bleach_st_8' ? 15 :
+          stageId === 'bleach_st_7' ? 10 :
+          stageId === 'bleach_st_6' ? 5 :
+          stageId === 'bleach_st_5' ? 3 :
+          stageId === 'bleach_st_4' ? 2 : 1;
         drops.bleachRingCount = bleachRingReward;
 
-        // 虚圏特別マップ 高難度ボスの初クリア報酬: 神昇の秘石
+        // 虚圏特別マップ・裏ステージ 高難度ボスの初クリア報酬: 神昇の秘石
         const isFirstClear = !prev.clearedStages.includes(stageId);
         if (isFirstClear) {
-          if (stageId === 'bleach_st_8') {
-            drops.godAscensionStoneCount = 2;
-            newItems.godAscensionStone = (newItems.godAscensionStone || 0) + 2;
-          } else if (stageId === 'bleach_st_7' || stageId === 'bleach_st_6') {
+          if (stageId === 'bleach_ura_3' || stageId === 'bleach_ura_2') {
+            drops.godAscensionStoneCount = 1;
+            newItems.godAscensionStone = (newItems.godAscensionStone || 0) + 1;
+          } else if (stageId === 'bleach_st_8') {
             drops.godAscensionStoneCount = 1;
             newItems.godAscensionStone = (newItems.godAscensionStone || 0) + 1;
           }

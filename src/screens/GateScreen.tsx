@@ -90,8 +90,9 @@ export const GateScreen: React.FC = () => {
   };
 
   return (
-    <div style={{
+    <div className="view-container" style={{
       minHeight: '100%',
+      backgroundColor: '#0b0f19',
       background: 'linear-gradient(180deg, #0b0f19 0%, #1e1b4b 50%, #090d16 100%)',
       color: '#ffffff',
       padding: '16px',

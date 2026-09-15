@@ -32,7 +32,7 @@ export const BleachStageMap: React.FC = () => {
   };
 
   return (
-    <div className="view-container" style={{ background: 'linear-gradient(180deg, #09090b 0%, #1e1b4b 60%, #020617 100%)', color: '#fff', minHeight: '100vh', padding: '16px' }}>
+    <div className="view-container" style={{ backgroundColor: '#09090b', background: 'linear-gradient(180deg, #09090b 0%, #1e1b4b 60%, #020617 100%)', color: '#fff', minHeight: '100%', padding: '16px' }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
         <button className="btn btn-secondary" onClick={() => navigate('/home')} style={{ padding: '8px 12px' }}>
@@ -205,9 +205,18 @@ export const BleachStageMap: React.FC = () => {
                     HP: <strong style={{ color: '#f43f5e' }}>{formatHpText(st.enemyHp)} ({st.enemyHp.toLocaleString()})</strong> | 攻撃力: <strong style={{ color: '#fb923c' }}>{st.enemyAtk.toLocaleString()}</strong>
                   </div>
                   <div style={{ fontSize: '0.7rem', color: '#cbd5e1', marginTop: '1px' }}>
-                    撃破報酬: <strong style={{ color: '#fde047' }}>+{st.rewardYPoints.toLocaleString()} pt</strong> + <strong style={{ color: '#f0abfc' }}>💍{st.id === 'bleach_st_8' ? 1000 : st.id === 'bleach_st_7' ? 250 : st.id === 'bleach_st_6' ? 50 : st.id === 'bleach_st_5' ? 10 : st.id === 'bleach_st_4' ? 7 : st.id === 'bleach_st_3' ? 5 : st.id === 'bleach_st_2' ? 3 : 1}個</strong>
+                    撃破報酬: <strong style={{ color: '#fde047' }}>+{st.rewardYPoints.toLocaleString()} pt</strong> + <strong style={{ color: '#f0abfc' }}>💍{
+                      st.id === 'bleach_ura_3' ? 50 :
+                      st.id === 'bleach_ura_2' ? 30 :
+                      st.id === 'bleach_ura_1' ? 20 :
+                      st.id === 'bleach_st_8' ? 15 :
+                      st.id === 'bleach_st_7' ? 10 :
+                      st.id === 'bleach_st_6' ? 5 :
+                      st.id === 'bleach_st_5' ? 3 :
+                      st.id === 'bleach_st_4' ? 2 : 1
+                    }個</strong>
                   </div>
-                  {(st.id === 'bleach_st_6' || st.id === 'bleach_st_7' || st.id === 'bleach_st_8') && (
+                  {(st.id === 'bleach_ura_3' || st.id === 'bleach_ura_2' || st.id === 'bleach_st_8') && (
                     <div style={{
                       marginTop: '4px',
                       display: 'inline-flex',
@@ -221,7 +230,7 @@ export const BleachStageMap: React.FC = () => {
                       color: '#fef08a',
                       fontWeight: 800
                     }}>
-                      <span>👑 初クリア特別報酬: 💎 神昇の秘石 x{st.id === 'bleach_st_8' ? '2' : '1'}</span>
+                      <span>👑 初クリア特別報酬: 💎 神昇の秘石 x1</span>
                       {isCleared && <span style={{ color: '#86efac' }}>(獲得済)</span>}
                     </div>
                   )}

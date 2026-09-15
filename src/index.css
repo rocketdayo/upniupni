@@ -58,11 +58,16 @@ body {
   padding: 0;
   background-color: var(--bg-color);
   background-image: 
-    radial-gradient(circle at 20% 30%, rgba(255,255,255,0.3) 0%, transparent 10%),
-    radial-gradient(circle at 80% 70%, rgba(255,255,255,0.2) 0%, transparent 15%),
-    radial-gradient(circle at 50% 90%, rgba(255,255,255,0.4) 0%, transparent 20%);
+    radial-gradient(circle at 20% 30%, rgba(255,255,255,0.35) 0%, transparent 12%),
+    radial-gradient(circle at 80% 70%, rgba(255,255,255,0.25) 0%, transparent 18%),
+    radial-gradient(circle at 50% 90%, rgba(255,255,255,0.45) 0%, transparent 25%),
+    linear-gradient(135deg, #4fa3e3 0%, #89d4ff 100%);
+  background-size: cover;
+  background-attachment: fixed;
   color: var(--text-color);
   overflow: hidden;
+  width: 100vw;
+  height: 100vh;
 }
 
 #root {
@@ -71,6 +76,7 @@ body {
   display: flex;
   justify-content: center;
   align-items: center;
+  overflow: hidden;
 }
 
 .app-container {
@@ -81,8 +87,9 @@ body {
   position: relative;
   display: flex;
   flex-direction: column;
-  background: linear-gradient(180deg, #bce6ff 0%, #79c8ff 100%);
-  box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+  background: linear-gradient(180deg, #cde9ff 0%, #79c8ff 50%, #4da6ff 100%);
+  background-size: 100% 100%;
+  box-shadow: 0 0 25px rgba(0, 0, 0, 0.35);
   overflow: hidden;
 }
 
@@ -94,6 +101,7 @@ body {
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   scroll-behavior: smooth;
+  background: transparent;
   /* 拡大率の大きなスマホでもスコアタの出撃ボタンや全UIが隠れず、余分な位置まで快適にスクロールできるように対応 */
   padding-bottom: max(220px, env(safe-area-inset-bottom, 32px) + 180px) !important;
 }

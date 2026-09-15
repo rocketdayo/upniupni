@@ -58,7 +58,7 @@ export const GATE_ROOM_TYPES: GateRoom[] = [
     enemyEmojis: ['👺', '👤', '🐱'],
     baseHp: 16000,
     baseAtk: 120,
-    rewardYp: 80,
+    rewardYp: 15,
   },
   {
     id: 'room_reward',
@@ -66,7 +66,7 @@ export const GATE_ROOM_TYPES: GateRoom[] = [
     type: 'reward',
     roomType: 'reward',
     title: '黄金の財宝空間',
-    description: '【出現率10%】常に2階層！超大量Ypt・ひっさつの秘伝書・超けいけんちだまが手に入る最大級ボーナス空間！',
+    description: '【出現率10%】常に2階層！Ypt・ひっさつの秘伝書・超けいけんちだまが手に入る最大級ボーナス空間！',
     color: '#eab308',
     bgGradient: 'linear-gradient(135deg, #854d0e 0%, #713f12 50%, #451a03 100%)',
     emoji: '✨',
@@ -75,7 +75,7 @@ export const GATE_ROOM_TYPES: GateRoom[] = [
     enemyEmojis: ['🐼', '✨'],
     baseHp: 22000,
     baseAtk: 90,
-    rewardYp: 1200,
+    rewardYp: 150,
     bonusDrops: [
       { name: 'ひっさつの秘伝書', count: 1, icon: '📜' },
       { name: '超けいけんちだま', count: 3, icon: '🔮' }
@@ -96,7 +96,7 @@ export const GATE_ROOM_TYPES: GateRoom[] = [
     enemyEmojis: ['⚡'],
     baseHp: 65000,
     baseAtk: 350,
-    rewardYp: 400,
+    rewardYp: 60,
     bonusDrops: [
       { name: '漢方（全回復）', count: 1, icon: '🧪' },
       { name: '超けいけんちだま', count: 2, icon: '🔮' }

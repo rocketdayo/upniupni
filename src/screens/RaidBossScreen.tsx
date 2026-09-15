@@ -48,8 +48,9 @@ export const RaidBossScreen: React.FC = () => {
   };
 
   return (
-    <div style={{
-      minHeight: '100vh',
+    <div className="view-container" style={{
+      minHeight: '100%',
+      backgroundColor: '#090d16',
       background: 'linear-gradient(180deg, #090d16 0%, #171026 50%, #2e0819 100%)',
       color: '#ffffff',
       display: 'flex',
